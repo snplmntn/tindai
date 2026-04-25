@@ -8,6 +8,10 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "dev-client": "powershell -ExecutionPolicy Bypass -File ./scripts/dev-client.ps1",
+    "dev-client:install": "powershell -ExecutionPolicy Bypass -File ./scripts/dev-client.ps1 -InstallOnly",
+    "dev-client:start": "powershell -ExecutionPolicy Bypass -File ./scripts/dev-client.ps1 -StartOnly",
+    "dev-client:start:noclear": "powershell -ExecutionPolicy Bypass -File ./scripts/dev-client.ps1 -StartOnly -NoClear",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
