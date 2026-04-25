@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "react-native-boilerplate",
-    "slug": "react-native-boilerplate",
-    "scheme": "rnboilerplate",
+    "name": "tindai",
+    "slug": "tindai",
+    "scheme": "tindai",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -14,13 +14,11 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.example.rnboilerplate"
+      "package": "com.example.tindai"
     },
     "web": {
       "bundler": "metro"
     },
-    "plugins": [
-      "expo-asset"
-    ]
+    "plugins": ["expo-asset", "expo-sqlite"]
   }
 }

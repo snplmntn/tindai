@@ -34,12 +34,14 @@ export function HomeTabs() {
         tabBarItemStyle: {
           paddingVertical: 4,
         },
-        tabBarIcon: ({ color, size }) => {
+        tabBarIcon: ({ color, size, focused }) => {
           const iconName =
             route.name === 'Inventory'
               ? 'cube-outline'
               : route.name === 'Dashboard'
-                ? 'grid-outline'
+                ? focused
+                  ? 'mic'
+                  : 'mic-outline'
                 : route.name === 'Analytics'
                   ? 'bar-chart-outline'
                   : 'person-outline';
@@ -66,7 +68,13 @@ export function HomeTabs() {
       })}
     >
       <Tab.Screen name="Inventory" component={InventoryScreen} />
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
       <Tab.Screen name="Analytics" component={AnalyticsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>

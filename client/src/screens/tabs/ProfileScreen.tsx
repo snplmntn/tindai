@@ -18,7 +18,7 @@ export function ProfileScreen() {
         <Text style={styles.actionTitle}>Session</Text>
         <Text style={styles.actionBody}>Sign out returns the user to the login screen and keeps onboarding completed.</Text>
 
-        <Pressable style={styles.signOutButton} onPress={signOut}>
+        <Pressable style={styles.signOutButton} onPress={() => void signOut()}>
           <Text style={styles.signOutText}>Sign Out</Text>
         </Pressable>
       </View>
@@ -61,3 +61,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+

@@ -6,8 +6,8 @@ export type ServerEnv = {
   PORT: number;
   NODE_ENV: 'development' | 'test' | 'production';
   SUPABASE_URL: string;
-  SUPABASE_ANON_KEY: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
+  SUPABASE_PUBLISHABLE_KEY: string;
+  SUPABASE_SECRET_KEY: string;
 };
 
 let cachedEnv: ServerEnv | null = null;
@@ -29,8 +29,11 @@ export function getEnv(): ServerEnv {
     PORT: Number(process.env.PORT ?? '4000'),
     NODE_ENV: (process.env.NODE_ENV as ServerEnv['NODE_ENV'] | undefined) ?? 'development',
     SUPABASE_URL: requireValue('SUPABASE_URL', process.env.SUPABASE_URL),
-    SUPABASE_ANON_KEY: requireValue('SUPABASE_ANON_KEY', process.env.SUPABASE_ANON_KEY),
-    SUPABASE_SERVICE_ROLE_KEY: requireValue('SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY),
+    SUPABASE_PUBLISHABLE_KEY: requireValue(
+      'SUPABASE_PUBLISHABLE_KEY',
+      process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY
+    ),
+    SUPABASE_SECRET_KEY: requireValue('SUPABASE_SECRET_KEY', process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY),
   };
 
   return cachedEnv;
