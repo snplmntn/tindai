@@ -1,4 +1,4 @@
-import { type ComponentProps, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/navigation/colors';
 
+import { ForecastSparklineChart, InsightsTrendLineChart, SalesTrendBarChart } from './AnalyticsCharts';
 import type { AnalyticsChartPoint, AnalyticsListItem, AnalyticsViewModel } from './buildAnalyticsViewModel';
 
 type AnalyticsTabKey = 'Overview' | 'Insights' | 'Predictions & AI';
@@ -19,13 +20,7 @@ type AnalyticsViewProps = {
   error: string | null;
 };
 
-type IconName = ComponentProps<typeof Ionicons>['name'];
-
-const tabs: Array<{ key: AnalyticsTabKey; icon: IconName; label: string }> = [
-  { key: 'Overview', icon: 'grid-outline', label: 'Overview' },
-  { key: 'Insights', icon: 'bar-chart-outline', label: 'Insights' },
-  { key: 'Predictions & AI', icon: 'sparkles-outline', label: 'Predictions & AI' },
-];
+const tabs: AnalyticsTabKey[] = ['Overview', 'Insights', 'Predictions & AI'];
 
 export function AnalyticsView({
   storeName,
@@ -35,86 +30,37 @@ export function AnalyticsView({
   isLoading,
   error,
 }: AnalyticsViewProps) {
-  const heroSignal = viewModel.overview.lowStock[0] ?? viewModel.overview.topSelling[0] ?? null;
-  const heroSignalTitle = heroSignal ? heroSignal.itemName : 'No urgent alerts right now';
-  const heroSignalBody = heroSignal
-    ? heroSignal.detail
-    : 'Preview data is standing in until local sales history builds up.';
-  const statusLabel = isLoading ? 'Refreshing local sales data...' : 'Offline preview ready';
+  const headerTitle = activeTab === 'Insights' ? 'Analytics Insights' : 'Business Insights';
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.content} style={styles.screen} showsVerticalScrollIndicator={false}>
         <View style={styles.shell}>
-          <View style={styles.heroCard}>
-            <View style={styles.heroTopRow}>
-              <View style={styles.heroEyebrow}>
-                <Ionicons color={colors.primaryDeep} name="analytics-outline" size={14} />
-                <Text style={styles.heroEyebrowText}>Analytics</Text>
-              </View>
-
-              <View style={styles.storePill}>
-                <Text numberOfLines={1} style={styles.storePillText}>
-                  {storeName}
-                </Text>
-              </View>
+          <View style={styles.headerRow}>
+            <View style={styles.headerMenuButton}>
+              <Ionicons color={colors.primaryDeep} name="menu-outline" size={26} />
             </View>
 
-            <Text style={styles.title}>A clean read on sales, stock, and next moves.</Text>
-            <Text style={styles.subtitle}>
-              The analytics board keeps the core loop readable on a small screen: sales first, stock watch next, then
-              forecasting.
-            </Text>
+            <Text style={styles.headerTitle}>{headerTitle}</Text>
 
-            <View style={styles.signalCard}>
-              <View style={styles.signalAccent} />
-              <View style={styles.signalBody}>
-                <Text style={styles.signalLabel}>Focus now</Text>
-                <Text style={styles.signalTitle}>{heroSignalTitle}</Text>
-                <Text style={styles.signalText}>{heroSignalBody}</Text>
-              </View>
-              <View style={styles.signalBadge}>
-                <Text style={styles.signalBadgeText}>{statusLabel}</Text>
-              </View>
-            </View>
-
-            <View style={styles.heroStats}>
-              <HeroStat
-                accent="primary"
-                label={viewModel.overview.salesToday.label}
-                value={viewModel.overview.salesToday.value}
-                caption={viewModel.overview.salesToday.caption}
-              />
-              <HeroStat
-                accent="secondary"
-                label={viewModel.overview.salesThisMonth.label}
-                value={viewModel.overview.salesThisMonth.value}
-                caption={viewModel.overview.salesThisMonth.caption}
-              />
+            <View style={styles.avatarBadge}>
+              <Text style={styles.avatarBadgeText}>{getInitials(storeName)}</Text>
             </View>
           </View>
 
-          <View style={styles.tabRail}>
+          <View style={styles.topTabRail}>
             {tabs.map((tab) => {
-              const isActive = tab.key === activeTab;
+              const isActive = tab === activeTab;
 
               return (
                 <Pressable
-                  key={tab.key}
+                  key={tab}
                   accessibilityRole="button"
-                  onPress={() => onTabChange(tab.key)}
-                  style={[styles.tabButton, isActive ? styles.tabButtonActive : undefined]}
+                  onPress={() => onTabChange(tab)}
+                  style={styles.topTabButton}
                 >
-                  <View style={[styles.tabIconWrap, isActive ? styles.tabIconWrapActive : undefined]}>
-                    <Ionicons
-                      color={isActive ? colors.primaryDeep : colors.muted}
-                      name={tab.icon}
-                      size={17}
-                    />
-                  </View>
-                  <Text style={[styles.tabButtonText, isActive ? styles.tabButtonTextActive : undefined]}>
-                    {tab.label}
-                  </Text>
+                  <Text style={[styles.topTabText, isActive ? styles.topTabTextActive : undefined]}>{tab}</Text>
+                  <View style={[styles.topTabUnderline, isActive ? styles.topTabUnderlineActive : undefined]} />
                 </Pressable>
               );
             })}
@@ -122,70 +68,62 @@ export function AnalyticsView({
 
           {error ? (
             <View style={styles.errorCard}>
-              <View style={styles.errorBadge}>
-                <Ionicons color={colors.primaryDeep} name="alert-circle-outline" size={16} />
-                <Text style={styles.errorBadgeText}>Analytics refresh paused</Text>
-              </View>
-              <Text style={styles.errorTitle}>Unable to refresh analytics</Text>
+              <Text style={styles.errorTitle}>Analytics refresh paused</Text>
               <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
 
-          {activeTab === 'Overview' ? <OverviewTab viewModel={viewModel} /> : null}
-          {activeTab === 'Insights' ? <InsightsTab viewModel={viewModel} isLoading={isLoading} /> : null}
-          {activeTab === 'Predictions & AI' ? <PredictionsTab viewModel={viewModel} isLoading={isLoading} /> : null}
+          {activeTab === 'Overview' ? <OverviewTab isLoading={isLoading} viewModel={viewModel} /> : null}
+          {activeTab === 'Insights' ? <InsightsTab isLoading={isLoading} viewModel={viewModel} /> : null}
+          {activeTab === 'Predictions & AI' ? <PredictionsTab isLoading={isLoading} viewModel={viewModel} /> : null}
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function OverviewTab({ viewModel }: { viewModel: AnalyticsViewProps['viewModel'] }) {
-  const lowStockHeadline = viewModel.overview.lowStock[0] ?? viewModel.predictions.restockSoon[0] ?? null;
+function OverviewTab({
+  viewModel,
+  isLoading,
+}: {
+  viewModel: AnalyticsViewProps['viewModel'];
+  isLoading: boolean;
+}) {
+  const focusItem = viewModel.overview.lowStock[0] ?? viewModel.overview.topSelling[0] ?? null;
+  const insightBody = focusItem
+    ? `${focusItem.itemName} stands out right now. ${focusItem.detail}`
+    : 'Your overview stays readable even while local sales history is still warming up.';
 
   return (
-    <View style={styles.sectionStack}>
+    <View style={styles.tabStack}>
+      <InsightBanner
+        body={insightBody}
+        label={isLoading ? 'Refreshing overview' : 'Tinday\'s Insight'}
+        title="Overview"
+      />
+
       <View style={styles.metricGrid}>
         <MetricCard
-          accent="primary"
-          icon="cash-outline"
-          label={viewModel.overview.salesToday.label}
-          value={viewModel.overview.salesToday.value}
           caption={viewModel.overview.salesToday.caption}
+          label="Daily Sales"
+          value={viewModel.overview.salesToday.value}
         />
         <MetricCard
-          accent="secondary"
-          icon="trending-up-outline"
-          label={viewModel.overview.salesThisMonth.label}
-          value={viewModel.overview.salesThisMonth.value}
           caption={viewModel.overview.salesThisMonth.caption}
+          label="Month Sales"
+          value={viewModel.overview.salesThisMonth.value}
         />
       </View>
 
-      <SectionCard
-        subtitle="A single item summary keeps the next action obvious."
-        title="Priority now"
-      >
-        {lowStockHeadline ? (
-          <PriorityStrip item={lowStockHeadline} />
-        ) : (
-          <EmptyInlineText text="No low-stock items surfaced in the current view." />
-        )}
-      </SectionCard>
+      <CardSurface>
+        <SectionHeader eyebrow="Last 7 Days" title="Sales Trend" />
+        <SalesTrendBarChart points={viewModel.insights.salesTrend} />
+      </CardSurface>
 
-      <TwoColumnLists
-        leftItems={viewModel.overview.topSelling}
-        leftTitle="Top selling"
-        rightItems={viewModel.overview.lowStock}
-        rightTitle="Low stock"
-      />
-
-      <TwoColumnLists
-        leftItems={viewModel.overview.fastMoving}
-        leftTitle="Fast moving"
-        rightItems={viewModel.overview.slowMoving}
-        rightTitle="Slow moving"
-      />
+      <CardSurface>
+        <SectionHeader actionLabel="View All" title="Top Selling Items" />
+        <SellingList items={viewModel.overview.topSelling} />
+      </CardSurface>
     </View>
   );
 }
@@ -197,30 +135,60 @@ function InsightsTab({
   viewModel: AnalyticsViewProps['viewModel'];
   isLoading: boolean;
 }) {
+  const leadItem = viewModel.insights.risingDemand[0] ?? viewModel.insights.decliningDemand[0] ?? null;
+  const insightBody = leadItem
+    ? `${leadItem.itemName} is the clearest movement signal. ${leadItem.detail}`
+    : viewModel.insights.emptyState ?? 'Trend signals will sharpen as more local sales arrive.';
+  const signalCount = viewModel.insights.risingDemand.length + viewModel.insights.decliningDemand.length;
+
   return (
-    <View style={styles.sectionStack}>
-      {viewModel.insights.emptyState ? (
-        <EmptyStateCard
-          body={viewModel.insights.emptyState}
-          loadingLabel={isLoading ? 'Refreshing local sales data...' : null}
-          title="Insights need more history"
-        />
-      ) : null}
-
-      <SectionCard subtitle="Daily sales over the last 7 days." title="Sales trend">
-        <MiniBarChart points={viewModel.insights.salesTrend} />
-      </SectionCard>
-
-      <SectionCard subtitle="Biggest product movement changes." title="Demand shift">
-        <MiniBarChart accent="secondary" points={viewModel.insights.demandTrend} />
-      </SectionCard>
-
-      <TwoColumnLists
-        leftItems={viewModel.insights.risingDemand}
-        leftTitle="Trending up"
-        rightItems={viewModel.insights.decliningDemand}
-        rightTitle="Trending down"
+    <View style={styles.tabStack}>
+      <InsightBanner
+        body={insightBody}
+        label={isLoading ? 'Refreshing insights' : 'Tinday\'s Insight'}
+        title="Insights"
       />
+
+      <View style={styles.metricGrid}>
+        <MetricCard
+          caption={viewModel.overview.salesToday.caption}
+          label="Daily Sales"
+          value={viewModel.overview.salesToday.value}
+        />
+        <MetricCard
+          caption="Demand signals in view"
+          label="Items Sold"
+          value={`${signalCount || viewModel.overview.fastMoving.length || viewModel.overview.slowMoving.length}`}
+        />
+      </View>
+
+      <CardSurface>
+        <SectionHeader eyebrow="Last 7 Days" title="Sales Trend" />
+        <InsightsTrendLineChart points={viewModel.insights.salesTrend} />
+      </CardSurface>
+
+      <CardSurface>
+        <SectionHeader actionLabel="View All" title="Fast & Slow Moving Items" />
+        <View style={styles.dualListGrid}>
+          <MovementColumn
+            emptyText="No fast movers yet."
+            items={viewModel.overview.fastMoving.length > 0 ? viewModel.overview.fastMoving : viewModel.insights.risingDemand}
+            title="Fast Movers"
+            tone="positive"
+          />
+          <MovementColumn
+            emptyText="No slow movers yet."
+            items={viewModel.overview.slowMoving.length > 0 ? viewModel.overview.slowMoving : viewModel.insights.decliningDemand}
+            title="Slow Movers"
+            tone="warning"
+          />
+        </View>
+      </CardSurface>
+
+      <CardSurface>
+        <SectionHeader title="Trend Detection" />
+        <TrendDetectionList emptyText={viewModel.insights.emptyState ?? 'No trend shifts detected yet.'} points={viewModel.insights.demandTrend} />
+      </CardSurface>
     </View>
   );
 }
@@ -232,100 +200,101 @@ function PredictionsTab({
   viewModel: AnalyticsViewProps['viewModel'];
   isLoading: boolean;
 }) {
-  const forecastLead = viewModel.predictions.restockSoon[0] ?? viewModel.predictions.forecast[0] ?? null;
-  const leadTitle = forecastLead ? `Watch ${forecastLead.itemName}` : 'Forecasts are warming up';
-  const leadBody = forecastLead
-    ? forecastLead.detail
-    : 'Forecast cards will appear after a few days of local sales activity.';
+  const leadItem = viewModel.predictions.restockSoon[0] ?? viewModel.predictions.forecast[0] ?? null;
+  const predictionItems = mergePredictionItems(viewModel.predictions.forecast, viewModel.predictions.restockSoon);
+  const summaryTone = isLoading ? 'Refreshing local forecast' : 'Local forecast';
 
   return (
-    <View style={styles.sectionStack}>
-      {viewModel.predictions.emptyState ? (
-        <EmptyStateCard
-          body={viewModel.predictions.emptyState}
-          loadingLabel={isLoading ? 'Refreshing local sales data...' : null}
-          title="Predictions are warming up"
-        />
-      ) : null}
-
-      <SectionCard subtitle="A short summary of near-term stock pressure." title="Forecast summary">
-        <View style={styles.predictionSummary}>
-          <View style={styles.predictionSummaryHeader}>
-            <View style={styles.predictionSummaryBadge}>
-              <Ionicons color={colors.primaryDeep} name="sparkles-outline" size={14} />
-              <Text style={styles.predictionSummaryBadgeText}>Model summary</Text>
-            </View>
-            <Text style={styles.predictionSummaryTitle}>{leadTitle}</Text>
-            <Text style={styles.predictionSummaryBody}>{leadBody}</Text>
-          </View>
-
-          <View style={styles.predictionMiniGrid}>
-            <PredictionMiniCard label="Forecast items" value={`${viewModel.predictions.forecast.length}`} />
-            <PredictionMiniCard label="Restock soon" value={`${viewModel.predictions.restockSoon.length}`} />
-          </View>
-        </View>
-      </SectionCard>
-
-      <TwoColumnLists
-        leftItems={viewModel.predictions.forecast}
-        leftTitle="Demand forecast"
-        rightItems={viewModel.predictions.restockSoon}
-        rightTitle="Restock Soon"
+    <View style={styles.tabStack}>
+      <ForecastHero
+        body={
+          leadItem
+            ? leadItem.detail
+            : viewModel.predictions.emptyState ?? 'Forecast cards will appear after a few days of local sales activity.'
+        }
+        summaryTone={summaryTone}
+        title={leadItem ? leadItem.itemName : 'Forecasts are warming up'}
+        trendPoints={viewModel.insights.salesTrend}
       />
 
-      <SectionCard subtitle="Deterministic guidance from local sales patterns." title="AI recommendations">
-        <View style={styles.recommendationStack}>
-          {viewModel.predictions.recommendations.map((recommendation) => (
-            <View key={`${recommendation.title}-${recommendation.body}`} style={styles.recommendationCard}>
-              <Text style={styles.recommendationTitle}>{recommendation.title}</Text>
-              <Text style={styles.recommendationBody}>{recommendation.body}</Text>
-            </View>
-          ))}
-        </View>
-      </SectionCard>
+      <CardSurface>
+        <SectionHeader title="Stock Prediction" />
+        <PredictionList items={predictionItems} />
+      </CardSurface>
+
+      <CardSurface>
+        <SectionHeader title="AI Performance Summary" />
+        <RecommendationList recommendations={viewModel.predictions.recommendations} />
+      </CardSurface>
     </View>
   );
 }
 
-function HeroStat({
-  accent,
+function InsightBanner({
   label,
-  value,
-  caption,
+  title,
+  body,
 }: {
-  accent: 'primary' | 'secondary';
   label: string;
-  value: string;
-  caption: string;
+  title: string;
+  body: string;
 }) {
   return (
-    <View style={styles.heroStatCard}>
-      <View style={[styles.heroStatAccent, accent === 'secondary' ? styles.heroStatAccentSecondary : undefined]} />
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricCaption}>{caption}</Text>
+    <View style={styles.insightBanner}>
+      <View style={styles.insightIconTile}>
+        <Ionicons color={colors.primaryDeep} name="bulb-outline" size={22} />
+      </View>
+
+      <View style={styles.insightContent}>
+        <Text style={styles.insightBannerLabel}>{label}</Text>
+        <Text style={styles.insightBannerTitle}>{title}</Text>
+        <Text style={styles.insightBannerBody}>{body}</Text>
+      </View>
+    </View>
+  );
+}
+
+function ForecastHero({
+  title,
+  body,
+  summaryTone,
+  trendPoints,
+}: {
+  title: string;
+  body: string;
+  summaryTone: string;
+  trendPoints: AnalyticsChartPoint[];
+}) {
+  return (
+    <View style={styles.forecastHero}>
+      <View style={styles.forecastHeroText}>
+        <View style={styles.forecastIconTile}>
+          <Ionicons color={colors.primaryDeep} name="bulb-outline" size={22} />
+        </View>
+        <Text style={styles.forecastLabel}>Demand Forecasting</Text>
+        <Text style={styles.forecastValue}>{title}</Text>
+        <Text style={styles.forecastBody}>{body}</Text>
+        <View style={styles.forecastPill}>
+          <Text style={styles.forecastPillText}>{summaryTone}</Text>
+        </View>
+      </View>
+
+      <ForecastSparklineChart points={trendPoints} />
     </View>
   );
 }
 
 function MetricCard({
-  accent,
-  icon,
   label,
   value,
   caption,
 }: {
-  accent: 'primary' | 'secondary';
-  icon: IconName;
   label: string;
   value: string;
   caption: string;
 }) {
   return (
     <View style={styles.metricCard}>
-      <View style={[styles.metricIconWrap, accent === 'secondary' ? styles.metricIconWrapSecondary : undefined]}>
-        <Ionicons color={colors.primaryDeep} name={icon} size={16} />
-      </View>
       <Text style={styles.metricLabel}>{label}</Text>
       <Text style={styles.metricValue}>{value}</Text>
       <Text style={styles.metricCaption}>{caption}</Text>
@@ -333,191 +302,201 @@ function MetricCard({
   );
 }
 
-function TwoColumnLists({
-  leftTitle,
-  leftItems,
-  rightTitle,
-  rightItems,
-}: {
-  leftTitle: string;
-  leftItems: AnalyticsListItem[];
-  rightTitle: string;
-  rightItems: AnalyticsListItem[];
-}) {
-  return (
-    <View style={styles.listGrid}>
-      <SectionCard title={leftTitle}>
-        <RankedList items={leftItems} />
-      </SectionCard>
-      <SectionCard title={rightTitle}>
-        <RankedList items={rightItems} />
-      </SectionCard>
-    </View>
-  );
+function CardSurface({ children }: { children: ReactNode }) {
+  return <View style={styles.cardSurface}>{children}</View>;
 }
 
-function SectionCard({
+function SectionHeader({
   title,
-  subtitle,
-  children,
+  eyebrow,
+  actionLabel,
 }: {
   title: string;
-  subtitle?: string;
-  children: ReactNode;
+  eyebrow?: string;
+  actionLabel?: string;
 }) {
   return (
-    <View style={styles.sectionCard}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionTitleRow}>
-          <View style={styles.sectionMarker} />
-          <Text style={styles.sectionTitle}>{title}</Text>
-        </View>
-        {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
-      </View>
-      {children}
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {eyebrow ? <Text style={styles.sectionEyebrow}>{eyebrow}</Text> : null}
+      {actionLabel ? <Text style={styles.sectionAction}>{actionLabel}</Text> : null}
     </View>
   );
 }
 
-function RankedList({ items }: { items: AnalyticsListItem[] }) {
+
+function SellingList({ items }: { items: AnalyticsListItem[] }) {
   if (items.length === 0) {
-    return <Text style={styles.emptyListText}>No local activity yet.</Text>;
+    return <Text style={styles.emptyText}>No local activity yet.</Text>;
   }
 
   return (
-    <View style={styles.rankList}>
+    <View style={styles.listStack}>
       {items.map((item, index) => (
-        <View key={`${item.itemId}-${item.itemName}`} style={styles.rankListItem}>
-          <View style={[styles.rankIndex, getToneChipStyle(item.tone)]}>
-            <Text style={styles.rankIndexText}>{index + 1}</Text>
+        <View key={`${item.itemId}-${item.itemName}`} style={styles.sellingRow}>
+          <ProductAvatar itemName={item.itemName} tone={index === 0 ? 'positive' : 'default'} />
+          <View style={styles.sellingMain}>
+            <Text style={styles.rowTitle}>{item.itemName}</Text>
+            <Text style={styles.rowSubtitle}>{item.detail}</Text>
           </View>
-          <View style={styles.rankContent}>
-            <Text style={styles.rankItemName}>{item.itemName}</Text>
-            <Text style={styles.rankItemDetail}>{item.detail}</Text>
+          <View style={styles.sellingMeta}>
+            <Text style={styles.rankMeta}>{`TOP ${index + 1}`}</Text>
           </View>
-          {item.tone ? (
-            <View style={[styles.rankTonePill, getToneChipStyle(item.tone)]}>
-              <Text style={styles.rankToneText}>{getToneLabel(item.tone)}</Text>
-            </View>
-          ) : null}
         </View>
       ))}
     </View>
   );
 }
 
-function MiniBarChart({
-  points,
-  accent = 'primary',
-}: {
-  points: AnalyticsChartPoint[];
-  accent?: 'primary' | 'secondary';
-}) {
-  const maxValue = Math.max(...points.map((point) => point.value), 0);
-
-  if (points.length === 0) {
-    return <Text style={styles.emptyListText}>No chart data yet.</Text>;
-  }
-
-  return (
-    <View style={styles.chartWrap}>
-      <View style={styles.chartRow}>
-        {points.map((point) => {
-          const height = maxValue === 0 ? 6 : Math.max(6, Math.round((point.value / maxValue) * 88));
-
-          return (
-            <View key={`${point.label}-${point.displayValue}`} style={styles.chartPoint}>
-              <View
-                style={[
-                  styles.chartBar,
-                  accent === 'secondary' ? styles.chartBarSecondary : undefined,
-                  { height },
-                ]}
-              />
-              <Text style={styles.chartLabel}>{point.label}</Text>
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-function PriorityStrip({ item }: { item: AnalyticsListItem }) {
-  return (
-    <View style={styles.priorityStrip}>
-      <View style={[styles.priorityDot, getToneChipStyle(item.tone)]} />
-      <View style={styles.priorityContent}>
-        <Text style={styles.priorityTitle}>{item.itemName}</Text>
-        <Text style={styles.priorityBody}>{item.detail}</Text>
-      </View>
-      {item.tone ? (
-        <View style={[styles.priorityBadge, getToneChipStyle(item.tone)]}>
-          <Text style={styles.priorityBadgeText}>{getToneLabel(item.tone)}</Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function PredictionMiniCard({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.predictionMiniCard}>
-      <Text style={styles.predictionMiniLabel}>{label}</Text>
-      <Text style={styles.predictionMiniValue}>{value}</Text>
-    </View>
-  );
-}
-
-function EmptyInlineText({ text }: { text: string }) {
-  return <Text style={styles.emptyListText}>{text}</Text>;
-}
-
-function EmptyStateCard({
+function MovementColumn({
   title,
-  body,
-  loadingLabel,
+  items,
+  emptyText,
+  tone,
 }: {
   title: string;
-  body: string;
-  loadingLabel: string | null;
+  items: AnalyticsListItem[];
+  emptyText: string;
+  tone: 'default' | 'warning' | 'positive';
 }) {
   return (
-    <View style={styles.emptyStateCard}>
-      <View style={styles.emptyStateBadge}>
-        <Ionicons color={colors.primaryDeep} name="time-outline" size={14} />
-        <Text style={styles.emptyStateBadgeText}>Preview mode</Text>
-      </View>
-      <Text style={styles.emptyStateTitle}>{title}</Text>
-      <Text style={styles.emptyStateBody}>{body}</Text>
-      {loadingLabel ? <Text style={styles.emptyStateHint}>{loadingLabel}</Text> : null}
+    <View style={styles.movementColumn}>
+      <Text style={styles.movementColumnTitle}>{title}</Text>
+      {items.length === 0 ? (
+        <Text style={styles.emptyText}>{emptyText}</Text>
+      ) : (
+        <View style={styles.movementList}>
+          {items.slice(0, 2).map((item) => (
+            <View key={`${title}-${item.itemId}-${item.itemName}`} style={styles.movementRow}>
+              <ProductAvatar itemName={item.itemName} tone={tone} />
+              <View style={styles.movementText}>
+                <Text style={styles.rowTitle}>{item.itemName}</Text>
+                <Text style={styles.rowSubtitle}>{item.detail}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
-function getToneChipStyle(tone: AnalyticsListItem['tone']) {
-  if (tone === 'warning') {
-    return styles.toneWarning;
+function TrendDetectionList({
+  points,
+  emptyText,
+}: {
+  points: AnalyticsChartPoint[];
+  emptyText: string;
+}) {
+  if (points.length === 0) {
+    return <Text style={styles.emptyText}>{emptyText}</Text>;
   }
 
-  if (tone === 'positive') {
-    return styles.tonePositive;
-  }
-
-  return styles.toneDefault;
+  return (
+    <View style={styles.trendList}>
+      <Text style={styles.trendLead}>Rising and falling product signals</Text>
+      {points.map((point) => (
+        <View key={`${point.label}-${point.displayValue}`} style={styles.trendRow}>
+          <View style={styles.trendBullet} />
+          <Text style={styles.trendRowText}>
+            {point.label}: {point.displayValue}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
 }
 
-function getToneLabel(tone: AnalyticsListItem['tone']) {
-  if (tone === 'warning') {
-    return 'Watch';
+function PredictionList({ items }: { items: AnalyticsListItem[] }) {
+  if (items.length === 0) {
+    return <Text style={styles.emptyText}>No stock predictions yet.</Text>;
   }
 
-  if (tone === 'positive') {
-    return 'Up';
-  }
-
-  return 'OK';
+  return (
+    <View style={styles.listStack}>
+      {items.map((item) => (
+        <View key={`${item.itemId}-${item.itemName}`} style={styles.predictionRow}>
+          <ProductAvatar itemName={item.itemName} tone={item.tone ?? 'default'} />
+          <View style={styles.predictionMain}>
+            <Text style={styles.rowTitle}>{item.itemName}</Text>
+            <Text style={styles.rowSubtitle}>{item.detail}</Text>
+          </View>
+          <Pressable accessibilityRole="button" onPress={noop} style={styles.restockButton}>
+            <Text style={styles.restockButtonText}>Suggest Restock</Text>
+          </Pressable>
+        </View>
+      ))}
+    </View>
+  );
 }
+
+function RecommendationList({
+  recommendations,
+}: {
+  recommendations: AnalyticsViewModel['predictions']['recommendations'];
+}) {
+  if (recommendations.length === 0) {
+    return <Text style={styles.emptyText}>No recommendation summary yet.</Text>;
+  }
+
+  return (
+    <View style={styles.recommendationStack}>
+      {recommendations.map((recommendation, index) => (
+        <View key={`${recommendation.title}-${recommendation.body}`} style={styles.recommendationCard}>
+          {index === 0 ? <Text style={styles.recommendationLead}>Primary guidance</Text> : null}
+          <Text style={styles.recommendationTitle}>{recommendation.title}</Text>
+          <Text style={styles.recommendationBody}>{recommendation.body}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function ProductAvatar({
+  itemName,
+  tone,
+}: {
+  itemName: string;
+  tone: 'default' | 'warning' | 'positive';
+}) {
+  return (
+    <View
+      style={[
+        styles.productAvatar,
+        tone === 'warning' ? styles.productAvatarWarning : undefined,
+        tone === 'positive' ? styles.productAvatarPositive : undefined,
+      ]}
+    >
+      <Text style={styles.productAvatarText}>{itemName.charAt(0).toUpperCase()}</Text>
+    </View>
+  );
+}
+
+function mergePredictionItems(forecast: AnalyticsListItem[], restockSoon: AnalyticsListItem[]) {
+  const merged = new Map<string, AnalyticsListItem>();
+
+  [...restockSoon, ...forecast].forEach((item) => {
+    if (!merged.has(item.itemId)) {
+      merged.set(item.itemId, item);
+    }
+  });
+
+  return [...merged.values()];
+}
+
+function getInitials(storeName: string) {
+  const cleaned = storeName.trim();
+
+  if (cleaned.length === 0) {
+    return 'TS';
+  }
+
+  const words = cleaned.split(/\s+/).slice(0, 2);
+
+  return words.map((word) => word[0]?.toUpperCase() ?? '').join('');
+}
+
+function noop() {}
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -533,205 +512,139 @@ const styles = StyleSheet.create({
   },
   shell: {
     gap: 14,
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: 18,
+    paddingTop: 8,
   },
-  heroCard: {
-    borderRadius: 30,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: 18,
-    gap: 14,
-  },
-  heroTopRow: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10,
+    gap: 12,
+    paddingVertical: 8,
   },
-  heroEyebrow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: 999,
-    backgroundColor: colors.card,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  headerMenuButton: {
+    width: 34,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
-  heroEyebrowText: {
+  headerTitle: {
+    flex: 1,
     color: colors.primaryDeep,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
-  },
-  storePill: {
-    maxWidth: '48%',
-    borderRadius: 999,
-    backgroundColor: colors.surfaceAlt,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  storePillText: {
-    color: colors.muted,
-    fontSize: 12,
+    fontSize: 23,
     fontWeight: '700',
   },
-  title: {
-    color: colors.text,
-    fontSize: 30,
-    fontWeight: '800',
-    lineHeight: 36,
-  },
-  subtitle: {
-    color: colors.muted,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  signalCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    borderRadius: 22,
+  avatarBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surfaceAlt,
-    padding: 14,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  signalAccent: {
-    width: 10,
-    borderRadius: 999,
-    backgroundColor: colors.secondary,
-    alignSelf: 'stretch',
+  avatarBadgeText: {
+    color: colors.primaryDeep,
+    fontSize: 13,
+    fontWeight: '800',
   },
-  signalBody: {
+  topTabRail: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 10,
+    paddingTop: 4,
+  },
+  topTabButton: {
     flex: 1,
+    alignItems: 'center',
+    gap: 8,
+    paddingTop: 10,
+  },
+  topTabText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  topTabTextActive: {
+    color: colors.primaryDeep,
+    fontWeight: '700',
+  },
+  topTabUnderline: {
+    height: 4,
+    width: '100%',
+    backgroundColor: 'transparent',
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+  },
+  topTabUnderlineActive: {
+    backgroundColor: colors.primary,
+  },
+  errorCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: 14,
     gap: 4,
   },
-  signalLabel: {
+  errorTitle: {
     color: colors.primaryDeep,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    fontSize: 13,
+    fontWeight: '700',
   },
-  signalTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  signalText: {
+  errorText: {
     color: colors.muted,
     fontSize: 13,
     lineHeight: 18,
   },
-  signalBadge: {
-    borderRadius: 999,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  tabStack: {
+    gap: 16,
   },
-  signalBadgeText: {
-    color: colors.primaryDeep,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  heroStats: {
+  insightBanner: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  heroStatCard: {
-    flex: 1,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: 14,
-    gap: 6,
-  },
-  heroStatAccent: {
-    width: 28,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: colors.primary,
-  },
-  heroStatAccentSecondary: {
-    backgroundColor: colors.secondary,
-  },
-  tabRail: {
-    flexDirection: 'row',
-    gap: 8,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: 6,
-  },
-  tabButton: {
-    flex: 1,
-    minHeight: 62,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-  },
-  tabButtonActive: {
-    backgroundColor: colors.card,
-  },
-  tabIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabIconWrapActive: {
-    backgroundColor: colors.surface,
-  },
-  tabButtonText: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  tabButtonTextActive: {
-    color: colors.primaryDeep,
-  },
-  errorCard: {
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: 16,
-    gap: 8,
-  },
-  errorBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  errorBadgeText: {
-    color: colors.primaryDeep,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
-  },
-  errorTitle: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  errorText: {
-    color: colors.muted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  sectionStack: {
     gap: 14,
+    borderRadius: 24,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    shadowColor: colors.primaryDeep,
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
+  },
+  insightIconTile: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 248, 231, 0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  insightContent: {
+    flex: 1,
+    gap: 4,
+  },
+  insightBannerLabel: {
+    color: '#F4F8F2',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  insightBannerTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  insightBannerBody: {
+    color: '#F4F8F2',
+    fontSize: 13,
+    lineHeight: 19,
   },
   metricGrid: {
     flexDirection: 'row',
@@ -739,326 +652,375 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     flex: 1,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 20,
     backgroundColor: colors.surface,
-    padding: 14,
-    gap: 6,
-  },
-  metricIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.card,
-  },
-  metricIconWrapSecondary: {
-    backgroundColor: colors.surfaceAlt,
+    padding: 16,
+    shadowColor: '#132A22',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+    gap: 8,
   },
   metricLabel: {
     color: colors.muted,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
+    fontSize: 12,
+    fontWeight: '600',
   },
   metricValue: {
-    color: colors.primaryDeep,
+    color: colors.text,
     fontSize: 24,
     fontWeight: '800',
-    lineHeight: 28,
   },
   metricCaption: {
-    color: colors.text,
+    color: colors.primaryDeep,
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 18,
   },
-  sectionCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
+  cardSurface: {
+    borderRadius: 22,
     backgroundColor: colors.surface,
     padding: 16,
-    gap: 12,
+    shadowColor: '#132A22',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+    gap: 16,
   },
   sectionHeader: {
-    gap: 4,
-  },
-  sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  sectionMarker: {
+  sectionTitle: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  sectionEyebrow: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  sectionAction: {
+    color: colors.primaryDeep,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  barChartWrap: {
+    paddingTop: 8,
+  },
+  barChartRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 10,
+    minHeight: 166,
+  },
+  barChartItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 10,
+  },
+  barGhost: {
+    width: '100%',
+    justifyContent: 'flex-end',
+    borderRadius: 6,
+    backgroundColor: 'rgba(31, 122, 99, 0.08)',
+    overflow: 'hidden',
+  },
+  barFill: {
+    width: '100%',
+    borderRadius: 6,
+    backgroundColor: colors.primary,
+  },
+  barLabel: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  lineChartWrap: {
+    position: 'relative',
+    minHeight: 228,
+    justifyContent: 'flex-end',
+  },
+  lineChartGrid: {
+    ...StyleSheet.absoluteFillObject,
+    top: 20,
+    bottom: 22,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(31, 122, 99, 0.08)',
+  },
+  lineChartRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  linePointColumn: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  linePointValue: {
+    color: colors.primaryDeep,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  lineStem: {
+    width: 14,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    backgroundColor: 'rgba(31, 122, 99, 0.18)',
+  },
+  lineDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+    marginTop: -11,
+  },
+  linePointLabel: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  listStack: {
+    gap: 14,
+  },
+  sellingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  sellingMain: {
+    flex: 1,
+    gap: 4,
+  },
+  sellingMeta: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  rankMeta: {
+    color: colors.primaryDeep,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  rowTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  rowSubtitle: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  dualListGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  movementColumn: {
+    flex: 1,
+    borderRadius: 18,
+    backgroundColor: colors.background,
+    padding: 12,
+    gap: 12,
+  },
+  movementColumnTitle: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  movementList: {
+    gap: 12,
+  },
+  movementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  movementText: {
+    flex: 1,
+    gap: 2,
+  },
+  trendList: {
+    gap: 10,
+  },
+  trendLead: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  trendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  trendBullet: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: colors.secondary,
   },
-  sectionTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  sectionSubtitle: {
+  trendRowText: {
+    flex: 1,
     color: colors.muted,
     fontSize: 13,
     lineHeight: 18,
   },
-  listGrid: {
-    gap: 12,
-  },
-  rankList: {
-    gap: 12,
-  },
-  rankListItem: {
+  forecastHero: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    gap: 14,
+    borderRadius: 24,
+    backgroundColor: colors.primary,
+    padding: 18,
+    alignItems: 'stretch',
+    shadowColor: colors.primaryDeep,
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 3,
   },
-  rankIndex: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+  forecastHeroText: {
+    flex: 1,
+    gap: 8,
+  },
+  forecastIconTile: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 248, 231, 0.92)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rankIndexText: {
-    color: colors.primaryDeep,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  rankContent: {
-    flex: 1,
-    gap: 2,
-  },
-  rankItemName: {
-    color: colors.text,
-    fontSize: 15,
+  forecastLabel: {
+    color: '#FFFFFF',
+    fontSize: 17,
     fontWeight: '700',
   },
-  rankItemDetail: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  rankTonePill: {
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-  },
-  rankToneText: {
-    color: colors.primaryDeep,
-    fontSize: 11,
+  forecastValue: {
+    color: '#FFFFFF',
+    fontSize: 25,
     fontWeight: '800',
-    textTransform: 'uppercase',
+    lineHeight: 30,
   },
-  toneDefault: {
-    backgroundColor: colors.card,
-  },
-  toneWarning: {
-    backgroundColor: colors.surfaceAlt,
-  },
-  tonePositive: {
-    backgroundColor: 'rgba(31, 122, 99, 0.12)',
-  },
-  emptyListText: {
-    color: colors.muted,
+  forecastBody: {
+    color: '#F4F8F2',
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 19,
   },
-  chartWrap: {
-    paddingTop: 6,
+  forecastPill: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 248, 231, 0.88)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  chartRow: {
+  forecastPillText: {
+    color: colors.primaryDeep,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  forecastMiniTrend: {
+    width: 104,
+    justifyContent: 'flex-end',
+    position: 'relative',
+    paddingTop: 14,
+    paddingBottom: 8,
+  },
+  forecastLineBase: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 22,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  forecastMiniBars: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    gap: 8,
-    minHeight: 116,
-  },
-  chartPoint: {
+    gap: 6,
     flex: 1,
-    alignItems: 'center',
-    gap: 8,
   },
-  chartBar: {
-    width: '100%',
-    borderRadius: 999,
-    backgroundColor: colors.primary,
-    minHeight: 6,
+  forecastMiniBar: {
+    flex: 1,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.42)',
   },
-  chartBarSecondary: {
-    backgroundColor: colors.secondary,
-  },
-  chartLabel: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  priorityStrip: {
+  predictionRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceAlt,
-    padding: 14,
-  },
-  priorityDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginTop: 4,
-  },
-  priorityContent: {
-    flex: 1,
-    gap: 4,
-  },
-  priorityTitle: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  priorityBody: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  priorityBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-  },
-  priorityBadgeText: {
-    color: colors.primaryDeep,
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  predictionSummary: {
+    alignItems: 'center',
     gap: 12,
   },
-  predictionSummaryHeader: {
-    gap: 6,
-  },
-  predictionSummaryBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    borderRadius: 999,
-    backgroundColor: colors.card,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  predictionSummaryBadgeText: {
-    color: colors.primaryDeep,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  predictionSummaryTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  predictionSummaryBody: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  predictionMiniGrid: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  predictionMiniCard: {
+  predictionMain: {
     flex: 1,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceAlt,
-    padding: 12,
     gap: 4,
   },
-  predictionMiniLabel: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+  restockButton: {
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
   },
-  predictionMiniValue: {
-    color: colors.primaryDeep,
-    fontSize: 20,
-    fontWeight: '800',
+  restockButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   recommendationStack: {
-    gap: 10,
+    gap: 12,
   },
   recommendationCard: {
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
+    backgroundColor: colors.background,
     padding: 14,
-    gap: 4,
-  },
-  recommendationTitle: {
-    color: colors.primaryDeep,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
-  },
-  recommendationBody: {
-    color: colors.text,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  emptyStateCard: {
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: 16,
     gap: 6,
   },
-  emptyStateBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    borderRadius: 999,
-    backgroundColor: colors.card,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  emptyStateBadgeText: {
+  recommendationLead: {
     color: colors.primaryDeep,
     fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.6,
+    fontWeight: '700',
     textTransform: 'uppercase',
   },
-  emptyStateTitle: {
+  recommendationTitle: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  recommendationBody: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  productAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  productAvatarPositive: {
+    backgroundColor: 'rgba(31, 122, 99, 0.14)',
+  },
+  productAvatarWarning: {
+    backgroundColor: 'rgba(242, 201, 76, 0.26)',
+  },
+  productAvatarText: {
+    color: colors.primaryDeep,
+    fontSize: 18,
     fontWeight: '800',
   },
-  emptyStateBody: {
+  emptyText: {
     color: colors.muted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  emptyStateHint: {
-    color: colors.primaryDeep,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

@@ -78,6 +78,12 @@ vi.mock('@/features/analytics/analyticsRepository', () => ({
   loadAnalyticsSalesRows: vi.fn(async () => []),
 }));
 
+vi.mock('@/features/analytics/AnalyticsCharts', () => ({
+  SalesTrendBarChart: () => createElement('mock-view', { 'data-chart': 'sales-trend' }),
+  InsightsTrendLineChart: () => createElement('mock-view', { 'data-chart': 'insights-trend' }),
+  ForecastSparklineChart: () => createElement('mock-view', { 'data-chart': 'forecast-sparkline' }),
+}));
+
 import { AnalyticsScreen } from './AnalyticsScreen';
 
 function findTextNodes(tree: TestRenderer.ReactTestRenderer, text: string) {
@@ -98,6 +104,10 @@ function findPressable(tree: TestRenderer.ReactTestRenderer, text: string) {
           child.children.some((grandChild) => typeof grandChild === 'string' && grandChild.includes(text)),
       ).length > 0,
   );
+}
+
+function findPressables(tree: TestRenderer.ReactTestRenderer) {
+  return tree.root.findAll((node) => String(node.type) === 'mock-pressable');
 }
 
 describe('AnalyticsScreen', () => {
@@ -128,7 +138,7 @@ describe('AnalyticsScreen', () => {
     consoleErrorSpy?.mockRestore();
   });
 
-  it('defaults to overview and switches to predictions when the sub-tab is pressed', async () => {
+  it('defaults to overview without extra analytics action buttons and switches to predictions when the sub-tab is pressed', async () => {
     let tree!: TestRenderer.ReactTestRenderer;
 
     await act(async () => {
@@ -136,15 +146,29 @@ describe('AnalyticsScreen', () => {
       await Promise.resolve();
     });
 
+    expect(findTextNodes(tree, 'Business Insights')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Overview')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Sales Trend')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Top Selling Items')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Predictions & AI')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Restock Soon')).toHaveLength(0);
+    expect(findTextNodes(tree, 'Stock Prediction')).toHaveLength(0);
+    expect(findPressables(tree)).toHaveLength(3);
+
+    await act(async () => {
+      findPressable(tree, 'Insights').props.onPress();
+    });
+
+    expect(findTextNodes(tree, 'Analytics Insights')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Fast & Slow Moving Items')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Trend Detection')).not.toHaveLength(0);
 
     await act(async () => {
       findPressable(tree, 'Predictions & AI').props.onPress();
     });
 
-    expect(findTextNodes(tree, 'Restock Soon')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Stock Prediction')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'AI Performance Summary')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Suggest Restock')).not.toHaveLength(0);
   });
 
   it('renders hardcoded analytics preview data when local analytics is empty', async () => {
