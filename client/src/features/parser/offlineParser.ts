@@ -34,29 +34,68 @@ const NUMBER_WORDS: Record<string, number> = {
   isa: 1,
   isang: 1,
   uno: 1,
+  usa: 1,
+  usaka: 1,
   one: 1,
   dalawa: 2,
   dalawang: 2,
   dos: 2,
+  duha: 2,
+  duhaka: 2,
   two: 2,
   tatlo: 3,
   tatlong: 3,
   tres: 3,
+  tulo: 3,
+  tuloka: 3,
   three: 3,
   apat: 4,
   'apat na': 4,
   kwatro: 4,
+  upat: 4,
+  'upat ka': 4,
   four: 4,
   lima: 5,
   limang: 5,
   singko: 5,
+  'lima ka': 5,
   five: 5,
+  unom: 6,
+  six: 6,
+  pito: 7,
+  seven: 7,
+  walo: 8,
+  eight: 8,
+  siyam: 9,
+  nine: 9,
+  napulo: 10,
+  ten: 10,
+  onse: 11,
+  eleven: 11,
+  dose: 12,
+  twelve: 12,
+  trese: 13,
+  thirteen: 13,
+  katorse: 14,
+  fourteen: 14,
+  kinse: 15,
+  fifteen: 15,
+  disais: 16,
+  sixteen: 16,
+  disisiete: 17,
+  seventeen: 17,
+  disiotso: 18,
+  eighteen: 18,
+  disinuebe: 19,
+  nineteen: 19,
+  baynte: 20,
+  twenty: 20,
 };
 
-const SALE_TERMS = ['nakabenta', 'nabenta', 'bawas', 'sold', 'sell'];
-const RESTOCK_TERMS = ['dagdag', 'nadagdagan', 'restock', 'refill', 'add'];
-const UTANG_TERMS = ['utang', 'giutang', 'lista', 'ilista', 'kumuha'];
-const QUESTION_TERMS = ['ano', 'sino', 'ilan', 'magkano', 'low stock'];
+const SALE_TERMS = ['nakabenta', 'nabenta', 'bawas', 'sold', 'sell', 'baligya', 'nabaligya', 'gibaligya'];
+const RESTOCK_TERMS = ['dagdag', 'nadagdagan', 'restock', 'refill', 'add', 'dugang', 'idugang', 'puni'];
+const UTANG_TERMS = ['utang', 'giutang', 'lista', 'ilista', 'kumuha', 'lista sa utang', 'isulat sa utang'];
+const QUESTION_TERMS = ['ano', 'sino', 'ilan', 'magkano', 'low stock', 'unsa'];
 
 export function parseOfflineCommand(rawText: string, inventoryItems: LocalInventoryItem[]): ParserResult {
   const normalizedText = normalizeText(rawText);
@@ -218,19 +257,21 @@ function extractQuantityBeforeAlias(normalizedText: string, alias: string) {
 }
 
 function extractCustomerName(rawText: string) {
-  const siMatch = rawText.match(/\bsi\s+(.+?)\s+ng\b/i);
+  const siMatch = rawText.match(/\bsi\s+(.+?)(?=\s+(?:ng|ug|og)\b|[.,]|$)/i);
 
   if (siMatch?.[1]) {
     return cleanupName(siMatch[1]);
   }
 
-  const niMatch = rawText.match(/\bni\s+(.+?)(?:\.|,|$)/i);
+  const niMatch = rawText.match(/\bni\s+(.+?)(?:\.|,|\s+ang\s+\d+|\s+\d+\s+ka|$)/i);
 
   return niMatch?.[1] ? cleanupName(niMatch[1]) : undefined;
 }
 
 function cleanupName(name: string) {
   return name
+    .replace(/\s+(?:ang|ug|og)\s+\d+.*$/i, '')
+    .replace(/\s+\d+\s+ka.*$/i, '')
     .replace(/\b(ilista|lista|muna|utang|giutang)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();

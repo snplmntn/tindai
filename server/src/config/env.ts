@@ -8,6 +8,8 @@ export type ServerEnv = {
   SUPABASE_URL: string;
   SUPABASE_PUBLISHABLE_KEY: string;
   SUPABASE_SECRET_KEY: string;
+  GEMINI_API_KEY: string | null;
+  GEMINI_MODEL: string;
 };
 
 let cachedEnv: ServerEnv | null = null;
@@ -34,6 +36,8 @@ export function getEnv(): ServerEnv {
       process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY
     ),
     SUPABASE_SECRET_KEY: requireValue('SUPABASE_SECRET_KEY', process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY),
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY?.trim() || null,
+    GEMINI_MODEL: process.env.GEMINI_MODEL?.trim() || 'gemini-3-flash-preview',
   };
 
   return cachedEnv;

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,28 +10,65 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  ExpoSpeechRecognitionModule,
-  useSpeechRecognitionEvent,
-} from 'expo-speech-recognition';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { CommandSource } from '@/features/commands/localCommandService';
 import { useLocalData } from '@/features/local-data/LocalDataContext';
 import type { ParserResult } from '@/features/parser/offlineParser';
 
+type SpeechRecognitionStartOptions = {
+  lang?: string;
+  interimResults?: boolean;
+  maxAlternatives?: number;
+  continuous?: boolean;
+};
+
+type SpeechRecognitionModuleRuntime = {
+  ExpoSpeechRecognitionModule: {
+    isRecognitionAvailable: () => boolean;
+    requestPermissionsAsync: () => Promise<{ granted: boolean }>;
+    start: (options?: SpeechRecognitionStartOptions) => void;
+    stop: () => void;
+  };
+  useSpeechRecognitionEvent: (eventName: string, listener: (event: any) => void) => void;
+};
+
+const speechRecognitionRuntime: SpeechRecognitionModuleRuntime | null = (() => {
+  try {
+    return require('expo-speech-recognition') as SpeechRecognitionModuleRuntime;
+  } catch {
+    return null;
+  }
+})();
+
+const ExpoSpeechRecognitionModule = speechRecognitionRuntime?.ExpoSpeechRecognitionModule ?? {
+  isRecognitionAvailable: () => false,
+  requestPermissionsAsync: async () => ({ granted: false }),
+  start: (_options?: SpeechRecognitionStartOptions) => undefined,
+  stop: () => undefined,
+};
+
+const useSpeechRecognitionEvent =
+  speechRecognitionRuntime?.useSpeechRecognitionEvent ??
+  ((_eventName: string, _listener: (event: any) => void) => undefined);
+
 export function DashboardScreen() {
   const {
     appState,
     store,
     inventoryItems,
-    recentTransactions,
+    customers,
+    assistantInteractions,
+    pendingTransactions,
     isLoading,
     error,
     refresh,
     submitLocalCommand,
     confirmLocalCommand,
     applyManualAdjustment,
+    submitFallbackCommand,
+    createLocalCustomer,
+    submitAssistantQuestion,
   } = useLocalData();
   const [commandText, setCommandText] = useState('');
   const [commandMessage, setCommandMessage] = useState<string | null>(null);
@@ -40,6 +78,16 @@ export function DashboardScreen() {
   const [pendingCustomerName, setPendingCustomerName] = useState('');
   const [pendingAction, setPendingAction] = useState(false);
   const [manualAdjustingItemId, setManualAdjustingItemId] = useState<string | null>(null);
+  const [isFallbackVisible, setIsFallbackVisible] = useState(false);
+  const [fallbackIntent, setFallbackIntent] = useState<'sale' | 'restock' | 'utang'>('sale');
+  const [fallbackItemId, setFallbackItemId] = useState<string>('');
+  const [fallbackQuantity, setFallbackQuantity] = useState(1);
+  const [fallbackCustomerName, setFallbackCustomerName] = useState('');
+  const [isSavingFallback, setIsSavingFallback] = useState(false);
+  const [isSavingCustomer, setIsSavingCustomer] = useState(false);
+  const [assistantAnswer, setAssistantAnswer] = useState<string | null>(null);
+  const [isSubmittingQuestion, setIsSubmittingQuestion] = useState(false);
+  const hasSpeechRecognitionNative = speechRecognitionRuntime !== null;
 
   const lowStockItems = useMemo(
     () => inventoryItems.filter((item) => item.currentStock <= item.lowStockThreshold),
@@ -48,6 +96,11 @@ export function DashboardScreen() {
   const inventoryValue = useMemo(
     () => inventoryItems.reduce((total, item) => total + item.currentStock * item.price, 0),
     [inventoryItems],
+  );
+
+  const selectedFallbackItem = useMemo(
+    () => inventoryItems.find((item) => item.id === fallbackItemId) ?? inventoryItems[0] ?? null,
+    [fallbackItemId, inventoryItems],
   );
 
   const buildConfirmationText = useCallback((parserResult: ParserResult) => {
@@ -66,6 +119,26 @@ export function DashboardScreen() {
 
     return `Bawas ${itemSummary}?`;
   }, [pendingCustomerName]);
+
+  const openFallback = useCallback(
+    (options?: { parserResult?: ParserResult }) => {
+      const parserResult = options?.parserResult;
+      const defaultItemId = inventoryItems[0]?.id ?? '';
+      const inferredItemId = parserResult?.items[0]?.item_id ?? (fallbackItemId || defaultItemId);
+      const inferredQuantity = parserResult?.items[0]?.quantity ?? 1;
+      const inferredIntent =
+        parserResult?.intent === 'sale' || parserResult?.intent === 'restock' || parserResult?.intent === 'utang'
+          ? parserResult.intent
+          : fallbackIntent;
+
+      setFallbackIntent(inferredIntent);
+      setFallbackItemId(inferredItemId);
+      setFallbackQuantity(Math.max(1, Math.floor(inferredQuantity)));
+      setFallbackCustomerName(parserResult?.credit.customer_name ?? pendingCustomerName.trim());
+      setIsFallbackVisible(true);
+    },
+    [fallbackIntent, fallbackItemId, inventoryItems, pendingCustomerName],
+  );
 
   const processCommand = useCallback(
     async (rawText: string, source: CommandSource) => {
@@ -86,7 +159,10 @@ export function DashboardScreen() {
         if (result.status === 'online_required') {
           setPendingParserResult(null);
           setPendingCustomerName('');
-          setCommandMessage('Kailangan ng internet para masagot ito.');
+          setIsSubmittingQuestion(true);
+          const answer = await submitAssistantQuestion(rawText, source === 'voice' ? 'voice' : 'text');
+          setAssistantAnswer(answer.answerText);
+          setCommandMessage('Nasagot na ang tanong mo.');
           return;
         }
 
@@ -100,17 +176,30 @@ export function DashboardScreen() {
         setPendingParserResult(null);
         setPendingCustomerName('');
         setCommandMessage('Hindi malinaw ang utos. Pakiulit o ayusin ang sulat.');
+        openFallback();
       } catch (caughtError) {
         setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Hindi naitala. Subukan ulit.');
       } finally {
         setIsSubmittingCommand(false);
+        setIsSubmittingQuestion(false);
       }
     },
-    [submitLocalCommand],
+    [openFallback, submitAssistantQuestion, submitLocalCommand],
   );
+
+  const pendingNeedsCustomer =
+    pendingParserResult?.intent === 'utang' &&
+    pendingParserResult?.notes.includes('missing_customer_name') &&
+    !pendingCustomerName.trim();
 
   const handleConfirmPending = useCallback(async () => {
     if (!pendingParserResult) {
+      return;
+    }
+
+    if (pendingNeedsCustomer) {
+      setCommandMessage('Ilagay muna kung kanino ang utang.');
+      openFallback({ parserResult: pendingParserResult });
       return;
     }
 
@@ -128,7 +217,7 @@ export function DashboardScreen() {
     } finally {
       setPendingAction(false);
     }
-  }, [confirmLocalCommand, pendingCustomerName, pendingParserResult]);
+  }, [confirmLocalCommand, openFallback, pendingCustomerName, pendingNeedsCustomer, pendingParserResult]);
 
   const handleManualAdjust = useCallback(
     async (itemId: string, direction: -1 | 1) => {
@@ -148,6 +237,11 @@ export function DashboardScreen() {
   );
 
   const startListening = useCallback(async () => {
+    if (!hasSpeechRecognitionNative) {
+      setCommandMessage('Voice input needs a development build. You can type your command instead.');
+      return;
+    }
+
     if (isListening) {
       ExpoSpeechRecognitionModule.stop();
       return;
@@ -175,7 +269,7 @@ export function DashboardScreen() {
       setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Hindi nagsimula ang voice input.');
       setIsListening(false);
     }
-  }, [isListening]);
+  }, [hasSpeechRecognitionNative, isListening]);
 
   useSpeechRecognitionEvent('start', () => {
     setIsListening(true);
@@ -205,28 +299,61 @@ export function DashboardScreen() {
     void processCommand(transcript, 'voice');
   });
 
-  const pendingNeedsCustomer =
-    pendingParserResult?.intent === 'utang' &&
-    pendingParserResult?.notes.includes('missing_customer_name') &&
-    !pendingCustomerName.trim();
-
-  const formatTransactionLine = (createdAt: string, source: string, syncStatus: string, intent: string | null) => {
-    const time = new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const kind = intent === 'restock' ? 'dagdag' : intent === 'utang' ? 'utang' : 'bawas';
-    const pinagmulan = source === 'voice' ? 'boses' : source === 'manual' ? 'pindot' : 'sulat';
-    const estado = syncStatus === 'pending' ? 'hindi pa naipapadala' : 'naipadala';
-
-    return `${time} - ${kind} - ${pinagmulan} - ${estado}`;
-  };
-
-  const formatDelta = (name: string | null, delta: number | null) => {
-    if (!name || typeof delta !== 'number') {
-      return null;
+  const saveFallback = useCallback(async () => {
+    if (!selectedFallbackItem) {
+      setCommandMessage('Pumili muna ng produkto.');
+      return;
     }
 
-    const sign = delta > 0 ? '+' : '';
-    return `${name} ${sign}${delta}`;
-  };
+    setIsSavingFallback(true);
+    setCommandMessage(null);
+    try {
+      await submitFallbackCommand({
+        intent: fallbackIntent,
+        itemId: selectedFallbackItem.id,
+        quantity: fallbackQuantity,
+        customerName: fallbackIntent === 'utang' ? fallbackCustomerName : undefined,
+      });
+      setIsFallbackVisible(false);
+      setPendingParserResult(null);
+      setPendingCustomerName('');
+      setCommandText('');
+      setCommandMessage('Naitala na.');
+    } catch (caughtError) {
+      setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Hindi naitala. Subukan ulit.');
+    } finally {
+      setIsSavingFallback(false);
+    }
+  }, [
+    fallbackCustomerName,
+    fallbackIntent,
+    fallbackQuantity,
+    selectedFallbackItem,
+    submitFallbackCommand,
+  ]);
+
+  const handleSaveCustomer = useCallback(async () => {
+    const trimmed = fallbackCustomerName.trim();
+
+    if (!trimmed) {
+      setCommandMessage('Ilagay muna ang pangalan.');
+      return;
+    }
+
+    setIsSavingCustomer(true);
+    setCommandMessage(null);
+    try {
+      const customer = await createLocalCustomer(trimmed);
+      setFallbackCustomerName(customer.name);
+      setCommandMessage('Naidagdag na ang pangalan.');
+    } catch (caughtError) {
+      setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Hindi naidagdag ang pangalan.');
+    } finally {
+      setIsSavingCustomer(false);
+    }
+  }, [createLocalCustomer, fallbackCustomerName]);
+
+  const showPendingStrip = appState?.mode === 'authenticated' && pendingTransactions.length > 0;
 
   return (
     <SafeAreaView edges={['top']} style={styles.screen}>
@@ -249,6 +376,15 @@ export function DashboardScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {showPendingStrip ? (
+          <View style={styles.pendingStrip}>
+            <ActivityIndicator color="#00604c" size="small" />
+            <Text style={styles.pendingStripText}>
+              {pendingTransactions.length} tala ang naghihintay ng internet
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.voiceSection}>
           <TouchableOpacity activeOpacity={0.85} onPress={() => void startListening()} style={styles.voiceButton}>
             <Ionicons color="#ffffff" name={isListening ? 'stop-outline' : 'mic-outline'} size={56} />
@@ -279,30 +415,44 @@ export function DashboardScreen() {
               <Ionicons color="#ffffff" name="send-outline" size={20} />
             )}
           </TouchableOpacity>
+          <TouchableOpacity activeOpacity={0.85} onPress={() => openFallback()} style={styles.fallbackButton}>
+            <Ionicons color="#00604c" name="create-outline" size={20} />
+          </TouchableOpacity>
         </View>
+
+        {isSubmittingQuestion ? (
+          <View style={styles.assistantCard}>
+            <Text style={styles.assistantTitle}>Sumasagot si Tinday...</Text>
+            <ActivityIndicator color="#00604c" size="small" />
+          </View>
+        ) : null}
+
+        {assistantAnswer ? (
+          <View style={styles.assistantCard}>
+            <Text style={styles.assistantTitle}>Sagot ni Tinday</Text>
+            <Text style={styles.assistantText}>{assistantAnswer}</Text>
+          </View>
+        ) : null}
 
         {pendingParserResult ? (
           <View style={styles.confirmCard}>
             <Text style={styles.confirmText}>{buildConfirmationText(pendingParserResult)}</Text>
-            {pendingParserResult.intent === 'utang' && pendingParserResult.notes.includes('missing_customer_name') ? (
-              <TextInput
-                autoCapitalize="words"
-                editable={!pendingAction}
-                onChangeText={setPendingCustomerName}
-                placeholder="Pangalan ng may utang"
-                placeholderTextColor="#7a847e"
-                style={styles.customerInput}
-                value={pendingCustomerName}
-              />
-            ) : null}
+            {pendingNeedsCustomer ? <Text style={styles.helperText}>Kulang ang pangalan ng may utang.</Text> : null}
             <View style={styles.confirmActions}>
               <TouchableOpacity
                 activeOpacity={0.85}
-                disabled={pendingAction || pendingNeedsCustomer}
+                disabled={pendingAction}
                 onPress={() => void handleConfirmPending()}
-                style={[styles.confirmButton, (pendingAction || pendingNeedsCustomer) && styles.commandButtonDisabled]}
+                style={[styles.confirmButton, pendingAction && styles.commandButtonDisabled]}
               >
                 <Text style={styles.confirmButtonText}>{pendingAction ? 'Tinatala...' : 'Itala'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => openFallback({ parserResult: pendingParserResult })}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>Ayusin</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 activeOpacity={0.85}
@@ -388,28 +538,120 @@ export function DashboardScreen() {
           </View>
         )}
 
-        <View style={styles.card}>
-          <Text style={styles.recentTitle}>Huling mga tala</Text>
-          {recentTransactions.length === 0 ? (
-            <Text style={styles.activityTime}>Wala pang naitala.</Text>
-          ) : (
-            recentTransactions.slice(0, 6).map((transaction, index) => (
+        {assistantInteractions.length > 0 ? (
+          <View style={styles.card}>
+            <Text style={styles.recentTitle}>Mga huling tanong</Text>
+            {assistantInteractions.slice(0, 4).map((entry, index) => (
               <View
-                key={transaction.id}
-                style={[styles.activityItem, index < Math.min(recentTransactions.length, 6) - 1 ? styles.activityDivider : undefined]}
+                key={entry.clientInteractionId}
+                style={[
+                  styles.activityItem,
+                  index < Math.min(assistantInteractions.length, 4) - 1 ? styles.activityDivider : undefined,
+                ]}
               >
                 <View style={styles.activityBody}>
-                  <Text style={styles.activityLabel}>{transaction.rawText}</Text>
-                  <Text style={styles.activityTime}>{formatTransactionLine(transaction.createdAt, transaction.source, transaction.syncStatus, transaction.intent)}</Text>
-                  {formatDelta(transaction.primaryItemName, transaction.primaryQuantityDelta) ? (
-                    <Text style={styles.activityTime}>{formatDelta(transaction.primaryItemName, transaction.primaryQuantityDelta)}</Text>
-                  ) : null}
+                  <Text style={styles.activityLabel}>{entry.questionText}</Text>
+                  <Text style={styles.activityTime}>{entry.answerText ?? 'Walang sagot pa.'}</Text>
                 </View>
               </View>
-            ))
-          )}
-        </View>
+            ))}
+          </View>
+        ) : null}
+
       </ScrollView>
+
+      <Modal animationType="slide" transparent visible={isFallbackVisible} onRequestClose={() => setIsFallbackVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>Mabilis na tala</Text>
+            <View style={styles.intentRow}>
+              {[
+                { key: 'sale', label: 'Bawas' },
+                { key: 'restock', label: 'Dagdag' },
+                { key: 'utang', label: 'Utang' },
+              ].map((intent) => (
+                <TouchableOpacity
+                  key={intent.key}
+                  onPress={() => setFallbackIntent(intent.key as 'sale' | 'restock' | 'utang')}
+                  style={[styles.intentChip, fallbackIntent === intent.key && styles.intentChipActive]}
+                >
+                  <Text style={[styles.intentChipText, fallbackIntent === intent.key && styles.intentChipTextActive]}>
+                    {intent.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.modalLabel}>Produkto</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.itemPickerRow}>
+              {inventoryItems.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => setFallbackItemId(item.id)}
+                  style={[styles.itemChip, (fallbackItemId || inventoryItems[0]?.id) === item.id && styles.itemChipActive]}
+                >
+                  <Text style={styles.itemChipText}>{item.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <Text style={styles.modalLabel}>Dami</Text>
+            <View style={styles.qtyRow}>
+              <TouchableOpacity
+                onPress={() => setFallbackQuantity((current) => Math.max(1, current - 1))}
+                style={styles.qtyButton}
+              >
+                <Ionicons color="#ffffff" name="remove" size={16} />
+              </TouchableOpacity>
+              <Text style={styles.qtyValue}>{fallbackQuantity}</Text>
+              <TouchableOpacity onPress={() => setFallbackQuantity((current) => current + 1)} style={styles.qtyButton}>
+                <Ionicons color="#ffffff" name="add" size={16} />
+              </TouchableOpacity>
+            </View>
+
+            {fallbackIntent === 'utang' ? (
+              <>
+                <Text style={styles.modalLabel}>May utang</Text>
+                <TextInput
+                  autoCapitalize="words"
+                  placeholder="Pangalan"
+                  placeholderTextColor="#7a847e"
+                  style={styles.customerInput}
+                  value={fallbackCustomerName}
+                  onChangeText={setFallbackCustomerName}
+                />
+                <TouchableOpacity
+                  onPress={() => void handleSaveCustomer()}
+                  style={[styles.addNameButton, isSavingCustomer && styles.commandButtonDisabled]}
+                  disabled={isSavingCustomer}
+                >
+                  {isSavingCustomer ? (
+                    <ActivityIndicator color="#00604c" size="small" />
+                  ) : (
+                    <Text style={styles.addNameText}>Idagdag ang pangalan</Text>
+                  )}
+                </TouchableOpacity>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.itemPickerRow}>
+                  {customers.map((customer) => (
+                    <TouchableOpacity key={customer.id} onPress={() => setFallbackCustomerName(customer.name)} style={styles.itemChip}>
+                      <Text style={styles.itemChipText}>{customer.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </>
+            ) : null}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setIsFallbackVisible(false)} style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>Kanselahin</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => void saveFallback()} style={styles.confirmButton} disabled={isSavingFallback}>
+                <Text style={styles.confirmButtonText}>{isSavingFallback ? 'Tinatala...' : 'Itala'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -465,6 +707,22 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
     gap: 14,
   },
+  pendingStrip: {
+    backgroundColor: '#e9f6f1',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#d0ebe1',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pendingStripText: {
+    color: '#00604c',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   voiceSection: {
     alignItems: 'center',
     paddingVertical: 10,
@@ -517,6 +775,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#00604c',
   },
+  fallbackButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#d8dbd9',
+    backgroundColor: '#ffffff',
+  },
   commandButtonDisabled: {
     opacity: 0.65,
   },
@@ -525,6 +793,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 18,
+  },
+  assistantCard: {
+    backgroundColor: '#f1fbf6',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#d8eee4',
+    padding: 12,
+    gap: 6,
+  },
+  assistantTitle: {
+    color: '#00604c',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  assistantText: {
+    color: '#1f2925',
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: '600',
   },
   confirmCard: {
     backgroundColor: '#ffffff',
@@ -538,6 +825,11 @@ const styles = StyleSheet.create({
     color: '#181d1b',
     fontSize: 14,
     fontWeight: '700',
+  },
+  helperText: {
+    color: '#6c5f00',
+    fontSize: 12,
+    fontWeight: '600',
   },
   customerInput: {
     minHeight: 42,
@@ -687,5 +979,111 @@ const styles = StyleSheet.create({
     backgroundColor: '#00604c',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    padding: 16,
+    gap: 10,
+    maxHeight: '85%',
+  },
+  modalTitle: {
+    color: '#181d1b',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  modalLabel: {
+    color: '#3e4945',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  intentRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  intentChip: {
+    borderWidth: 1,
+    borderColor: '#d8dbd9',
+    backgroundColor: '#ffffff',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  intentChipActive: {
+    backgroundColor: '#00604c',
+    borderColor: '#00604c',
+  },
+  intentChipText: {
+    color: '#3e4945',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  intentChipTextActive: {
+    color: '#ffffff',
+  },
+  itemPickerRow: {
+    gap: 8,
+    paddingVertical: 2,
+  },
+  itemChip: {
+    borderWidth: 1,
+    borderColor: '#d8dbd9',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  itemChipActive: {
+    borderColor: '#00604c',
+    backgroundColor: '#e3f8f0',
+  },
+  itemChipText: {
+    color: '#181d1b',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  addNameButton: {
+    minHeight: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#c4e8dc',
+    backgroundColor: '#f2fbf7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addNameText: {
+    color: '#00604c',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  qtyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  qtyButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#00604c',
+  },
+  qtyValue: {
+    minWidth: 36,
+    textAlign: 'center',
+    color: '#181d1b',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
   },
 });

@@ -563,7 +563,7 @@ Acceptance criteria:
 - Calls Gemini through Google AI Studio/API.
 - Validates Gemini JSON.
 - Writes verified records to Supabase.
-- Answers read-only assistant questions from store context through `/api/assistant/query`.
+- Answers read-only assistant questions from store context through `/api/v1/assistant/query`.
 - Returns verification result to app.
 
 ### Database
@@ -748,7 +748,7 @@ The examples below show sample seed data only. The app must support arbitrary st
 
 ## 10. API Contract
 
-### POST /api/verify-transactions
+### POST /api/v1/verify-transactions
 
 Purpose: Verify locally parsed transactions with Gemini after connectivity returns.
 
@@ -804,7 +804,7 @@ Response:
 }
 ```
 
-### POST /api/assistant/query
+### POST /api/v1/assistant/query
 
 Purpose: Answer read-only business questions when the user is online.
 
@@ -894,7 +894,7 @@ Seed endpoint rules:
 6. SQLite creates local `transaction_items` and `inventory_movements` rows with `quantity_delta = -2`.
 7. SQLite updates local cached stock immediately, so the UI changes without internet.
 8. Low-stock and daily-summary widgets recompute from local data.
-9. When online, the app sends the pending transaction to `/api/verify-transactions` with the Supabase JWT.
+9. When online, the app sends the pending transaction to `/api/v1/verify-transactions` with the Supabase JWT.
 10. Backend verifies the JWT, resolves the user's single store, fetches authoritative Supabase inventory context, calls Gemini, validates the JSON, and writes the cloud ledger using the service role.
 11. Supabase idempotency on `(store_id, client_mutation_id)` prevents duplicate stock application on retry.
 12. App marks the local transaction as `synced` or `verified`; if Gemini disagrees, the app keeps the original record and displays the correction/needs-review state.
@@ -904,7 +904,7 @@ Seed endpoint rules:
 1. User taps the mic button or types a question.
 2. Local intent router classifies the input as `question`.
 3. If offline, the app says business questions require internet while offline sales still work.
-4. If online, the app sends the question to `/api/assistant/query` with the Supabase JWT.
+4. If online, the app sends the question to `/api/v1/assistant/query` with the Supabase JWT.
 5. Backend verifies the JWT, resolves the user's single store, fetches store context, and calls Gemini.
 6. Backend logs the interaction to `assistant_interactions` and returns `answer_text`, optional `spoken_text`, and empty `actions`.
 7. App displays the answer and may speak `spoken_text` with native TTS.
@@ -1057,8 +1057,8 @@ Owns:
 Deliverables:
 
 - Supabase project and tables.
-- `/api/verify-transactions`.
-- `/api/assistant/query`.
+- `/api/v1/verify-transactions`.
+- `/api/v1/assistant/query`.
 - Sync success/failure response.
 
 ### Growth / QA Role
@@ -1229,7 +1229,7 @@ Mitigation:
 
 Mitigation:
 
-- Keep `/api/assistant/query` read-only for MVP.
+- Keep `/api/v1/assistant/query` read-only for MVP.
 - Return advice text only, with empty `actions`.
 - Route inventory-changing language back to the normal offline parser/sync flow.
 

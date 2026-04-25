@@ -58,6 +58,7 @@ type GoogleSigninModule = typeof import('@react-native-google-signin/google-sign
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const AUTH_INIT_TIMEOUT_MS = 8000;
+const AUTH_LOADING_WATCHDOG_MS = 12000;
 const env = getClientEnv();
 let cachedGoogleSigninModule: GoogleSigninModule | null = null;
 
@@ -190,6 +191,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authSubscription.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAuthLoading) {
+      return;
+    }
+
+    const watchdog = setTimeout(() => {
+      setAuthError((current) => current ?? 'Startup took too long. Continuing in offline mode.');
+      setIsAuthLoading(false);
+    }, AUTH_LOADING_WATCHDOG_MS);
+
+    return () => clearTimeout(watchdog);
+  }, [isAuthLoading]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

@@ -34,6 +34,13 @@ export type LocalInventoryItem = {
   updatedAt: string;
 };
 
+export type LocalCustomer = {
+  id: string;
+  storeId: string;
+  name: string;
+  utangBalance: number;
+};
+
 export type LocalTransactionSource = 'voice' | 'typed' | 'manual';
 
 export type LocalTransactionSummary = {
@@ -48,4 +55,17 @@ export type LocalTransactionSummary = {
   primaryQuantityDelta: number | null;
   isUtang: boolean;
   createdAt: string;
+};
+
+export type LocalAssistantInteraction = {
+  id: string;
+  storeId: string;
+  clientInteractionId: string;
+  questionText: string;
+  answerText: string | null;
+  spokenText: string | null;
+  inputMode: 'voice' | 'text';
+  status: string;
+  createdAt: string;
+  syncedAt: string | null;
 };

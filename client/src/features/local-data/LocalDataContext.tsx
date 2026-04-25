@@ -16,31 +16,55 @@ import { LocalLedgerService } from '@/features/ledger/localLedgerService';
 import { getLocalDatabase } from '@/features/local-db/database';
 import { runLocalMigrations } from '@/features/local-db/migrations';
 import {
+  AssistantInteractionRepository,
   AppStateRepository,
+  CustomerRepository,
   InventoryRepository,
   type PendingTransactionForSync,
   StoreRepository,
   TransactionRepository,
 } from '@/features/local-db/repositories';
-import type { LocalAppState, LocalInventoryItem, LocalStore, LocalTransactionSummary } from '@/features/local-db/types';
+import type {
+  LocalAppState,
+  LocalAssistantInteraction,
+  LocalCustomer,
+  LocalInventoryItem,
+  LocalStore,
+  LocalTransactionSummary,
+} from '@/features/local-db/types';
 import type { ParserResult } from '@/features/parser/offlineParser';
 
 type LocalDataState = {
   appState: LocalAppState | null;
   store: LocalStore | null;
   inventoryItems: LocalInventoryItem[];
+  customers: LocalCustomer[];
   recentTransactions: LocalTransactionSummary[];
+  assistantInteractions: LocalAssistantInteraction[];
+  pendingTransactions: LocalTransactionSummary[];
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
   submitLocalCommand: (rawText: string, source?: CommandSource) => Promise<LocalCommandResult>;
   confirmLocalCommand: (parserResult: ParserResult, customerName?: string) => Promise<LocalCommandResult>;
   applyManualAdjustment: (itemId: string, direction: -1 | 1) => Promise<void>;
+  submitFallbackCommand: (entry: {
+    intent: 'sale' | 'restock' | 'utang';
+    itemId: string;
+    quantity: number;
+    customerName?: string;
+  }) => Promise<void>;
+  createLocalCustomer: (name: string) => Promise<LocalCustomer>;
+  submitAssistantQuestion: (questionText: string, inputMode: 'voice' | 'text') => Promise<{
+    answerText: string;
+    status: 'answered';
+  }>;
   renameLocalStore: (name: string) => Promise<void>;
   resolvePendingClaim: (decision: 'claim' | 'discard') => Promise<void>;
 };
 
 const LocalDataContext = createContext<LocalDataState | undefined>(undefined);
+const LOCAL_REFRESH_TIMEOUT_MS = 12000;
 
 async function createRepositories() {
   const database = await getLocalDatabase();
@@ -51,8 +75,27 @@ async function createRepositories() {
     appStateRepository: new AppStateRepository(database),
     storeRepository: new StoreRepository(database),
     inventoryRepository: new InventoryRepository(database),
+    customerRepository: new CustomerRepository(database),
     transactionRepository: new TransactionRepository(database),
+    assistantInteractionRepository: new AssistantInteractionRepository(database),
   };
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
 }
 
 function createGuestStore(guestDeviceId: string): LocalStore {
@@ -112,17 +155,63 @@ async function uploadPendingTransactions(accessToken: string, pending: PendingTr
   return payload.results;
 }
 
+async function queryAssistantOnline(params: {
+  accessToken: string;
+  clientInteractionId: string;
+  questionText: string;
+  inputMode: 'voice' | 'text';
+  outputMode: 'text' | 'speech' | 'text_and_speech';
+}) {
+  const env = getClientEnv();
+  const response = await fetch(`${env.EXPO_PUBLIC_API_BASE_URL}/api/v1/assistant/query`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${params.accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      clientInteractionId: params.clientInteractionId,
+      questionText: params.questionText,
+      inputMode: params.inputMode,
+      outputMode: params.outputMode,
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { message?: string } | null;
+    throw new Error(payload?.message ?? 'Hindi pa masagot ngayon. Subukan ulit.');
+  }
+
+  return (await response.json()) as {
+    clientInteractionId: string;
+    status: 'answered';
+    answerText: string;
+    spokenText: string | null;
+    actions: unknown[];
+  };
+}
+
 export function LocalDataProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const [appState, setAppState] = useState<LocalAppState | null>(null);
   const [store, setStore] = useState<LocalStore | null>(null);
   const [inventoryItems, setInventoryItems] = useState<LocalInventoryItem[]>([]);
+  const [customers, setCustomers] = useState<LocalCustomer[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<LocalTransactionSummary[]>([]);
+  const [assistantInteractions, setAssistantInteractions] = useState<LocalAssistantInteraction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadCachedData = useCallback(async () => {
-    const { appStateRepository, storeRepository, inventoryRepository, transactionRepository } = await createRepositories();
+    const {
+      appStateRepository,
+      storeRepository,
+      inventoryRepository,
+      customerRepository,
+      transactionRepository,
+      assistantInteractionRepository,
+    } =
+      await createRepositories();
     const state = await appStateRepository.getOrCreateState();
     setAppState(state);
     const cachedStore = state.activeStoreId
@@ -131,21 +220,30 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
 
     setStore(cachedStore);
     setInventoryItems(cachedStore ? await inventoryRepository.listInventoryForStore(cachedStore.id) : []);
+    setCustomers(cachedStore ? await customerRepository.listCustomersForStore(cachedStore.id) : []);
     setRecentTransactions(cachedStore ? await transactionRepository.listRecentTransactionsForStore(cachedStore.id) : []);
+    setAssistantInteractions(
+      cachedStore ? await assistantInteractionRepository.listRecentAssistantInteractionsForStore(cachedStore.id) : [],
+    );
 
     return {
       appStateRepository,
       appState: state,
       storeRepository,
       inventoryRepository,
+      customerRepository,
       transactionRepository,
+      assistantInteractionRepository,
     };
   }, []);
 
   const reloadStoreData = useCallback(async (storeId: string) => {
-    const { inventoryRepository, transactionRepository } = await createRepositories();
+    const { inventoryRepository, customerRepository, transactionRepository, assistantInteractionRepository } =
+      await createRepositories();
     setInventoryItems(await inventoryRepository.listInventoryForStore(storeId));
+    setCustomers(await customerRepository.listCustomersForStore(storeId));
     setRecentTransactions(await transactionRepository.listRecentTransactionsForStore(storeId));
+    setAssistantInteractions(await assistantInteractionRepository.listRecentAssistantInteractionsForStore(storeId));
   }, []);
 
   const createLedgerService = useCallback((database: SQLite.SQLiteDatabase) => {
@@ -252,6 +350,125 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
     [createLedgerService, reloadStoreData, store],
   );
 
+  const submitFallbackCommand = useCallback(
+    async (entry: { intent: 'sale' | 'restock' | 'utang'; itemId: string; quantity: number; customerName?: string }) => {
+      if (!store) {
+        throw new Error('No local store is available.');
+      }
+
+      const { database, inventoryRepository } = await createRepositories();
+      const latestInventoryItems = await inventoryRepository.listInventoryForStore(store.id);
+      const item = latestInventoryItems.find((currentItem) => currentItem.id === entry.itemId);
+
+      if (!item) {
+        throw new Error('Item not found.');
+      }
+
+      const quantity = Math.max(1, Math.floor(entry.quantity));
+      const customerName = entry.customerName?.trim();
+
+      if (entry.intent === 'utang' && !customerName) {
+        throw new Error('Ilagay ang pangalan ng may utang.');
+      }
+
+      const quantityDelta = entry.intent === 'restock' ? quantity : -quantity;
+      const rawText =
+        entry.intent === 'utang'
+          ? `fallback:utang:${quantity}:${item.name}:${customerName}`
+          : `fallback:${entry.intent}:${quantity}:${item.name}`;
+
+      const ledgerService = createLedgerService(database);
+      await ledgerService.applyReadyParserResult(
+        store.id,
+        {
+          raw_text: rawText,
+          normalized_text: rawText.toLowerCase(),
+          intent: entry.intent,
+          confidence: 1,
+          status: 'ready_to_apply',
+          items: [
+            {
+              item_id: item.id,
+              item_name: item.name,
+              matched_alias: item.name.toLowerCase(),
+              quantity,
+              quantity_delta: quantityDelta,
+              unit: item.unit,
+              confidence: 1,
+            },
+          ],
+          credit: entry.intent === 'utang' ? { is_utang: true, customer_name: customerName } : { is_utang: false },
+          notes: ['fallback_entry'],
+        },
+        { source: 'manual' },
+      );
+
+      await reloadStoreData(store.id);
+    },
+    [createLedgerService, reloadStoreData, store],
+  );
+
+  const createLocalCustomer = useCallback(
+    async (name: string) => {
+      if (!store) {
+        throw new Error('No local store is available.');
+      }
+
+      const { customerRepository } = await createRepositories();
+      const customer = await customerRepository.createCustomerForStore(store.id, name);
+      await reloadStoreData(store.id);
+
+      return customer;
+    },
+    [reloadStoreData, store],
+  );
+
+  const submitAssistantQuestion = useCallback(
+    async (questionText: string, inputMode: 'voice' | 'text') => {
+      const trimmed = questionText.trim();
+      if (!trimmed) {
+        throw new Error('Maglagay muna ng tanong.');
+      }
+
+      if (!store) {
+        throw new Error('Walang local store sa device.');
+      }
+
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (!accessToken) {
+        throw new Error('Kailangan ng internet at account para sa tanong na ito.');
+      }
+
+      const clientInteractionId = `device-assistant-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const onlineAnswer = await queryAssistantOnline({
+        accessToken,
+        clientInteractionId,
+        questionText: trimmed,
+        inputMode,
+        outputMode: 'text',
+      });
+
+      const { assistantInteractionRepository } = await createRepositories();
+      await assistantInteractionRepository.upsertAssistantInteraction({
+        storeId: store.id,
+        clientInteractionId: onlineAnswer.clientInteractionId,
+        questionText: trimmed,
+        answerText: onlineAnswer.answerText,
+        spokenText: onlineAnswer.spokenText,
+        inputMode,
+        status: onlineAnswer.status,
+      });
+      await reloadStoreData(store.id);
+
+      return {
+        answerText: onlineAnswer.answerText,
+        status: 'answered' as const,
+      };
+    },
+    [reloadStoreData, store],
+  );
+
   const resolvePendingClaim = useCallback(
     async (decision: 'claim' | 'discard') => {
       const { appStateRepository, transactionRepository } = await createRepositories();
@@ -316,7 +533,11 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
     try {
       const { appStateRepository, appState: state, storeRepository, inventoryRepository, transactionRepository } =
         await loadCachedData();
-      const { data } = await supabase.auth.getSession();
+      const { data } = await withTimeout(
+        supabase.auth.getSession(),
+        LOCAL_REFRESH_TIMEOUT_MS,
+        'Session check timed out. Loaded local data only.',
+      );
       const accessToken = data.session?.access_token;
       const userId = data.session?.user?.id ?? null;
 
@@ -339,11 +560,15 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const result = await bootstrapLocalData({
-        storeRepository,
-        inventoryRepository,
-        remoteDataSource: new RemoteDataSource(accessToken),
-      });
+      const result = await withTimeout(
+        bootstrapLocalData({
+          storeRepository,
+          inventoryRepository,
+          remoteDataSource: new RemoteDataSource(accessToken),
+        }),
+        LOCAL_REFRESH_TIMEOUT_MS,
+        'Cloud bootstrap timed out. Loaded local cache only.',
+      );
 
       const sourceStoreId = state.activeStoreId ?? `guest-store-${state.guestDeviceId}`;
       const pendingCount = await transactionRepository.countPendingTransactionsForStore(sourceStoreId);
@@ -379,7 +604,11 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
         });
         setAppState(await appStateRepository.getOrCreateState());
 
-        const uploadResults = await uploadPendingTransactions(accessToken, pendingTransactions);
+        const uploadResults = await withTimeout(
+          uploadPendingTransactions(accessToken, pendingTransactions),
+          LOCAL_REFRESH_TIMEOUT_MS,
+          'Sync upload timed out. Pending records were kept locally.',
+        );
         const syncedMutationIds = uploadResults
           .filter((resultRow) => resultRow.status === 'synced')
           .map((resultRow) => resultRow.clientMutationId);
@@ -421,20 +650,28 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
       appState,
       store,
       inventoryItems,
+      customers,
       recentTransactions,
+      assistantInteractions,
+      pendingTransactions: recentTransactions.filter((transaction) => transaction.syncStatus === 'pending'),
       isLoading,
       error,
       refresh,
       submitLocalCommand,
       confirmLocalCommand,
       applyManualAdjustment,
+      submitFallbackCommand,
+      createLocalCustomer,
+      submitAssistantQuestion,
       renameLocalStore,
       resolvePendingClaim,
     }),
     [
       appState,
       applyManualAdjustment,
+      assistantInteractions,
       confirmLocalCommand,
+      customers,
       error,
       inventoryItems,
       isLoading,
@@ -443,6 +680,9 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
       renameLocalStore,
       resolvePendingClaim,
       store,
+      createLocalCustomer,
+      submitFallbackCommand,
+      submitAssistantQuestion,
       submitLocalCommand,
     ],
   );

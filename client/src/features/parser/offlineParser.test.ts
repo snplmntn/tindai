@@ -137,4 +137,49 @@ describe('parseOfflineCommand', () => {
     expect(result.confidence).toBeLessThan(0.6);
     expect(result.items).toEqual([]);
   });
+
+  it.each([
+    ['Nabaligya ko ug duha ka Coke Mismo.', 'sale', 'item-coke', 2],
+    ['Idugang ang upat ka itlog.', 'restock', 'item-eggs', 4],
+    ['Palihog lista sa utang ni Aling Nena ang tulo ka Safeguard.', 'utang', 'item-safeguard', 3],
+  ] as const)('parses bisaya command variants: %s', (rawText, intent, itemId, quantity) => {
+    const result = parseOfflineCommand(rawText, inventory);
+
+    expect(result.intent).toBe(intent);
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        item_id: itemId,
+        quantity,
+        quantity_delta: intent === 'restock' ? quantity : -quantity,
+      }),
+    ]);
+    expect(result.status).toBe('ready_to_apply');
+  });
+
+  it('parses mixed bisaya and english quantity phrases', () => {
+    const result = parseOfflineCommand('Bawas one ka Safeguard lang.', inventory);
+
+    expect(result).toMatchObject({
+      intent: 'sale',
+      status: 'ready_to_apply',
+    });
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        item_id: 'item-safeguard',
+        quantity: 1,
+        quantity_delta: -1,
+      }),
+    ]);
+  });
+
+  it('parses bisaya stock question as online-required and read-only', () => {
+    const result = parseOfflineCommand('Unsa ang low stock karon?', inventory);
+
+    expect(result).toMatchObject({
+      intent: 'question',
+      status: 'needs_confirmation',
+    });
+    expect(result.items).toEqual([]);
+    expect(result.notes).toContain('online_required');
+  });
 });
