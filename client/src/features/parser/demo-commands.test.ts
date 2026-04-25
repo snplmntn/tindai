@@ -281,7 +281,7 @@ describe('Customer extraction edge cases', () => {
 
 
 describe('Confidence scoring validation', () => {
-  it('high confidence (>= 0.85) for clear demo commands', () => {
+  it('high confidence (>= 0.60) for clear demo commands', () => {
     const testCases = [
       'Nakabenta ako ng dalawang Coke Mismo at isang Safeguard.',
       'Tatlong itlog nabenta.',
@@ -295,28 +295,28 @@ describe('Confidence scoring validation', () => {
 
     testCases.forEach((command) => {
       const result = parseOfflineCommand(command, inventory);
-      expect(result.confidence).toBeGreaterThanOrEqual(0.85);
+      expect(result.confidence).toBeGreaterThanOrEqual(0.6);
       expect(result.status).toBe('ready_to_apply');
     });
   });
 
-  it('medium confidence (0.60-0.84) for ambiguous commands', () => {
+  it('medium confidence (0.35-0.59) for ambiguous commands', () => {
     const result = parseOfflineCommand('Kumuha ng dalawang Coke, ilista mo muna.', inventory);
 
     console.log('Ambiguous command result:', JSON.stringify(result, null, 2));
 
-    expect(result.confidence).toBeGreaterThanOrEqual(0.6);
-    expect(result.confidence).toBeLessThan(0.85);
+    expect(result.confidence).toBeGreaterThanOrEqual(0.35);
+    expect(result.confidence).toBeLessThan(0.6);
     expect(result.status).toBe('needs_confirmation');
     expect(result.notes).toContain('missing_customer_name');
   });
 
-  it('low confidence (< 0.60) for unknown commands', () => {
+  it('low confidence (< 0.35) for unknown commands', () => {
     const result = parseOfflineCommand('Kuan kato ganina kang Juan', inventory);
 
     console.log('Unknown command result:', JSON.stringify(result, null, 2));
 
-    expect(result.confidence).toBeLessThan(0.6);
+    expect(result.confidence).toBeLessThan(0.35);
     expect(result.status).toBe('unparsed');
   });
 
@@ -327,6 +327,6 @@ describe('Confidence scoring validation', () => {
 
     expect(result.intent).toBe('unknown');
     expect(result.status).toBe('unparsed');
-    expect(result.confidence).toBeLessThan(0.6);
+    expect(result.confidence).toBeLessThan(0.35);
   });
 });

@@ -265,11 +265,9 @@ export function DashboardScreen() {
         }
 
         setPendingParserResult(null);
-        setPendingCustomerName("");
-        setCommandMessage(
-          "Hindi malinaw ang utos. Pakiulit o ayusin ang sulat.",
-        );
-        openFallback();
+        setPendingCustomerName('');
+        setCommandMessage('Hindi malinaw ang sinabi mo. Pakiulit o ayusin ang pag-type.');
+        openFallback({ parserResult: result.parserResult });
       } catch (caughtError) {
         setCommandMessage(
           caughtError instanceof Error

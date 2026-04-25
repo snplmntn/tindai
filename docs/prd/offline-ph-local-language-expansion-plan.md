@@ -259,9 +259,15 @@ Recommended output:
 
 Suggested confidence thresholds:
 
-- `>= 0.85`: apply inventory update immediately.
-- `0.60 to 0.84`: show one-tap confirmation before applying.
-- `< 0.60`: do not apply automatically; save raw text and offer manual correction.
+- `>= 0.60`: apply inventory update immediately.
+- `0.35 to 0.59`: show one-tap confirmation before applying.
+- `< 0.35`: do not apply automatically; save raw text and offer manual correction.
+
+Safety guardrails for aggressive auto-apply:
+
+- If quantity is missing and the parser had to assume `1`, cap to confirmation.
+- If utang intent is detected but customer name is missing, cap to confirmation.
+- Unknown intent must never auto-apply.
 
 Confidence should consider:
 

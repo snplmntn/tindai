@@ -646,13 +646,22 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
       }
 
       const clientInteractionId = `device-assistant-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-      const onlineAnswer = await queryAssistantOnline({
-        accessToken,
-        clientInteractionId,
-        questionText: trimmed,
-        inputMode,
-        outputMode: 'text_and_speech',
-      });
+      let onlineAnswer: Awaited<ReturnType<typeof queryAssistantOnline>>;
+      try {
+        onlineAnswer = await queryAssistantOnline({
+          accessToken,
+          clientInteractionId,
+          questionText: trimmed,
+          inputMode,
+          outputMode: 'text_and_speech',
+        });
+      } catch (caughtError) {
+        if (isConnectivityIssue(caughtError)) {
+          throw new Error('Kailangan ng internet para masagot ang tanong.');
+        }
+
+        throw caughtError;
+      }
 
       const { assistantInteractionRepository } = await createRepositories();
       await assistantInteractionRepository.upsertAssistantInteraction({
