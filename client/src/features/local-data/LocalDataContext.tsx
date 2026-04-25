@@ -32,6 +32,12 @@ import type {
   LocalStore,
   LocalTransactionSummary,
 } from '@/features/local-db/types';
+import {
+  archiveInventoryItem,
+  createInventoryItem,
+  updateInventoryItem,
+  type RemoteInventoryItem,
+} from '@/features/inventory/inventoryApi';
 import type { ParserResult } from '@/features/parser/offlineParser';
 
 type LocalDataState = {
@@ -69,6 +75,14 @@ type LocalDataState = {
     cost: number;
     price: number;
   }) => Promise<void>;
+  updateInventoryItemMetadata: (entry: {
+    itemId: string;
+    name: string;
+    cost: number;
+    price: number;
+    lowStockThreshold: number;
+  }) => Promise<void>;
+  archiveLocalInventoryItem: (itemId: string) => Promise<void>;
 };
 
 const LocalDataContext = createContext<LocalDataState | undefined>(undefined);
@@ -116,6 +130,37 @@ function createGuestStore(guestDeviceId: string): LocalStore {
     currencyCode: 'PHP',
     timezone: 'Asia/Manila',
     updatedAt: now,
+  };
+}
+
+function normalizeInventoryAliases(name: string, aliases: string[]) {
+  return Array.from(
+    new Set(
+      [name, ...aliases]
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function mergeRemoteInventoryMetadata(params: {
+  storeId: string;
+  currentStock: number;
+  remoteItem: RemoteInventoryItem;
+}): LocalInventoryItem {
+  const { storeId, currentStock, remoteItem } = params;
+
+  return {
+    id: remoteItem.id,
+    storeId,
+    name: remoteItem.name,
+    aliases: remoteItem.aliases,
+    unit: remoteItem.unit,
+    cost: remoteItem.cost,
+    price: remoteItem.price,
+    currentStock,
+    lowStockThreshold: remoteItem.lowStockThreshold,
+    updatedAt: remoteItem.updatedAt,
   };
 }
 
@@ -671,6 +716,17 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const getInventoryMetadataAccessToken = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    const accessToken = data.session?.access_token;
+
+    if (!accessToken) {
+      throw new Error('Kailangan ng internet para ma-save ang item na ito.');
+    }
+
+    return accessToken;
+  }, []);
+
   const createLocalInventoryItem = useCallback(
     async (entry: { name: string; quantity: number; cost: number; price: number }) => {
       if (!store) {
@@ -682,16 +738,38 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
       const price = Math.max(0, entry.price);
       const cost = Math.max(0, entry.cost);
       const lowStockThreshold = quantity > 0 ? Math.min(5, quantity) : 0;
-      const createdItem = await inventoryRepository.createInventoryItemForStore({
-        storeId: store.id,
-        name: entry.name,
-        aliases: [entry.name],
-        unit: 'pcs',
-        cost,
-        price,
-        currentStock: 0,
-        lowStockThreshold,
-      });
+      const trimmedName = entry.name.trim();
+
+      let createdItem: LocalInventoryItem;
+      if (appState?.mode === 'authenticated') {
+        const accessToken = await getInventoryMetadataAccessToken();
+        const remoteItem = await createInventoryItem(accessToken, {
+          name: trimmedName,
+          aliases: [trimmedName],
+          unit: 'pcs',
+          cost,
+          price,
+          lowStockThreshold,
+        });
+
+        createdItem = mergeRemoteInventoryMetadata({
+          storeId: store.id,
+          currentStock: 0,
+          remoteItem,
+        });
+        await inventoryRepository.upsertInventoryItem(createdItem);
+      } else {
+        createdItem = await inventoryRepository.createInventoryItemForStore({
+          storeId: store.id,
+          name: trimmedName,
+          aliases: [trimmedName],
+          unit: 'pcs',
+          cost,
+          price,
+          currentStock: 0,
+          lowStockThreshold,
+        });
+      }
 
       if (quantity > 0) {
         const ledgerService = createLedgerService(database);
@@ -723,7 +801,78 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
 
       await reloadStoreData(store.id);
     },
-    [createLedgerService, reloadStoreData, store],
+    [appState?.mode, createLedgerService, getInventoryMetadataAccessToken, reloadStoreData, store],
+  );
+
+  const updateInventoryItemMetadata = useCallback(
+    async (entry: { itemId: string; name: string; cost: number; price: number; lowStockThreshold: number }) => {
+      if (!store) {
+        throw new Error('No local store is available.');
+      }
+
+      const { inventoryRepository } = await createRepositories();
+      const latestInventoryItems = await inventoryRepository.listInventoryForStore(store.id);
+      const currentItem = latestInventoryItems.find((item) => item.id === entry.itemId);
+
+      if (!currentItem) {
+        throw new Error('Inventory item not found.');
+      }
+
+      const trimmedName = entry.name.trim();
+      const price = Math.max(0, entry.price);
+      const cost = Math.max(0, entry.cost);
+      const lowStockThreshold = Math.max(0, entry.lowStockThreshold);
+
+      let nextItem: LocalInventoryItem;
+      if (appState?.mode === 'authenticated') {
+        const accessToken = await getInventoryMetadataAccessToken();
+        const remoteItem = await updateInventoryItem(accessToken, entry.itemId, {
+          name: trimmedName,
+          cost,
+          price,
+          lowStockThreshold,
+        });
+
+        nextItem = mergeRemoteInventoryMetadata({
+          storeId: store.id,
+          currentStock: currentItem.currentStock,
+          remoteItem,
+        });
+      } else {
+        nextItem = {
+          ...currentItem,
+          name: trimmedName,
+          aliases: normalizeInventoryAliases(trimmedName, currentItem.aliases),
+          cost,
+          price,
+          lowStockThreshold,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+
+      await inventoryRepository.upsertInventoryItem(nextItem);
+      await reloadStoreData(store.id);
+    },
+    [appState?.mode, getInventoryMetadataAccessToken, reloadStoreData, store],
+  );
+
+  const archiveLocalInventoryItem = useCallback(
+    async (itemId: string) => {
+      if (!store) {
+        throw new Error('No local store is available.');
+      }
+
+      const { inventoryRepository } = await createRepositories();
+
+      if (appState?.mode === 'authenticated') {
+        const accessToken = await getInventoryMetadataAccessToken();
+        await archiveInventoryItem(accessToken, itemId);
+      }
+
+      await inventoryRepository.archiveInventoryItemForStore(store.id, itemId);
+      await reloadStoreData(store.id);
+    },
+    [appState?.mode, getInventoryMetadataAccessToken, reloadStoreData, store],
   );
 
   const refresh = useCallback(async () => {
@@ -975,32 +1124,36 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
       applyManualAdjustment,
       submitFallbackCommand,
       createLocalCustomer,
-        submitAssistantQuestion,
-        renameLocalStore,
-        resolvePendingClaim,
-        createLocalInventoryItem,
-      }),
-      [
-        appState,
-        applyManualAdjustment,
-        assistantInteractions,
+      submitAssistantQuestion,
+      renameLocalStore,
+      resolvePendingClaim,
+      createLocalInventoryItem,
+      updateInventoryItemMetadata,
+      archiveLocalInventoryItem,
+    }),
+    [
+      appState,
+      applyManualAdjustment,
+      archiveLocalInventoryItem,
+      assistantInteractions,
       confirmLocalCommand,
       customers,
       error,
       syncNotice,
-        inventoryItems,
-        isLoading,
-        recentTransactions,
-        refresh,
-        renameLocalStore,
-        resolvePendingClaim,
-        store,
-        createLocalInventoryItem,
-        createLocalCustomer,
-        submitFallbackCommand,
-        submitAssistantQuestion,
-        submitLocalCommand,
-      ],
+      inventoryItems,
+      isLoading,
+      recentTransactions,
+      refresh,
+      renameLocalStore,
+      resolvePendingClaim,
+      store,
+      createLocalInventoryItem,
+      createLocalCustomer,
+      submitFallbackCommand,
+      submitAssistantQuestion,
+      submitLocalCommand,
+      updateInventoryItemMetadata,
+    ],
   );
 
   return <LocalDataContext.Provider value={value}>{children}</LocalDataContext.Provider>;

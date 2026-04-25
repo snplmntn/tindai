@@ -1,22 +1,25 @@
 import { getClientEnv } from '@/config/env';
-import { supabase } from '@/config/supabase';
 import type { LocalInventoryItem, LocalStore } from '@/features/local-db/types';
 
 type StoreResponse = {
   store: LocalStore;
 };
 
+type InventoryResponse = {
+  items?: InventoryRecord[];
+  message?: string;
+};
+
 type InventoryRecord = {
   id: string;
-  store_id: string;
   name: string;
-  aliases: string[] | null;
+  aliases: string[];
   unit: string;
   cost: number | null;
   price: number;
-  current_stock: number;
-  low_stock_threshold: number;
-  updated_at: string;
+  currentStock: number;
+  lowStockThreshold: number;
+  updatedAt: string;
 };
 
 export class RemoteDataSource {
@@ -26,6 +29,15 @@ export class RemoteDataSource {
     const env = getClientEnv();
     return fetch(`${env.EXPO_PUBLIC_API_BASE_URL}${path}`, {
       method,
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+    });
+  }
+
+  private async requestInventory(path: '/api/v1/inventory/items') {
+    const env = getClientEnv();
+    return fetch(`${env.EXPO_PUBLIC_API_BASE_URL}${path}`, {
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
       },
@@ -51,30 +63,24 @@ export class RemoteDataSource {
   }
 
   async getInventoryItems(storeId: string): Promise<LocalInventoryItem[]> {
-    const { data, error } = await supabase
-      .from('inventory_items')
-      .select('id, store_id, name, aliases, unit, cost, price, current_stock, low_stock_threshold, updated_at')
-      .eq('store_id', storeId)
-      .eq('is_active', true)
-      .is('archived_at', null)
-      .order('name', { ascending: true })
-      .returns<InventoryRecord[]>();
+    const response = await this.requestInventory('/api/v1/inventory/items');
+    const payload = (await response.json().catch(() => null)) as InventoryResponse | null;
 
-    if (error) {
-      throw new Error('Unable to load inventory snapshot.');
+    if (!response.ok || !payload?.items) {
+      throw new Error(payload?.message ?? 'Unable to load inventory snapshot.');
     }
 
-    return (data ?? []).map((item) => ({
+    return payload.items.map((item) => ({
       id: item.id,
-      storeId: item.store_id,
+      storeId,
       name: item.name,
-      aliases: item.aliases ?? [],
+      aliases: item.aliases,
       unit: item.unit,
       cost: item.cost,
       price: Number(item.price),
-      currentStock: Number(item.current_stock),
-      lowStockThreshold: Number(item.low_stock_threshold),
-      updatedAt: item.updated_at,
+      currentStock: Number(item.currentStock),
+      lowStockThreshold: Number(item.lowStockThreshold),
+      updatedAt: item.updatedAt,
     }));
   }
 }

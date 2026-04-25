@@ -1,0 +1,436 @@
+{
+  "transactions": [
+    {
+      "clientMutationId": "analytics-seed-20260425-001",
+      "rawText": "Dagdag stock ng Coke mismo 60",
+      "source": "manual",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-11T01:10:00.000Z",
+      "items": [
+        {
+          "itemName": "Coke Mismo",
+          "matchedAlias": "coke",
+          "quantityDelta": 60,
+          "unitPrice": 20,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-002",
+      "rawText": "Dagdag stock ng Sardines 45",
+      "source": "manual",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-11T01:15:00.000Z",
+      "items": [
+        {
+          "itemName": "Sardines",
+          "matchedAlias": "sardinas",
+          "quantityDelta": 45,
+          "unitPrice": 28,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-003",
+      "rawText": "Dagdag stock ng Instant Noodles 80",
+      "source": "manual",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-11T01:20:00.000Z",
+      "items": [
+        {
+          "itemName": "Instant Noodles",
+          "matchedAlias": "noodles",
+          "quantityDelta": 80,
+          "unitPrice": 14,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-004",
+      "rawText": "Dagdag stock ng Shampoo Sachet 30",
+      "source": "manual",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-11T01:25:00.000Z",
+      "items": [
+        {
+          "itemName": "Shampoo Sachet",
+          "matchedAlias": "shampoo",
+          "quantityDelta": 30,
+          "unitPrice": 7,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-005",
+      "rawText": "Nakabenta 6 coke at 3 sardines",
+      "source": "typed",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-12T02:10:00.000Z",
+      "items": [
+        {
+          "itemName": "Coke Mismo",
+          "matchedAlias": "coke",
+          "quantityDelta": -6,
+          "unitPrice": 20,
+          "unit": "pcs"
+        },
+        {
+          "itemName": "Sardines",
+          "matchedAlias": "sardines",
+          "quantityDelta": -3,
+          "unitPrice": 28,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-006",
+      "rawText": "Benta ng 10 noodles",
+      "source": "typed",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-13T02:20:00.000Z",
+      "items": [
+        {
+          "itemName": "Instant Noodles",
+          "matchedAlias": "noodles",
+          "quantityDelta": -10,
+          "unitPrice": 14,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-007",
+      "rawText": "Utang ni Aling Rosa 4 coke",
+      "source": "voice",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": true,
+      "customerName": "Aling Rosa",
+      "occurredAt": "2026-04-14T03:00:00.000Z",
+      "items": [
+        {
+          "itemName": "Coke Mismo",
+          "matchedAlias": "coke",
+          "quantityDelta": -4,
+          "unitPrice": 20,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-008",
+      "rawText": "Benta ng 6 sardines at 2 shampoo",
+      "source": "typed",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-15T02:10:00.000Z",
+      "items": [
+        {
+          "itemName": "Sardines",
+          "matchedAlias": "sardinas",
+          "quantityDelta": -6,
+          "unitPrice": 28,
+          "unit": "pcs"
+        },
+        {
+          "itemName": "Shampoo Sachet",
+          "matchedAlias": "shampoo",
+          "quantityDelta": -2,
+          "unitPrice": 7,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-009",
+      "rawText": "Benta ng 12 noodles",
+      "source": "typed",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-16T02:05:00.000Z",
+      "items": [
+        {
+          "itemName": "Instant Noodles",
+          "matchedAlias": "noodles",
+          "quantityDelta": -12,
+          "unitPrice": 14,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-010",
+      "rawText": "Nakabenta 7 coke at 4 sardines",
+      "source": "typed",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-17T02:15:00.000Z",
+      "items": [
+        {
+          "itemName": "Coke Mismo",
+          "matchedAlias": "coke",
+          "quantityDelta": -7,
+          "unitPrice": 20,
+          "unit": "pcs"
+        },
+        {
+          "itemName": "Sardines",
+          "matchedAlias": "sardines",
+          "quantityDelta": -4,
+          "unitPrice": 28,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-011",
+      "rawText": "Dagdag 25 coke",
+      "source": "manual",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-18T01:00:00.000Z",
+      "items": [
+        {
+          "itemName": "Coke Mismo",
+          "matchedAlias": "coke",
+          "quantityDelta": 25,
+          "unitPrice": 20,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-012",
+      "rawText": "Benta ng 9 noodles at 1 shampoo",
+      "source": "typed",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-18T03:20:00.000Z",
+      "items": [
+        {
+          "itemName": "Instant Noodles",
+          "matchedAlias": "noodles",
+          "quantityDelta": -9,
+          "unitPrice": 14,
+          "unit": "pcs"
+        },
+        {
+          "itemName": "Shampoo Sachet",
+          "matchedAlias": "shampoo",
+          "quantityDelta": -1,
+          "unitPrice": 7,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-013",
+      "rawText": "Nakabenta 8 coke",
+      "source": "typed",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-19T02:40:00.000Z",
+      "items": [
+        {
+          "itemName": "Coke Mismo",
+          "matchedAlias": "coke",
+          "quantityDelta": -8,
+          "unitPrice": 20,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-014",
+      "rawText": "Utang ni Mang Joel 5 sardines",
+      "source": "voice",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": true,
+      "customerName": "Mang Joel",
+      "occurredAt": "2026-04-20T03:30:00.000Z",
+      "items": [
+        {
+          "itemName": "Sardines",
+          "matchedAlias": "sardinas",
+          "quantityDelta": -5,
+          "unitPrice": 28,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-015",
+      "rawText": "Benta ng 11 noodles at 5 coke",
+      "source": "typed",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-21T02:50:00.000Z",
+      "items": [
+        {
+          "itemName": "Instant Noodles",
+          "matchedAlias": "noodles",
+          "quantityDelta": -11,
+          "unitPrice": 14,
+          "unit": "pcs"
+        },
+        {
+          "itemName": "Coke Mismo",
+          "matchedAlias": "coke",
+          "quantityDelta": -5,
+          "unitPrice": 20,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-016",
+      "rawText": "Dagdag 20 sardines",
+      "source": "manual",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-22T01:30:00.000Z",
+      "items": [
+        {
+          "itemName": "Sardines",
+          "matchedAlias": "sardinas",
+          "quantityDelta": 20,
+          "unitPrice": 28,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-017",
+      "rawText": "Nakabenta 9 coke at 7 noodles",
+      "source": "typed",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-22T03:35:00.000Z",
+      "items": [
+        {
+          "itemName": "Coke Mismo",
+          "matchedAlias": "coke",
+          "quantityDelta": -9,
+          "unitPrice": 20,
+          "unit": "pcs"
+        },
+        {
+          "itemName": "Instant Noodles",
+          "matchedAlias": "noodles",
+          "quantityDelta": -7,
+          "unitPrice": 14,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-018",
+      "rawText": "Benta ng 6 sardines at 3 shampoo",
+      "source": "typed",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-23T02:45:00.000Z",
+      "items": [
+        {
+          "itemName": "Sardines",
+          "matchedAlias": "sardines",
+          "quantityDelta": -6,
+          "unitPrice": 28,
+          "unit": "pcs"
+        },
+        {
+          "itemName": "Shampoo Sachet",
+          "matchedAlias": "shampoo",
+          "quantityDelta": -3,
+          "unitPrice": 7,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-019",
+      "rawText": "Nakabenta 10 coke at 8 noodles",
+      "source": "typed",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-24T03:10:00.000Z",
+      "items": [
+        {
+          "itemName": "Coke Mismo",
+          "matchedAlias": "coke",
+          "quantityDelta": -10,
+          "unitPrice": 20,
+          "unit": "pcs"
+        },
+        {
+          "itemName": "Instant Noodles",
+          "matchedAlias": "noodles",
+          "quantityDelta": -8,
+          "unitPrice": 14,
+          "unit": "pcs"
+        }
+      ]
+    },
+    {
+      "clientMutationId": "analytics-seed-20260425-020",
+      "rawText": "Benta ngayon 6 coke 4 sardines at 5 noodles",
+      "source": "typed",
+      "parserSource": "seed_payload",
+      "localParse": null,
+      "isUtang": false,
+      "occurredAt": "2026-04-25T02:30:00.000Z",
+      "items": [
+        {
+          "itemName": "Coke Mismo",
+          "matchedAlias": "coke",
+          "quantityDelta": -6,
+          "unitPrice": 20,
+          "unit": "pcs"
+        },
+        {
+          "itemName": "Sardines",
+          "matchedAlias": "sardines",
+          "quantityDelta": -4,
+          "unitPrice": 28,
+          "unit": "pcs"
+        },
+        {
+          "itemName": "Instant Noodles",
+          "matchedAlias": "noodles",
+          "quantityDelta": -5,
+          "unitPrice": 14,
+          "unit": "pcs"
+        }
+      ]
+    }
+  ]
+}
