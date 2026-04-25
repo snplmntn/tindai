@@ -23,12 +23,13 @@ export default function Home() {
         </header>
 
         <section className="grid min-h-[calc(100vh-72px)] items-center gap-10 py-6 md:grid-cols-2 md:py-10">
-          <div className="mx-auto w-full max-w-xl md:mx-0">
+          <div className="mx-auto w-full max-w-none md:mx-0 md:max-w-3xl">
             <p className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-700">
               Para sa sari-sari store
             </p>
-            <h1 className="mt-4 text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-              Para sa MSME na walang oras sa komplikado - simple, mabilis, at pang-negosyo.
+            <h1 className="mt-4 hyphens-none text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
+              Para sa busy na MSME na ayaw ng komplikado: simple, mabilis, at{' '}
+              <span className="whitespace-nowrap">pang-negosyo.</span>
             </h1>
             <p className="mt-4 text-base leading-7 text-slate-700">
               Bawas hula sa iyong negosyo, kita mo agad ang kulang at mabenta kahit walang internet.
@@ -50,8 +51,8 @@ export default function Home() {
             </div>
 
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500">
-              <span>Libre simulan</span>
-              <span>Walang credit card</span>
+              <span>Libreng simulan</span>
+              <span>Walang kailangan na credit card</span>
               <span>Android-friendly</span>
             </div>
 
@@ -62,7 +63,7 @@ export default function Home() {
                 <span className="h-7 w-7 rounded-full border-2 border-white bg-slate-500" />
               </div>
               <p className="text-xs leading-5 text-slate-600">
-                <span className="font-semibold text-emerald-700">10,000+</span> tindera na ang gumagamit.
+                <span className="font-semibold text-emerald-700">10,000+</span> na tindera na ang gumagamit.
               </p>
             </div>
           </div>
@@ -74,7 +75,7 @@ export default function Home() {
                 <p className="mt-1 text-center text-[33px] font-bold text-emerald-900">P14,250.00</p>
 
                 <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-                  <p className="text-[12px] font-medium leading-none text-slate-400">Mababa ang Stock</p>
+                  <p className="text-[12px] font-medium leading-none text-slate-400">Mababa na ang stock</p>
                   <div className="mt-2 flex items-center justify-between">
                     <div className="flex items-baseline gap-3">
                       <p className="text-[34px] font-bold leading-none text-emerald-700">12</p>
@@ -91,7 +92,7 @@ export default function Home() {
                   <div className="mt-2 flex items-center justify-between">
                     <div>
                       <p className="text-xl font-semibold text-slate-900">Bigas - 5kg</p>
-                      <p className="text-[10px] text-slate-400">2 minuto nakalipas</p>
+                      <p className="text-[10px] text-slate-400">2 minuto ang nakalipas</p>
                     </div>
                     <p className="text-2xl font-bold text-emerald-800">P275</p>
                   </div>
@@ -111,7 +112,7 @@ export default function Home() {
                     <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3zm5-3a1 1 0 1 0-2 0 3 3 0 1 1-6 0 1 1 0 1 0-2 0 5.002 5.002 0 0 0 4 4.9V18H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.1A5.002 5.002 0 0 0 17 11z" />
                     </svg>
                   </span>
-                  <span>"Nagbenta ng 2 kape"</span>
+                  <span>"May bumili ng 2 kape"</span>
                 </div>
 
                 <div className="absolute right-2 top-2 rounded-full bg-emerald-700 p-2 text-white shadow">
@@ -123,7 +124,7 @@ export default function Home() {
             </div>
 
             <div className="absolute left-[18px] top-[72px] rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-lg">
-              <p className="text-[11px] text-slate-400">Taas Kita</p>
+              <p className="text-[11px] text-slate-400">Tinaas ng kita</p>
               <p className="text-[34px] font-bold text-slate-900">
                 +2<span className="text-xl">.5%</span>
               </p>
