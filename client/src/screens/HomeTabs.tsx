@@ -23,16 +23,17 @@ export function HomeTabs() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          height: 76,
-          paddingBottom: 12,
-          paddingTop: 10,
+          height: 72,
+          paddingBottom: 10,
+          paddingHorizontal: 10,
+          paddingTop: 8,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '700',
+          fontWeight: '600',
         },
         tabBarItemStyle: {
-          paddingVertical: 4,
+          paddingVertical: 3,
         },
         tabBarIcon: ({ color, size, focused }) => {
           const iconName =
@@ -47,20 +48,21 @@ export function HomeTabs() {
                   : 'person-outline';
 
           const isDashboard = route.name === 'Dashboard';
+          const isActive = focused;
 
           return (
             <View
               style={[
                 styles.iconWrap,
                 isDashboard ? styles.dashboardIconWrap : undefined,
-                color === colors.primaryDeep ? styles.iconWrapActive : undefined,
-                isDashboard && color === colors.primaryDeep ? styles.dashboardIconWrapActive : undefined,
+                isActive ? styles.iconWrapActive : undefined,
+                isDashboard && isActive ? styles.dashboardIconWrapActive : undefined,
               ]}
             >
               <Ionicons
                 name={iconName}
-                size={isDashboard ? size + 2 : size}
-                color={isDashboard && color === colors.primaryDeep ? colors.surface : color}
+                size={isDashboard ? size + 1 : size}
+                color={isDashboard && isActive ? colors.surface : isActive ? colors.primaryDeep : color}
               />
             </View>
           );
@@ -83,19 +85,19 @@ export function HomeTabs() {
 
 const styles = StyleSheet.create({
   iconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconWrapActive: {
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(31, 122, 99, 0.1)',
   },
   dashboardIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   dashboardIconWrapActive: {
     backgroundColor: colors.primaryDeep,

@@ -1,0 +1,56 @@
+<h2>How should Analytics organize the three areas?</h2>
+<p class="subtitle">Both options keep Overview, Insights, and Predictions &amp; AI. This choice is about navigation feel on a small Android screen.</p>
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Option A: Real sub-tabs</div>
+        <div class="mockup-body">
+          <div class="label">Analytics</div>
+          <div style="display:flex; gap:8px; margin:12px 0 16px;">
+            <button class="mock-button" style="background:#154e3b;color:#fff;">Overview</button>
+            <button class="mock-button">Insights</button>
+            <button class="mock-button">Predictions</button>
+          </div>
+          <div class="section" style="display:grid; gap:10px;">
+            <div class="placeholder" style="height:56px;">Daily + monthly sales snapshot</div>
+            <div class="placeholder" style="height:56px;">Top-selling + low-stock cards</div>
+            <div class="placeholder" style="height:56px;">Fast-moving / slow-moving list</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Option A: Real sub-tabs</h3>
+      <p>Each area gets its own focused screen state. Best when the page is feature-rich and users may revisit one area repeatedly.</p>
+    </div>
+  </div>
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Option B: Single scroll journey</div>
+        <div class="mockup-body">
+          <div class="label">Analytics</div>
+          <div style="display:flex; gap:8px; margin:12px 0 16px;">
+            <button class="mock-button" style="background:#154e3b;color:#fff;">Overview</button>
+            <button class="mock-button">Insights</button>
+            <button class="mock-button">Predictions</button>
+          </div>
+          <div class="section" style="display:grid; gap:10px;">
+            <div class="placeholder" style="height:52px;">Overview section</div>
+            <div class="placeholder" style="height:52px;">Insights section</div>
+            <div class="placeholder" style="height:52px;">Predictions &amp; AI section</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Option B: Single scroll journey</h3>
+      <p>One page that moves from current state to patterns to predictions. Simpler implementation and easier demo narration, but less separation between sections.</p>
+    </div>
+  </div>
+</div>
+<div class="pros-cons">
+  <div class="pros"><h4>Recommended</h4><ul><li>Option A if Analytics will become a true destination tab.</li><li>Option B if the goal is the lightest possible MVP.</li></ul></div>
+  <div class="cons"><h4>Decision to make now</h4><ul><li>Do you want a literal three-tab experience inside Analytics, or a simpler guided scroll with three anchored sections?</li></ul></div>
+</div>
