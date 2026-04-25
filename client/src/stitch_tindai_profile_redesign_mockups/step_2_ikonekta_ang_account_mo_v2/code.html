@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+
+<html lang="tl"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tindai - Onboarding Step 2</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;family=Inter:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#3e4945",
+                        "on-surface": "#0B1C30",
+                        "tertiary-fixed": "#d3e4fe",
+                        "error-container": "#ffdad6",
+                        "on-primary-container": "#b1ffe4",
+                        "primary-fixed-dim": "#82d6bb",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed": "#d3e3ff",
+                        "on-tertiary": "#ffffff",
+                        "error": "#BA1A1A",
+                        "primary": "#00604c",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-on-surface": "#eef2ee",
+                        "outline": "#6E7A74",
+                        "on-secondary-container": "#56657d",
+                        "surface-container-high": "#e5e9e5",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed-variant": "#38485e",
+                        "tertiary": "#45566b",
+                        "surface-tint": "#016b55",
+                        "surface-variant": "#e0e3e0",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "surface-container": "#ebefeb",
+                        "secondary-fixed-dim": "#b7c7e2",
+                        "surface-dim": "#d7dbd7",
+                        "seafoam-mist": "#E8F2F0",
+                        "primary-container": "#1f7a63",
+                        "inverse-primary": "#82d6bb",
+                        "tertiary-container": "#5e6e84",
+                        "surface-container-low": "#EFF4FF",
+                        "secondary-container": "#d3e3ff",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed": "#0b1c2f",
+                        "inverse-surface": "#2d312f",
+                        "surface-container-highest": "#e0e3e0",
+                        "on-primary-fixed": "#002018",
+                        "primary-fixed": "#9ef3d7",
+                        "on-tertiary-container": "#e8f0ff",
+                        "on-secondary-fixed": "#0b1c30",
+                        "background": "#f7faf7",
+                        "surface": "#F8F9FF",
+                        "on-primary-fixed-variant": "#005140",
+                        "secondary": "#505f76",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "surface-bright": "#f7faf7",
+                        "outline-variant": "#bec9c3",
+                        "on-background": "#181d1b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "12px",
+                        "gutter": "24px",
+                        "xs": "4px",
+                        "lg": "40px",
+                        "xl": "64px",
+                        "base": "8px",
+                        "md": "24px",
+                        "container-max": "1280px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Manrope"],
+                        "h1": ["Manrope"],
+                        "label-sm": ["Inter"],
+                        "h3": ["Manrope"],
+                        "display": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "label-md": ["Inter"],
+                        "h2": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0", "fontWeight": "400"}],
+                        "h1": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "600"}],
+                        "h3": ["20px", {"lineHeight": "28px", "letterSpacing": "0", "fontWeight": "600"}],
+                        "display": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "h2": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col items-center justify-center p-gutter">
+<!-- Top App Bar (Modified for transactional screen) -->
+<header class="w-full max-w-container-max mx-auto px-6 h-16 flex items-center justify-between fixed top-0 bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800 z-50">
+<button class="flex items-center justify-center p-2 text-emerald-800 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<span class="font-manrope antialiased tracking-tight text-lg font-semibold text-emerald-900 dark:text-emerald-100">Setup Progress</span>
+<div class="w-10"></div> <!-- Placeholder for balance -->
+</header>
+<main class="w-full max-w-md bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(31,122,99,0.05)] p-lg mt-24">
+<!-- Progress Bar -->
+<div class="mb-8">
+<div class="flex justify-between items-center mb-2">
+<span class="font-label-sm text-label-sm text-outline uppercase">Hakbang 2 ng 4</span>
+</div>
+<div class="h-1 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary w-1/2 rounded-full"></div>
+</div>
+</div>
+<!-- Heading -->
+<div class="mb-lg">
+<h1 class="font-h1 text-h1 text-on-surface mb-2">Ikonekta ang account mo.</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">I-save ang iyong imbentaryo at i-sync sa cloud para sa ligtas na backup.</p>
+</div>
+<!-- Form -->
+<form class="space-y-md mb-lg">
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-2" for="email">Email Address</label>
+<input class="w-full bg-[#F1F5F9] border-0 border-b border-outline focus:border-primary focus:ring-0 px-4 py-3 rounded-t-DEFAULT font-body-md text-on-surface" id="email" placeholder="juan@halimbawa.com" type="email"/>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-2" for="password">Password</label>
+<input class="w-full bg-[#F1F5F9] border-0 border-b border-outline focus:border-primary focus:ring-0 px-4 py-3 rounded-t-DEFAULT font-body-md text-on-surface" id="password" placeholder="••••••••" type="password"/>
+</div>
+</form>
+<!-- Divider -->
+<div class="relative flex items-center py-5 mb-md">
+<div class="flex-grow border-t border-surface-variant"></div>
+<span class="flex-shrink-0 mx-4 font-label-sm text-label-sm text-outline">o kaya</span>
+<div class="flex-grow border-t border-surface-variant"></div>
+</div>
+<!-- Google Sign-in -->
+<button class="w-full flex items-center justify-center gap-2 bg-surface-container-lowest border border-outline-variant text-on-surface font-label-md text-label-md py-3 px-4 rounded-lg hover:bg-surface-container transition-colors mb-xl" type="button">
+<img alt="Google Logo" class="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDFvU1Y79m7qrbmLc49lUu9jkI58xMwK9zGCpR0NsBmADIQGTCAz0HYmCNws6I5DyUd6PQfkz0PoFdkxvSoqmDkWkzq7UInjdYKH8lkkBLpMfFqHrQMXeSDfh3Yt5psJv7mS5JhMW3ddRz466ilzyZURHlyesuwbTvhaXhvPy7cW765XDNduMP9G69mnWUAJYkIHvomFHkoe3hQQPtM1TzXrBIv1-QCug8Z2FFqUWdHp0yJ5z_YMA97MG9pNl5se9_jzraMXQsu58"/>
+            Mag-sign in gamit ang Google
+        </button>
+<!-- Actions -->
+<div class="mt-auto">
+<button class="w-full bg-primary text-on-primary font-label-md text-label-md py-4 px-4 rounded-lg hover:bg-primary-container transition-colors flex items-center justify-center gap-2 mb-4" type="submit">
+                Magpatuloy
+                <span class="material-symbols-outlined" data-icon="arrow_forward" style="font-variation-settings: 'FILL' 0;">arrow_forward</span>
+</button>
+<div class="text-center">
+<a class="font-label-md text-label-md text-primary hover:underline" href="#">Wala ka pang account? Gumawa dito.</a>
+</div>
+</div>
+</main>
+</body></html>

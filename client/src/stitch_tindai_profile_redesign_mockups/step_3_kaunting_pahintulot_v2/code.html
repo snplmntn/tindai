@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tindai - Onboarding Step 3</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&amp;family=Manrope:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#3e4945",
+                        "on-surface": "#0B1C30",
+                        "tertiary-fixed": "#d3e4fe",
+                        "error-container": "#ffdad6",
+                        "on-primary-container": "#b1ffe4",
+                        "primary-fixed-dim": "#82d6bb",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed": "#d3e3ff",
+                        "on-tertiary": "#ffffff",
+                        "error": "#BA1A1A",
+                        "primary": "#00604c",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-on-surface": "#eef2ee",
+                        "outline": "#6E7A74",
+                        "on-secondary-container": "#56657d",
+                        "surface-container-high": "#e5e9e5",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed-variant": "#38485e",
+                        "tertiary": "#45566b",
+                        "surface-tint": "#016b55",
+                        "surface-variant": "#e0e3e0",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "surface-container": "#ebefeb",
+                        "secondary-fixed-dim": "#b7c7e2",
+                        "surface-dim": "#d7dbd7",
+                        "seafoam-mist": "#E8F2F0",
+                        "primary-container": "#1f7a63",
+                        "inverse-primary": "#82d6bb",
+                        "tertiary-container": "#5e6e84",
+                        "surface-container-low": "#EFF4FF",
+                        "secondary-container": "#d3e3ff",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed": "#0b1c2f",
+                        "inverse-surface": "#2d312f",
+                        "surface-container-highest": "#e0e3e0",
+                        "on-primary-fixed": "#002018",
+                        "primary-fixed": "#9ef3d7",
+                        "on-tertiary-container": "#e8f0ff",
+                        "on-secondary-fixed": "#0b1c30",
+                        "background": "#f7faf7",
+                        "surface": "#F8F9FF",
+                        "on-primary-fixed-variant": "#005140",
+                        "secondary": "#505f76",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "surface-bright": "#f7faf7",
+                        "outline-variant": "#bec9c3",
+                        "on-background": "#181d1b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "12px",
+                        "gutter": "24px",
+                        "xs": "4px",
+                        "lg": "40px",
+                        "xl": "64px",
+                        "base": "8px",
+                        "md": "24px",
+                        "container-max": "1280px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Manrope"],
+                        "h1": ["Manrope"],
+                        "label-sm": ["Inter"],
+                        "h3": ["Manrope"],
+                        "display": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "label-md": ["Inter"],
+                        "h2": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0", "fontWeight": "400"}],
+                        "h1": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "600"}],
+                        "h3": ["20px", {"lineHeight": "28px", "letterSpacing": "0", "fontWeight": "600"}],
+                        "display": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "h2": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-lowest min-h-screen flex flex-col font-body-md text-on-surface relative pb-32">
+<!-- TopAppBar -->
+<header class="bg-white dark:bg-gray-950 font-manrope antialiased tracking-tight docked full-width top-0 border-b border-gray-100 dark:border-gray-800 shadow-none flex items-center justify-between px-6 h-16 w-full max-w-screen-xl mx-auto sticky z-50">
+<button class="text-emerald-800 dark:text-emerald-400 scale-98 active:opacity-80 transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors p-2 rounded-full inline-flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="text-lg font-semibold text-emerald-900 dark:text-emerald-100 flex-1 text-center pr-10">Setup Progress</h1>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-screen-md mx-auto px-md pt-lg flex flex-col gap-lg">
+<!-- Progress Segment -->
+<section class="flex flex-col gap-sm">
+<p class="text-label-md font-label-md text-on-surface-variant uppercase tracking-wider">Hakbang 3 ng 4</p>
+<div class="flex gap-xs w-full h-2">
+<div class="bg-primary rounded-full flex-1"></div>
+<div class="bg-primary rounded-full flex-1"></div>
+<div class="bg-primary rounded-full flex-1"></div>
+<div class="bg-surface-variant rounded-full flex-1"></div>
+</div>
+</section>
+<!-- Heading Section -->
+<section class="flex flex-col gap-sm mt-md">
+<h2 class="text-display font-display text-on-surface">Kailangan namin ng kaunting pahintulot.</h2>
+<p class="text-body-lg font-body-lg text-on-surface-variant mt-xs">Upang magamit ang voice inventory nang maayos, kailangan ng app ng access sa iyong mikropono at device storage.</p>
+</section>
+<!-- Permissions List -->
+<section class="flex flex-col gap-md mt-md">
+<!-- Card 1: Mikropono (Selected) -->
+<div class="bg-surface-container-low border-2 border-primary rounded-xl p-md flex items-start sm:items-center gap-md shadow-[0px_4px_20px_rgba(31,122,99,0.05)] cursor-pointer hover:shadow-[0px_10px_40px_rgba(0,0,0,0.08)] transition-all">
+<div class="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-on-primary-container text-[28px]" data-icon="mic" data-weight="fill" style="font-variation-settings: 'FILL' 1;">mic</span>
+</div>
+<div class="flex-1 flex flex-col gap-xs">
+<div class="flex items-center gap-sm flex-wrap">
+<h3 class="text-h3 font-h3 text-on-surface">Mikropono</h3>
+<span class="bg-primary-container text-on-primary-container text-label-sm font-label-sm px-3 py-1 rounded-full">Kailangan</span>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant">Para makapag-record ng inventory data gamit ang iyong boses.</p>
+</div>
+<div class="flex-shrink-0 self-center">
+<span class="material-symbols-outlined text-primary text-[32px]" data-icon="check_circle" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Card 2: Storage (Unselected) -->
+<div class="bg-surface-container-lowest border-2 border-outline-variant rounded-xl p-md flex items-start sm:items-center gap-md shadow-sm cursor-pointer hover:border-primary transition-all">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[28px]" data-icon="folder">folder</span>
+</div>
+<div class="flex-1 flex flex-col gap-xs">
+<div class="flex items-center gap-sm flex-wrap">
+<h3 class="text-h3 font-h3 text-on-surface">Storage</h3>
+<span class="bg-surface-variant text-on-surface-variant text-label-sm font-label-sm px-3 py-1 rounded-full">Opsyonal</span>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant">Para ma-save ang mga backup ng iyong inventory offline sa device.</p>
+</div>
+<div class="flex-shrink-0 self-center">
+<span class="material-symbols-outlined text-outline-variant text-[32px]" data-icon="radio_button_unchecked">radio_button_unchecked</span>
+</div>
+</div>
+</section>
+<!-- Privacy Note -->
+<section class="flex items-start gap-sm p-sm rounded-lg mt-sm">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px] mt-1" data-icon="lock">lock</span>
+<p class="text-body-md font-body-md text-on-surface-variant">Ligtas ang iyong data sa amin. Ginagamit lamang ang mga pahintulot na ito para mapagana ang app. Hindi namin ibebenta ang iyong impormasyon.</p>
+</section>
+</main>
+<!-- Bottom Action Anchor -->
+<div class="fixed bottom-0 left-0 w-full bg-surface-container-lowest/90 backdrop-blur-md pt-md pb-xl px-md shadow-[0px_-10px_40px_rgba(0,0,0,0.05)] border-t border-surface-container z-40">
+<div class="w-full max-w-screen-md mx-auto">
+<button class="w-full bg-primary text-on-primary text-body-lg font-body-lg font-bold py-4 px-lg rounded-xl flex items-center justify-center gap-sm hover:brightness-110 active:scale-[0.98] transition-all shadow-[0px_4px_20px_rgba(31,122,99,0.2)]">
+                Payagan at Magpatuloy
+                <span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</body></html>

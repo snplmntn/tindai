@@ -1,16 +1,5 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { type ReactNode, useState } from 'react';
-import {
-  Image,
-  type ImageSourcePropType,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
@@ -18,7 +7,6 @@ import { colors } from '@/navigation/colors';
 
 type AuthLayoutProps = {
   badge: string;
-  logoSource?: ImageSourcePropType;
   title: string;
   subtitle: string;
   submitLabel?: string;
@@ -32,7 +20,6 @@ type AuthLayoutProps = {
 
 export function AuthLayout({
   badge,
-  logoSource,
   title,
   subtitle,
   submitLabel,
@@ -60,74 +47,102 @@ export function AuthLayout({
   };
 
   return (
-    <LinearGradient colors={[colors.background, '#F8F1DA', '#EDE2BD']} style={styles.screen}>
-      <View style={styles.glowTop} />
-      <View style={styles.glowBottom} />
+    <SafeAreaView style={styles.screen}>
+      <View style={styles.topBar}>
+        {onDismiss ? (
+          <Pressable onPress={onDismiss} style={styles.backButton}>
+            <Text style={styles.backIcon}>‹</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.backButton} />
+        )}
+        <Text style={styles.topBarTitle}>Setup Progress</Text>
+        <View style={styles.backButton} />
+      </View>
 
-      <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          style={styles.keyboardAvoid}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 16 : 0}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 16 : 0}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.card}>
-              <View style={styles.cardTopRow}>
-                <View style={styles.brandCluster}>
-                  {logoSource ? (
-                    <Image
-                      source={logoSource}
-                      resizeMode="contain"
-                      style={styles.brandLogo}
-                    />
-                  ) : null}
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{badge}</Text>
-                  </View>
-                </View>
-                {dismissLabel && onDismiss ? (
-                  <Pressable onPress={onDismiss} style={styles.dismissButton}>
-                    <Text style={styles.dismissText}>{dismissLabel}</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-
-              <View style={styles.copyBlock}>
-                <Text style={styles.title}>{title}</Text>
-                <Text style={styles.subtitle}>{subtitle}</Text>
-              </View>
-
-              <View style={styles.form}>{children}</View>
-
-              <View style={styles.actions}>
-                {submitLabel && onSubmit ? (
-                  <PrimaryButton label={loading ? 'Please wait...' : submitLabel} onPress={handleSubmit} />
-                ) : null}
-                {alternateLabel && onAlternatePress ? (
-                  <Pressable onPress={onAlternatePress} style={styles.linkButton}>
-                    <Text style={styles.linkText}>{alternateLabel}</Text>
-                  </Pressable>
-                ) : null}
+          <View style={styles.card}>
+            <View style={styles.progressBlock}>
+              <Text style={styles.progressLabel}>Hakbang 2 ng 4</Text>
+              <View style={styles.progressTrack}>
+                <View style={styles.progressFill} />
               </View>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </LinearGradient>
+
+            <View style={styles.copyBlock}>
+              <Text style={styles.title}>{title}</Text>
+              <Text style={styles.subtitle}>{subtitle}</Text>
+            </View>
+
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{badge}</Text>
+            </View>
+
+            <View style={styles.form}>{children}</View>
+
+            <View style={styles.actions}>
+              {submitLabel && onSubmit ? (
+                <PrimaryButton label={loading ? 'Sandali lang...' : submitLabel} onPress={handleSubmit} />
+              ) : null}
+              {alternateLabel && onAlternatePress ? (
+                <Pressable onPress={onAlternatePress} style={styles.linkButton}>
+                  <Text style={styles.linkText}>{alternateLabel}</Text>
+                </Pressable>
+              ) : null}
+              {dismissLabel && onDismiss ? (
+                <Pressable onPress={onDismiss} style={styles.dismissButton}>
+                  <Text style={styles.dismissText}>{dismissLabel}</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    backgroundColor: '#f7faf7',
   },
-  safeArea: {
-    flex: 1,
+  topBar: {
+    minHeight: 64,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eef1ee',
+    backgroundColor: colors.surface,
     paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  topBarTitle: {
+    color: colors.primaryDeep,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backIcon: {
+    color: colors.primaryDeep,
+    fontSize: 34,
+    fontWeight: '500',
+    lineHeight: 36,
   },
   keyboardAvoid: {
     flex: 1,
@@ -135,86 +150,66 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingVertical: 18,
-  },
-  glowTop: {
-    position: 'absolute',
-    top: -72,
-    right: -24,
-    width: 240,
-    height: 240,
-    borderRadius: 240,
-    backgroundColor: 'rgba(31, 122, 99, 0.14)',
-  },
-  glowBottom: {
-    position: 'absolute',
-    bottom: -110,
-    left: -40,
-    width: 280,
-    height: 280,
-    borderRadius: 280,
-    backgroundColor: 'rgba(242, 201, 76, 0.16)',
+    paddingHorizontal: 24,
+    paddingVertical: 24,
   },
   card: {
+    width: '100%',
+    maxWidth: 460,
+    alignSelf: 'center',
     gap: 22,
-    borderRadius: 32,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: 'rgba(255, 253, 245, 0.92)',
-    padding: 26,
+    borderColor: '#f1f4f1',
+    backgroundColor: colors.surface,
+    padding: 24,
   },
-  cardTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-  },
-  brandCluster: {
+  progressBlock: {
     gap: 10,
-    alignItems: 'flex-start',
   },
-  brandLogo: {
-    width: 112,
-    height: 34,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    borderRadius: 999,
-    backgroundColor: colors.card,
-    paddingHorizontal: 15,
-    paddingVertical: 9,
-  },
-  dismissButton: {
-    minHeight: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-  },
-  dismissText: {
-    color: colors.primaryDeep,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  badgeText: {
-    color: colors.primaryDeep,
+  progressLabel: {
+    color: colors.muted,
     fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.8,
+    fontWeight: '800',
     textTransform: 'uppercase',
+  },
+  progressTrack: {
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: '#e0e3e0',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    width: '50%',
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: colors.primary,
   },
   copyBlock: {
     gap: 8,
   },
   title: {
     color: colors.text,
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: '800',
-    lineHeight: 36,
+    lineHeight: 39,
   },
   subtitle: {
     color: colors.muted,
-    fontSize: 15,
-    lineHeight: 23,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  badge: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: '#e8f2f0',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  badgeText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
   },
   form: {
     gap: 16,
@@ -225,11 +220,22 @@ const styles = StyleSheet.create({
   linkButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
+    minHeight: 44,
   },
   linkText: {
-    color: colors.primaryDeep,
-    fontSize: 15,
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  dismissButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
+  },
+  dismissText: {
+    color: colors.muted,
+    fontSize: 13,
     fontWeight: '700',
   },
 });
