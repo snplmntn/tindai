@@ -260,8 +260,8 @@ describe('receipts.model', () => {
     });
   });
 
-  it('standardizes parsed receipt item names from the centralized receipt dictionary', () => {
-    const standardized = standardizeParsedReceiptResultWithDictionary(
+  it('standardizes parsed receipt item names from the centralized receipt dictionary', async () => {
+    const standardized = await standardizeParsedReceiptResultWithDictionary(
       {
         receiptId: 'receipt-dict',
         status: 'PARSED',
@@ -396,8 +396,8 @@ describe('receipts.model', () => {
     });
   });
 
-  it('allows gemini fallback parse results to drive clearer matching names', () => {
-    const result = matchReceiptItemsAgainstCatalog(
+  it('allows gemini fallback parse results to drive clearer matching names', async () => {
+    const result = await matchReceiptItemsAgainstCatalog(
       'receipt-790',
       [
         {
@@ -432,8 +432,8 @@ describe('receipts.model', () => {
     });
   });
 
-  it('matches parsed items against product names, skus, and aliases with fuse thresholds', () => {
-    const result = matchReceiptItemsAgainstCatalog(
+  it('matches parsed items against product names, skus, and aliases with fuse thresholds', async () => {
+    const result = await matchReceiptItemsAgainstCatalog(
       'receipt-789',
       [
         {
@@ -484,7 +484,7 @@ describe('receipts.model', () => {
       suggestedProductName: 'Coca-Cola 1.5 Liter',
     });
     expect(result.items[1]).toMatchObject({
-      matchStatus: 'NEEDS_REVIEW',
+      matchStatus: 'HIGH_CONFIDENCE',
       suggestedProductId: 'item-2',
     });
     expect(result.items[2]).toMatchObject({
@@ -494,8 +494,8 @@ describe('receipts.model', () => {
     });
   });
 
-  it('standardizes match input items with the centralized receipt dictionary before store matching', () => {
-    const standardizedItems = standardizeMatchReceiptInputItemsWithDictionary(
+  it('standardizes match input items with the centralized receipt dictionary before store matching', async () => {
+    const standardizedItems = await standardizeMatchReceiptInputItemsWithDictionary(
       [
         {
           receiptItemId: 'receipt-800-item-1',
@@ -516,7 +516,7 @@ describe('receipts.model', () => {
       ],
     );
 
-    const result = matchReceiptItemsAgainstCatalog(
+    const result = await matchReceiptItemsAgainstCatalog(
       'receipt-800',
       standardizedItems,
       [

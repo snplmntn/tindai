@@ -1,5 +1,3 @@
-import Fuse from 'fuse.js';
-
 import { getEnv } from '../config/env';
 import { getSupabaseAdminClient } from '../config/supabase';
 import {
@@ -203,6 +201,13 @@ const GEMINI_RECEIPT_PARSE_FALLBACK_SCHEMA = {
     },
   },
 } as const;
+
+let fuseModulePromise: Promise<any> | null = null;
+
+async function loadFuseModule() {
+  fuseModulePromise ??= import('fuse.js');
+  return fuseModulePromise;
+}
 
 export function normalizeOcrText(rawText: string) {
   return rawText.replace(/\s+/g, ' ').trim();
@@ -676,7 +681,7 @@ function buildReceiptDictionarySearchTerms(rawName: string, displayName?: string
   };
 }
 
-function findReceiptDictionaryMatch(
+async function findReceiptDictionaryMatch(
   rawName: string,
   displayName: string | undefined,
   candidates: ReceiptDictionaryCandidate[],
@@ -740,6 +745,7 @@ function findReceiptDictionaryMatch(
     return containsMatch.candidate;
   }
 
+  const { default: Fuse } = await loadFuseModule();
   const fuse = new Fuse(candidates, {
     includeScore: true,
     threshold: looksLikeAbbreviatedReceiptName(rawName) ? 0.28 : 0.18,
@@ -766,10 +772,10 @@ function findReceiptDictionaryMatch(
   return null;
 }
 
-export function standardizeParsedReceiptResultWithDictionary(
+export async function standardizeParsedReceiptResultWithDictionary(
   result: ParseReceiptResult,
   dictionaryRecords: ReceiptProductDictionaryRecord[],
-): ParseReceiptResult {
+): Promise<ParseReceiptResult> {
   const candidates = buildReceiptDictionaryCandidates(dictionaryRecords);
   if (candidates.length === 0) {
     return result;
@@ -777,12 +783,12 @@ export function standardizeParsedReceiptResultWithDictionary(
 
   return {
     ...result,
-    items: result.items.map((item) => {
+    items: await Promise.all(result.items.map(async (item) => {
       if (item.nameSource === 'gemini' && typeof item.nameConfidence === 'number' && item.nameConfidence >= 0.85) {
         return item;
       }
 
-      const dictionaryMatch = findReceiptDictionaryMatch(item.rawName, item.displayName, candidates);
+      const dictionaryMatch = await findReceiptDictionaryMatch(item.rawName, item.displayName, candidates);
       if (!dictionaryMatch) {
         return item;
       }
@@ -792,25 +798,25 @@ export function standardizeParsedReceiptResultWithDictionary(
         displayName: dictionaryMatch.name,
         normalizedName: normalizeReceiptText(dictionaryMatch.name),
       };
-    }),
+    })),
   };
 }
 
-export function standardizeMatchReceiptInputItemsWithDictionary(
+export async function standardizeMatchReceiptInputItemsWithDictionary(
   items: MatchReceiptInputItem[],
   dictionaryRecords: ReceiptProductDictionaryRecord[],
-): MatchReceiptInputItem[] {
+): Promise<MatchReceiptInputItem[]> {
   const candidates = buildReceiptDictionaryCandidates(dictionaryRecords);
   if (candidates.length === 0) {
     return items;
   }
 
-  return items.map((item) => {
+  return Promise.all(items.map(async (item) => {
     if (item.nameSource === 'gemini' && typeof item.nameConfidence === 'number' && item.nameConfidence >= 0.85) {
       return item;
     }
 
-    const dictionaryMatch = findReceiptDictionaryMatch(item.rawName, item.displayName, candidates);
+    const dictionaryMatch = await findReceiptDictionaryMatch(item.rawName, item.displayName, candidates);
     if (!dictionaryMatch) {
       return item;
     }
@@ -820,7 +826,7 @@ export function standardizeMatchReceiptInputItemsWithDictionary(
       displayName: dictionaryMatch.name,
       normalizedName: normalizeReceiptText(dictionaryMatch.name),
     };
-  });
+  }));
 }
 
 function buildReceiptMatchCandidates(items: InventoryMatchRecord[]): ReceiptMatchCandidate[] {
@@ -980,7 +986,8 @@ async function loadReceiptProductDictionary() {
   return data ?? [];
 }
 
-function createReceiptFuseIndex(candidates: ReceiptMatchCandidate[]) {
+async function createReceiptFuseIndex(candidates: ReceiptMatchCandidate[]) {
+  const { default: Fuse } = await loadFuseModule();
   return new Fuse(candidates, {
     includeScore: true,
     threshold: NEEDS_REVIEW_THRESHOLD,
@@ -1015,13 +1022,13 @@ function getMatchStatus(score: number | null): MatchStatus {
   return 'NEEDS_REVIEW';
 }
 
-export function matchReceiptItemsAgainstCatalog(
+export async function matchReceiptItemsAgainstCatalog(
   receiptId: string,
   items: MatchReceiptInputItem[],
   inventoryItems: InventoryMatchRecord[],
-): MatchReceiptResult {
+): Promise<MatchReceiptResult> {
   const candidates = buildReceiptMatchCandidates(inventoryItems);
-  const fuse = createReceiptFuseIndex(candidates);
+  const fuse = await createReceiptFuseIndex(candidates);
 
   return {
     receiptId,
@@ -1200,7 +1207,7 @@ export async function parseReceiptForOwner(
 
   try {
     dictionaryRecords = await loadReceiptProductDictionary();
-    localResult = standardizeParsedReceiptResultWithDictionary(localResult, dictionaryRecords);
+    localResult = await standardizeParsedReceiptResultWithDictionary(localResult, dictionaryRecords);
   } catch (error) {
     console.warn('[receipt] dictionary standardization skipped during parse', error);
   }
@@ -1272,7 +1279,7 @@ export async function parseReceiptForOwner(
         fallback = validateGeminiReceiptParseFallbackResponse(retryResponse);
       }
 
-      return standardizeParsedReceiptResultWithDictionary(
+      return await standardizeParsedReceiptResultWithDictionary(
         mergeGeminiFallbackItems(
           {
             ...localResult,
@@ -1331,7 +1338,7 @@ export async function parseReceiptForOwner(
       enrichment = validateGeminiReceiptNameEnrichmentResponse(retryResponse);
     }
 
-    return standardizeParsedReceiptResultWithDictionary(
+    return await standardizeParsedReceiptResultWithDictionary(
       mergeGeminiReceiptNames(
         {
           ...localResult,
@@ -1380,7 +1387,7 @@ export async function matchReceiptForOwner(
 
   let standardizedItems = input.items;
   try {
-    standardizedItems = standardizeMatchReceiptInputItemsWithDictionary(
+    standardizedItems = await standardizeMatchReceiptInputItemsWithDictionary(
       input.items,
       await loadReceiptProductDictionary(),
     );
@@ -1388,7 +1395,7 @@ export async function matchReceiptForOwner(
     console.warn('[receipt] dictionary standardization skipped during match', dictionaryError);
   }
 
-  return matchReceiptItemsAgainstCatalog(receiptId, standardizedItems, data ?? []);
+  return await matchReceiptItemsAgainstCatalog(receiptId, standardizedItems, data ?? []);
 }
 
 function normalizeInventoryAlias(value: string) {
