@@ -44,6 +44,7 @@ type LocalDataState = {
   pendingTransactions: LocalTransactionSummary[];
   isLoading: boolean;
   error: string | null;
+  syncNotice: string | null;
   refresh: () => Promise<void>;
   submitLocalCommand: (rawText: string, source?: CommandSource) => Promise<LocalCommandResult>;
   confirmLocalCommand: (parserResult: ParserResult, customerName?: string) => Promise<LocalCommandResult>;
@@ -65,6 +66,7 @@ type LocalDataState = {
 
 const LocalDataContext = createContext<LocalDataState | undefined>(undefined);
 const LOCAL_REFRESH_TIMEOUT_MS = 12000;
+const DEFAULT_SYNC_NOTICE = 'Offline now. Using local records. We will send updates when internet returns.';
 
 async function createRepositories() {
   const database = await getLocalDatabase();
@@ -155,6 +157,21 @@ async function uploadPendingTransactions(accessToken: string, pending: PendingTr
   return payload.results;
 }
 
+function isConnectivityIssue(caughtError: unknown): boolean {
+  if (!(caughtError instanceof Error)) {
+    return false;
+  }
+
+  const message = caughtError.message.toLowerCase();
+  return (
+    message.includes('network request failed') ||
+    message.includes('fetch failed') ||
+    message.includes('timed out') ||
+    message.includes('cloud bootstrap timed out') ||
+    message.includes('session check timed out')
+  );
+}
+
 async function queryAssistantOnline(params: {
   accessToken: string;
   clientInteractionId: string;
@@ -201,6 +218,7 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
   const [assistantInteractions, setAssistantInteractions] = useState<LocalAssistantInteraction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
 
   const loadCachedData = useCallback(async () => {
     const {
@@ -529,17 +547,29 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setSyncNotice(null);
 
     try {
       const { appStateRepository, appState: state, storeRepository, inventoryRepository, transactionRepository } =
         await loadCachedData();
-      const { data } = await withTimeout(
-        supabase.auth.getSession(),
-        LOCAL_REFRESH_TIMEOUT_MS,
-        'Session check timed out. Loaded local data only.',
-      );
-      const accessToken = data.session?.access_token;
-      const userId = data.session?.user?.id ?? null;
+      let accessToken: string | undefined;
+      let userId: string | null = null;
+
+      try {
+        const sessionResult = await withTimeout(
+          supabase.auth.getSession(),
+          LOCAL_REFRESH_TIMEOUT_MS,
+          'Session check timed out. Loaded local data only.',
+        );
+        accessToken = sessionResult.data.session?.access_token;
+        userId = sessionResult.data.session?.user?.id ?? null;
+      } catch (caughtError) {
+        if (isConnectivityIssue(caughtError)) {
+          setSyncNotice(DEFAULT_SYNC_NOTICE);
+        } else {
+          throw caughtError;
+        }
+      }
 
       if (!isAuthenticated || !accessToken) {
         const guestStoreId = state.activeStoreId ?? `guest-store-${state.guestDeviceId}`;
@@ -560,15 +590,47 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const result = await withTimeout(
-        bootstrapLocalData({
-          storeRepository,
-          inventoryRepository,
-          remoteDataSource: new RemoteDataSource(accessToken),
-        }),
-        LOCAL_REFRESH_TIMEOUT_MS,
-        'Cloud bootstrap timed out. Loaded local cache only.',
-      );
+      let result: { storeId: string; inventoryCount: number } | null = null;
+      try {
+        result = await withTimeout(
+          bootstrapLocalData({
+            storeRepository,
+            inventoryRepository,
+            remoteDataSource: new RemoteDataSource(accessToken),
+          }),
+          LOCAL_REFRESH_TIMEOUT_MS,
+          'Cloud bootstrap timed out. Loaded local cache only.',
+        );
+      } catch (caughtError) {
+        if (!isConnectivityIssue(caughtError)) {
+          throw caughtError;
+        }
+
+        setSyncNotice(DEFAULT_SYNC_NOTICE);
+        await appStateRepository.updateState({
+          migrationStatus: 'not_started',
+          lastMigrationError: null,
+        });
+        setAppState(await appStateRepository.getOrCreateState());
+
+        const fallbackStoreId = state.activeStoreId;
+        if (fallbackStoreId) {
+          const fallbackStore = await storeRepository.getStoreById(fallbackStoreId);
+          setStore(fallbackStore);
+          await reloadStoreData(fallbackStoreId);
+        } else {
+          setStore(null);
+          setInventoryItems([]);
+          setCustomers([]);
+          setRecentTransactions([]);
+          setAssistantInteractions([]);
+        }
+
+        return;
+      }
+      if (!result) {
+        return;
+      }
 
       const sourceStoreId = state.activeStoreId ?? `guest-store-${state.guestDeviceId}`;
       const pendingCount = await transactionRepository.countPendingTransactionsForStore(sourceStoreId);
@@ -604,11 +666,29 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
         });
         setAppState(await appStateRepository.getOrCreateState());
 
-        const uploadResults = await withTimeout(
-          uploadPendingTransactions(accessToken, pendingTransactions),
-          LOCAL_REFRESH_TIMEOUT_MS,
-          'Sync upload timed out. Pending records were kept locally.',
-        );
+        let uploadResults: Array<{ clientMutationId: string; status: 'synced' | 'needs_review' | 'failed' }> = [];
+        try {
+          uploadResults = await withTimeout(
+            uploadPendingTransactions(accessToken, pendingTransactions),
+            LOCAL_REFRESH_TIMEOUT_MS,
+            'Sync upload timed out. Pending records were kept locally.',
+          );
+        } catch (caughtError) {
+          if (!isConnectivityIssue(caughtError)) {
+            throw caughtError;
+          }
+
+          setSyncNotice(DEFAULT_SYNC_NOTICE);
+          await appStateRepository.updateState({
+            migrationStatus: 'failed',
+            lastMigrationError: 'Internet unavailable. Pending records will retry when connection returns.',
+          });
+          setAppState(await appStateRepository.getOrCreateState());
+          const refreshedStore = await storeRepository.getStoreById(result.storeId);
+          setStore(refreshedStore);
+          await reloadStoreData(result.storeId);
+          return;
+        }
         const syncedMutationIds = uploadResults
           .filter((resultRow) => resultRow.status === 'synced')
           .map((resultRow) => resultRow.clientMutationId);
@@ -635,7 +715,12 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
       setStore(refreshedStore);
       await reloadStoreData(result.storeId);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Unable to load local data.');
+      if (isConnectivityIssue(caughtError)) {
+        setSyncNotice(DEFAULT_SYNC_NOTICE);
+        setError(null);
+      } else {
+        setError(caughtError instanceof Error ? caughtError.message : 'Unable to load local data.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -656,6 +741,7 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
       pendingTransactions: recentTransactions.filter((transaction) => transaction.syncStatus === 'pending'),
       isLoading,
       error,
+      syncNotice,
       refresh,
       submitLocalCommand,
       confirmLocalCommand,
@@ -673,6 +759,7 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
       confirmLocalCommand,
       customers,
       error,
+      syncNotice,
       inventoryItems,
       isLoading,
       recentTransactions,

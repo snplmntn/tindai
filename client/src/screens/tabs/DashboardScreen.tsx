@@ -62,6 +62,7 @@ export function DashboardScreen() {
     pendingTransactions,
     isLoading,
     error,
+    syncNotice,
     refresh,
     submitLocalCommand,
     confirmLocalCommand,
@@ -373,6 +374,9 @@ export function DashboardScreen() {
         <View style={styles.statusPill}>
           <Text style={styles.statusText}>{appState?.mode === 'authenticated' ? 'May account' : 'Walang account'}</Text>
         </View>
+        {syncNotice ? (
+          <View style={styles.offlineDot} />
+        ) : null}
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -722,6 +726,12 @@ const styles = StyleSheet.create({
     color: '#00604c',
     fontSize: 12,
     fontWeight: '700',
+  },
+  offlineDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: '#b28200',
   },
   voiceSection: {
     alignItems: 'center',
