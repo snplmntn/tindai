@@ -10,7 +10,7 @@ export default function Home() {
         </header>
 
         <section className="grid min-h-[calc(100vh-72px)] items-center gap-10 py-6 md:grid-cols-2 md:py-10">
-          <div className="mx-auto w-full max-w-md md:mx-0">
+          <div className="mx-auto w-full max-w-xl md:mx-0">
             <p className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-700">
               Para sa sari-sari store
             </p>
@@ -18,7 +18,7 @@ export default function Home() {
               Para sa MSME na walang oras sa komplikado - simple, mabilis, at pang-negosyo.
             </h1>
             <p className="mt-4 text-base leading-7 text-slate-700">
-              Bawas hula sa negosyo: kita agad ang kulang at mabenta kahit walang internet.
+              Bawas hula sa iyong negosyo, kita mo agad ang kulang at mabenta kahit walang internet.
             </p>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -88,8 +88,13 @@ export default function Home() {
                   <p className="mt-1 text-right text-[10px] text-slate-400">78% Optimized</p>
                 </div>
 
-                <div className="absolute bottom-6 left-1/2 min-w-[210px] -translate-x-1/2 rounded-2xl bg-emerald-700 px-5 py-3 text-center text-lg font-semibold leading-none whitespace-nowrap text-white shadow">
-                  "Nagbenta ng 2 kape"
+                <div className="absolute bottom-6 left-1/2 flex min-w-[210px] -translate-x-1/2 items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-5 py-3 text-center text-lg font-semibold leading-none whitespace-nowrap text-white shadow">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/20">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-white">
+                    <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3zm5-3a1 1 0 1 0-2 0 3 3 0 1 1-6 0 1 1 0 1 0-2 0 5.002 5.002 0 0 0 4 4.9V18H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.1A5.002 5.002 0 0 0 17 11z" />
+                    </svg>
+                  </span>
+                  <span>"Nagbenta ng 2 kape"</span>
                 </div>
 
                 <div className="absolute right-2 top-2 rounded-full bg-emerald-700 p-2 text-white shadow">
