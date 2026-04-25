@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
@@ -14,6 +14,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ReceiptCaptureFlow } from '@/features/receipt-scan/ReceiptCaptureFlow';
+import {
+  cleanupReceiptImageDraft,
+  formatReceiptFileSize,
+  type ReceiptImageDraft,
+} from '@/features/receipt-scan/receiptCapture';
 import { useLocalData } from '@/features/local-data/LocalDataContext';
 import type { LocalInventoryItem } from '@/features/local-db/types';
 import { colors } from '@/navigation/colors';
@@ -113,6 +119,8 @@ export function InventoryScreen() {
     updateInventoryItemMetadata,
     archiveLocalInventoryItem,
   } = useLocalData();
+  const [isReceiptFlowVisible, setIsReceiptFlowVisible] = useState(false);
+  const [savedReceiptDraft, setSavedReceiptDraft] = useState<ReceiptImageDraft | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('name');
   const [lowStockOnly, setLowStockOnly] = useState(false);
@@ -324,11 +332,22 @@ export function InventoryScreen() {
     }
   }, [archiveLocalInventoryItem, selectedItem]);
 
+  function handleSaveReceiptDraft(draft: ReceiptImageDraft) {
+    if (savedReceiptDraft) {
+      void cleanupReceiptImageDraft(savedReceiptDraft);
+    }
+
+    setSavedReceiptDraft(draft);
+    setIsReceiptFlowVisible(false);
+    setFeedbackMessage('Naihanda na ang larawan ng resibo.');
+  }
+
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <View style={styles.screen}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.shell}>
+    <>
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
+        <View style={styles.screen}>
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <View style={styles.shell}>
             <View style={styles.headerRow}>
               <View style={styles.headerMenuButton}>
                 <Ionicons color={colors.primaryDeep} name="menu-outline" size={24} />
@@ -387,31 +406,69 @@ export function InventoryScreen() {
               </View>
             ) : null}
 
-            {feedbackMessage ? (
-              <View style={styles.feedbackCard}>
-                <Text style={styles.feedbackText}>{feedbackMessage}</Text>
-              </View>
-            ) : null}
+              {feedbackMessage ? (
+                <View style={styles.feedbackCard}>
+                  <Text style={styles.feedbackText}>{feedbackMessage}</Text>
+                </View>
+              ) : null}
 
-            {showPendingPanel ? (
-              <View style={styles.pendingCard}>
-                <Text style={styles.pendingTitle}>May naghihintay pa maipadala</Text>
-                {pendingTransactions.slice(0, 3).map((transaction, index) => (
-                  <View
-                    key={transaction.id}
-                    style={[
-                      styles.pendingRow,
-                      index < Math.min(pendingTransactions.length, 3) - 1 ? styles.pendingRowDivider : undefined,
-                    ]}
-                  >
-                    <Text style={styles.pendingText}>{transaction.rawText}</Text>
-                    <Text style={styles.pendingMeta}>
-                      {formatPendingLine(transaction.createdAt, transaction.source, transaction.intent)}
+              <View style={styles.receiptCard}>
+                <View style={styles.receiptHeader}>
+                  <View style={styles.receiptIconWrap}>
+                    <Ionicons color={colors.primaryDeep} name="receipt-outline" size={20} />
+                  </View>
+                  <View style={styles.receiptHeaderBody}>
+                    <Text style={styles.receiptTitle}>Ihanda ang resibo ng restock</Text>
+                    <Text style={styles.receiptBody}>
+                      Kumuha o pumili ng malinaw na litrato ng resibo. Isi-save muna ito sa phone bago ang susunod na hakbang.
                     </Text>
                   </View>
-                ))}
+                </View>
+
+                <Pressable onPress={() => setIsReceiptFlowVisible(true)} style={styles.receiptButton}>
+                  <Ionicons color="#ffffff" name="camera-outline" size={18} />
+                  <Text style={styles.receiptButtonLabel}>
+                    {savedReceiptDraft ? 'Palitan ang resibo' : 'Kuhanan ang resibo'}
+                  </Text>
+                </Pressable>
+
+                {savedReceiptDraft ? (
+                  <View style={styles.savedReceiptCard}>
+                    <Text style={styles.savedReceiptTitle}>Huling larawang naihanda</Text>
+                    <Text style={styles.savedReceiptMeta}>
+                      {savedReceiptDraft.source === 'camera' ? 'Kinuha sa camera' : 'Galing sa gallery'}
+                    </Text>
+                    <Text style={styles.savedReceiptMeta}>
+                      {savedReceiptDraft.width} x {savedReceiptDraft.height} - {formatReceiptFileSize(savedReceiptDraft.fileSize)}
+                    </Text>
+                    <Text style={styles.savedReceiptMeta}>
+                      {savedReceiptDraft.qualityIssues.length > 0
+                        ? `${savedReceiptDraft.qualityIssues.length} paalala bago iproseso`
+                        : 'Mukhang malinaw ang kuha'}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
+
+              {showPendingPanel ? (
+                <View style={styles.pendingCard}>
+                  <Text style={styles.pendingTitle}>May naghihintay pa maipadala</Text>
+                  {pendingTransactions.slice(0, 3).map((transaction, index) => (
+                    <View
+                      key={transaction.id}
+                      style={[
+                        styles.pendingRow,
+                        index < Math.min(pendingTransactions.length, 3) - 1 ? styles.pendingRowDivider : undefined,
+                      ]}
+                    >
+                      <Text style={styles.pendingText}>{transaction.rawText}</Text>
+                      <Text style={styles.pendingMeta}>
+                        {formatPendingLine(transaction.createdAt, transaction.source, transaction.intent)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
 
             {filteredItems.length === 0 ? (
               <View
@@ -504,18 +561,25 @@ export function InventoryScreen() {
                 ))}
               </View>
             )}
-          </View>
-        </ScrollView>
+            </View>
+          </ScrollView>
 
-        <Pressable
-          testID="inventory-add-open-button"
-          accessibilityRole="button"
-          onPress={handleOpenAddItem}
-          style={styles.fab}
-        >
-          <Ionicons color="#FFFFFF" name="add" size={22} />
-        </Pressable>
-      </View>
+          <Pressable
+            testID="inventory-add-open-button"
+            accessibilityRole="button"
+            onPress={handleOpenAddItem}
+            style={styles.fab}
+          >
+            <Ionicons color="#FFFFFF" name="add" size={22} />
+          </Pressable>
+        </View>
+      </SafeAreaView>
+
+      <ReceiptCaptureFlow
+        visible={isReceiptFlowVisible}
+        onClose={() => setIsReceiptFlowVisible(false)}
+        onSaveDraft={handleSaveReceiptDraft}
+      />
 
       <Modal animationType="slide" transparent visible={isFilterVisible} onRequestClose={() => setIsFilterVisible(false)}>
         <View style={styles.modalBackdrop}>
@@ -761,7 +825,7 @@ export function InventoryScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </>
   );
 }
 
@@ -885,6 +949,74 @@ const styles = StyleSheet.create({
   feedbackText: {
     color: colors.primaryDeep,
     fontSize: 13,
+    fontWeight: '600',
+  },
+  receiptCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#d6ebe1',
+    padding: 16,
+    gap: 14,
+  },
+  receiptHeader: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  receiptIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#edf7f1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  receiptHeaderBody: {
+    flex: 1,
+    gap: 4,
+  },
+  receiptTitle: {
+    color: '#181d1b',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  receiptBody: {
+    color: '#4d5a53',
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '600',
+  },
+  receiptButton: {
+    minHeight: 48,
+    borderRadius: 14,
+    backgroundColor: '#145746',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  receiptButtonLabel: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  savedReceiptCard: {
+    borderRadius: 16,
+    backgroundColor: '#f4faf6',
+    borderWidth: 1,
+    borderColor: '#d6ebe1',
+    padding: 14,
+    gap: 3,
+  },
+  savedReceiptTitle: {
+    color: '#145746',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  savedReceiptMeta: {
+    color: '#4d5a53',
+    fontSize: 12,
+    lineHeight: 18,
     fontWeight: '600',
   },
   pendingCard: {
@@ -1247,3 +1379,4 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
 });
+
