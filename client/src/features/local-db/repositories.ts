@@ -184,7 +184,8 @@ export class AppStateRepository {
          migration_status,
          updated_at
        )
-       values (1, 'guest', ?, 0, 'pending', 'pending', 0, 0, 'not_started', ?)`,
+       values (1, 'guest', ?, 0, 'pending', 'pending', 0, 0, 'not_started', ?)
+       on conflict(id) do nothing`,
       [guestDeviceId, now],
     );
 

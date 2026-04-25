@@ -1,7 +1,45 @@
 import { describe, expect, it, vi } from 'vitest';
 import type * as SQLite from 'expo-sqlite';
 
-import { CustomerRepository, InventoryRepository, TransactionRepository } from './repositories';
+import { AppStateRepository, CustomerRepository, InventoryRepository, TransactionRepository } from './repositories';
+
+describe('AppStateRepository', () => {
+  it('initializes singleton app state safely when multiple callers race', async () => {
+    const getFirstAsync = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        mode: 'guest',
+        guest_device_id: 'guest-device-1',
+        active_store_id: null,
+        onboarding_completed: 0,
+        auth_mode: 'magic_link',
+        microphone_permission: 'pending',
+        storage_permission: 'pending',
+        tutorial_shown: 0,
+        guest_converted: 0,
+        migration_status: 'not_started',
+        migration_owner_user_id: null,
+        pending_claim_owner_user_id: null,
+        last_migration_error: null,
+        last_bootstrap_at: null,
+        updated_at: '2026-04-25T00:00:00.000Z',
+      });
+
+    const runAsync = vi.fn().mockResolvedValue(undefined);
+    const database = { getFirstAsync, runAsync } as unknown as SQLite.SQLiteDatabase;
+
+    const repository = new AppStateRepository(database);
+    const state = await repository.getOrCreateState();
+
+    expect(runAsync).toHaveBeenCalledWith(
+      expect.stringContaining('on conflict(id) do nothing'),
+      expect.any(Array),
+    );
+    expect(state.mode).toBe('guest');
+    expect(state.guestDeviceId).toBe('guest-device-1');
+  });
+});
 
 describe('TransactionRepository', () => {
   it('lists recent store transactions newest-first for dashboard history', async () => {
