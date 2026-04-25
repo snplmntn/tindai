@@ -5,6 +5,7 @@ import { analyticsRouter } from './analytics.routes';
 import { authRouter } from './auth.routes';
 import { inventoryRouter } from './inventory.routes';
 import { profileRouter } from './profile.routes';
+import { receiptsRouter } from './receipts.routes';
 import { storeRouter } from './store.routes';
 import { syncRouter } from './sync.routes';
 
@@ -15,5 +16,6 @@ apiRouter.use('/profile', profileRouter);
 apiRouter.use('/store', storeRouter);
 apiRouter.use('/analytics', analyticsRouter);
 apiRouter.use('/', inventoryRouter);
+apiRouter.use('/', receiptsRouter);
 apiRouter.use('/', assistantRouter);
 apiRouter.use('/', syncRouter);

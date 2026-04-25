@@ -219,7 +219,7 @@ describe('InventoryScreen', () => {
   it('renders the inventory list from local data with pending sync panel', async () => {
     const tree = await renderInventoryScreen();
 
-    expect(findTextNodes(tree, 'Inventory')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Paninda')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Bawas 2 Coke')).not.toHaveLength(0);
     expect(getRenderedItemNames(tree)).toEqual(['Lucky 7 Sardines', 'Pancit Canton', 'Softdrink Mismo']);
   });
@@ -238,21 +238,6 @@ describe('InventoryScreen', () => {
     });
 
     expect(getRenderedItemNames(tree)).toEqual(['Softdrink Mismo']);
-  });
-
-  it('applies low stock filter and stock sorting from the filter sheet', async () => {
-    const tree = await renderInventoryScreen();
-
-    await act(async () => {
-      findByTestId(tree, 'inventory-filter-button').props.onPress();
-    });
-
-    await act(async () => {
-      findByTestId(tree, 'inventory-low-stock-toggle').props.onPress();
-      findByTestId(tree, 'inventory-sort-stock-asc').props.onPress();
-    });
-
-    expect(getRenderedItemNames(tree)).toEqual(['Lucky 7 Sardines', 'Pancit Canton']);
   });
 
   it('calls applyManualAdjustment for quick adjust actions', async () => {

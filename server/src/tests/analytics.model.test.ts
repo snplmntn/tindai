@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getSupabaseAdminClient } from '../config/supabase';
 import { getEnv } from '../config/env';
@@ -119,6 +119,34 @@ function createSupabaseMock() {
       };
     }
 
+    if (table === 'customers') {
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            gt: vi.fn(() => ({
+              order: vi.fn(() => ({
+                limit: vi.fn(() => ({
+                  returns: vi.fn().mockResolvedValue({
+                    data: [
+                      {
+                        display_name: 'Mang Juan',
+                        utang_balance: 80,
+                      },
+                      {
+                        display_name: 'Aling Maria',
+                        utang_balance: 35,
+                      },
+                    ],
+                    error: null,
+                  }),
+                })),
+              })),
+            })),
+          })),
+        })),
+      };
+    }
+
     throw new Error(`Unhandled table mock: ${table}`);
   });
 
@@ -128,6 +156,8 @@ function createSupabaseMock() {
 describe('analytics.model', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-25T10:00:00.000Z'));
     mockedGetStoreByOwnerId.mockResolvedValue({
       id: 'store-1',
       ownerId: 'user-1',
@@ -147,17 +177,33 @@ describe('analytics.model', () => {
     });
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('builds preset shopping lists and enriches the summary prompt with grocery-trip data', async () => {
     const supabase = createSupabaseMock();
     mockedGetSupabaseAdminClient.mockReturnValue({ from: supabase.from } as never);
-    mockedGenerateGeminiText.mockResolvedValue('Restock Coke Mismo before the weekend.');
+    mockedGenerateGeminiText.mockResolvedValue('Mag-restock ng Coke Mismo bago mag-weekend.');
 
     const result = await getAnalyticsSummaryForOwner('user-1');
 
+    expect(result.overview.itemsSoldToday).toMatchObject({
+      label: 'Nabenta Ngayon',
+      value: '3 piraso',
+    });
+    expect(result.overview.salesToday.caption).toBe('Halaga ng benta');
+    expect(result.overview.utangSummary).toMatchObject({
+      totalBalance: 'P115',
+    });
+    expect(result.overview.utangSummary.topCustomers[0]).toMatchObject({
+      customerName: 'Mang Juan',
+      balance: 'P80',
+    });
     expect(result.predictions.shoppingPresets.map((preset) => preset.label)).toEqual([
-      '7 days',
-      '14 days',
-      '1 month',
+      '7 araw',
+      '14 araw',
+      '1 buwan',
     ]);
     expect(result.predictions.shoppingListByPreset['7d'][0]).toMatchObject({
       itemName: 'Coke Mismo',
@@ -174,7 +220,8 @@ describe('analytics.model', () => {
       recommendedBuyQuantity: 10,
       horizonDays: 30,
     });
-    expect(result.predictions.aiSummary).toBe('Restock Coke Mismo before the weekend.');
-    expect(mockedGenerateGeminiText).toHaveBeenCalledWith(expect.stringContaining('7-day grocery trip'));
+    expect(result.predictions.aiSummary).toBe('Mag-restock ng Coke Mismo bago mag-weekend.');
+    expect(mockedGenerateGeminiText).toHaveBeenCalledWith(expect.stringContaining('Listahan ng bibilhin sa 7 araw'));
+    expect(result.predictions.recommendations[0]?.title).toBe('Simpleng Payo');
   });
 });

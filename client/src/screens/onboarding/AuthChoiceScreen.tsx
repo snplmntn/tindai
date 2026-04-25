@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { mobileCopy } from '@/copy/mobileCopy';
 import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/navigation/colors';
 
@@ -30,7 +31,7 @@ export function AuthChoiceScreen() {
     <SafeAreaView style={styles.screen}>
       <View style={styles.topBar}>
         <View style={styles.topBarSpacer} />
-        <Text style={styles.topBarTitle}>Setup Progress</Text>
+        <Text style={styles.topBarTitle}>{mobileCopy.onboardingTopBarTitle}</Text>
         <View style={styles.topBarSpacer} />
       </View>
 
@@ -70,7 +71,7 @@ export function AuthChoiceScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f7faf7',
+    backgroundColor: colors.background,
   },
   topBar: {
     minHeight: 64,

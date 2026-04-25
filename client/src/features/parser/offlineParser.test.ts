@@ -40,6 +40,18 @@ const inventory: LocalInventoryItem[] = [
     lowStockThreshold: 6,
     updatedAt: '2026-04-25T00:00:00.000Z',
   },
+  {
+    id: 'item-test',
+    storeId: 'store-1',
+    name: 'Test',
+    aliases: ['test'],
+    unit: 'pcs',
+    cost: null,
+    price: 1,
+    currentStock: 100,
+    lowStockThreshold: 10,
+    updatedAt: '2026-04-25T00:00:00.000Z',
+  },
 ];
 
 describe('parseOfflineCommand', () => {
@@ -56,7 +68,7 @@ describe('parseOfflineCommand', () => {
       status: 'ready_to_apply',
       credit: { is_utang: false },
     });
-    expect(result.confidence).toBeGreaterThanOrEqual(0.85);
+    expect(result.confidence).toBeGreaterThanOrEqual(0.6);
     expect(result.items).toEqual([
       expect.objectContaining({
         item_id: itemId,
@@ -137,7 +149,7 @@ describe('parseOfflineCommand', () => {
 
     expect(result.intent).toBe('unknown');
     expect(result.status).toBe('unparsed');
-    expect(result.confidence).toBeLessThan(0.6);
+    expect(result.confidence).toBeLessThan(0.35);
     expect(result.items).toEqual([]);
   });
 
@@ -184,5 +196,79 @@ describe('parseOfflineCommand', () => {
     });
     expect(result.items).toEqual([]);
     expect(result.notes).toContain('online_required');
+  });
+
+  it('parses slash-variant sale command with numeric quantity', () => {
+    const result = parseOfflineCommand('may bumili /bawas ng 5 test', inventory);
+
+    expect(result).toMatchObject({
+      intent: 'sale',
+      status: 'ready_to_apply',
+      credit: { is_utang: false },
+    });
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        item_id: 'item-test',
+        quantity: 5,
+        quantity_delta: -5,
+      }),
+    ]);
+  });
+
+  it('parses utang command with tagalog number words', () => {
+    const result = parseOfflineCommand('umutang si marc ng limang test', inventory);
+
+    expect(result).toMatchObject({
+      intent: 'utang',
+      status: 'ready_to_apply',
+      credit: {
+        is_utang: true,
+        customer_name: 'marc',
+      },
+    });
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        item_id: 'item-test',
+        quantity: 5,
+        quantity_delta: -5,
+      }),
+    ]);
+  });
+
+  it('parses quantity when number appears after item name', () => {
+    const result = parseOfflineCommand('bawas test 5', inventory);
+
+    expect(result).toMatchObject({
+      intent: 'sale',
+      status: 'ready_to_apply',
+      credit: { is_utang: false },
+    });
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        item_id: 'item-test',
+        quantity: 5,
+        quantity_delta: -5,
+      }),
+    ]);
+  });
+
+  it('parses hyphenated utang term and captures customer with kay', () => {
+    const result = parseOfflineCommand('i-lista kay marc ang limang test', inventory);
+
+    expect(result).toMatchObject({
+      intent: 'utang',
+      status: 'ready_to_apply',
+      credit: {
+        is_utang: true,
+        customer_name: 'marc',
+      },
+    });
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        item_id: 'item-test',
+        quantity: 5,
+        quantity_delta: -5,
+      }),
+    ]);
   });
 });

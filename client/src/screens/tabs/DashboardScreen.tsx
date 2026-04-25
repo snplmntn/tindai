@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -9,16 +9,21 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { detectLanguageStyle } from '@/features/assistant/assistantLanguageDetection';
-import type { CommandSource } from '@/features/commands/localCommandService';
-import { useAuth } from '@/context/AuthContext';
-import { useLocalData } from '@/features/local-data/LocalDataContext';
-import type { ParserResult } from '@/features/parser/offlineParser';
-import { getLanguageCode, speakText, stopSpeaking } from '@/services/ttsService';
+import { mobileCopy } from "@/copy/mobileCopy";
+import { detectLanguageStyle } from "@/features/assistant/assistantLanguageDetection";
+import type { CommandSource } from "@/features/commands/localCommandService";
+import { useAuth } from "@/context/AuthContext";
+import { useLocalData } from "@/features/local-data/LocalDataContext";
+import type { ParserResult } from "@/features/parser/offlineParser";
+import {
+  getLanguageCode,
+  speakText,
+  stopSpeaking,
+} from "@/services/ttsService";
 
 type SpeechRecognitionStartOptions = {
   lang?: string;
@@ -34,14 +39,21 @@ type SpeechRecognitionModuleRuntime = {
     start: (options?: SpeechRecognitionStartOptions) => void;
     stop: () => void;
   };
-  useSpeechRecognitionEvent: (eventName: string, listener: (event: any) => void) => void;
+  useSpeechRecognitionEvent: (
+    eventName: string,
+    listener: (event: any) => void,
+  ) => void;
 };
 
 const speechRecognitionRuntime: SpeechRecognitionModuleRuntime | null = (() => {
   try {
-    const runtime = require('expo-speech-recognition') as SpeechRecognitionModuleRuntime;
+    const runtime =
+      require("expo-speech-recognition") as SpeechRecognitionModuleRuntime;
 
-    if (!runtime?.ExpoSpeechRecognitionModule?.start || !runtime?.ExpoSpeechRecognitionModule?.requestPermissionsAsync) {
+    if (
+      !runtime?.ExpoSpeechRecognitionModule?.start ||
+      !runtime?.ExpoSpeechRecognitionModule?.requestPermissionsAsync
+    ) {
       return null;
     }
 
@@ -51,19 +63,35 @@ const speechRecognitionRuntime: SpeechRecognitionModuleRuntime | null = (() => {
   }
 })();
 
-const ExpoSpeechRecognitionModule = speechRecognitionRuntime?.ExpoSpeechRecognitionModule ?? {
-  isRecognitionAvailable: () => false,
-  requestPermissionsAsync: async () => ({ granted: false }),
-  start: (_options?: SpeechRecognitionStartOptions) => undefined,
-  stop: () => undefined,
-};
+const ExpoSpeechRecognitionModule =
+  speechRecognitionRuntime?.ExpoSpeechRecognitionModule ?? {
+    isRecognitionAvailable: () => false,
+    requestPermissionsAsync: async () => ({ granted: false }),
+    start: (_options?: SpeechRecognitionStartOptions) => undefined,
+    stop: () => undefined,
+  };
 
 const useSpeechRecognitionEvent =
   speechRecognitionRuntime?.useSpeechRecognitionEvent ??
   ((_eventName: string, _listener: (event: any) => void) => undefined);
 
+function getStoreInitial(storeName: string | undefined) {
+  const trimmedName = storeName?.trim() ?? "";
+  if (!trimmedName) {
+    return "T";
+  }
+
+  return trimmedName[0]?.toUpperCase() ?? "T";
+}
+
 export function DashboardScreen() {
-  const { authMode, microphonePermission, requestMicrophonePermission, openDeviceSettings, showLogin } = useAuth();
+  const {
+    authMode,
+    microphonePermission,
+    requestMicrophonePermission,
+    openDeviceSettings,
+    showLogin,
+  } = useAuth();
   const {
     appState,
     store,
@@ -71,10 +99,7 @@ export function DashboardScreen() {
     customers,
     assistantInteractions,
     pendingTransactions,
-    isLoading,
     error,
-    syncNotice,
-    refresh,
     submitLocalCommand,
     confirmLocalCommand,
     applyManualAdjustment,
@@ -83,19 +108,24 @@ export function DashboardScreen() {
     createLocalInventoryItem,
     submitAssistantQuestion,
   } = useLocalData();
-  const [commandText, setCommandText] = useState('');
+  const [commandText, setCommandText] = useState("");
   const [commandMessage, setCommandMessage] = useState<string | null>(null);
   const [isSubmittingCommand, setIsSubmittingCommand] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [pendingParserResult, setPendingParserResult] = useState<ParserResult | null>(null);
-  const [pendingCustomerName, setPendingCustomerName] = useState('');
+  const [pendingParserResult, setPendingParserResult] =
+    useState<ParserResult | null>(null);
+  const [pendingCustomerName, setPendingCustomerName] = useState("");
   const [pendingAction, setPendingAction] = useState(false);
-  const [manualAdjustingItemId, setManualAdjustingItemId] = useState<string | null>(null);
+  const [manualAdjustingItemId, setManualAdjustingItemId] = useState<
+    string | null
+  >(null);
   const [isFallbackVisible, setIsFallbackVisible] = useState(false);
-  const [fallbackIntent, setFallbackIntent] = useState<'sale' | 'restock' | 'utang'>('sale');
-  const [fallbackItemId, setFallbackItemId] = useState<string>('');
+  const [fallbackIntent, setFallbackIntent] = useState<
+    "sale" | "restock" | "utang"
+  >("sale");
+  const [fallbackItemId, setFallbackItemId] = useState<string>("");
   const [fallbackQuantity, setFallbackQuantity] = useState(1);
-  const [fallbackCustomerName, setFallbackCustomerName] = useState('');
+  const [fallbackCustomerName, setFallbackCustomerName] = useState("");
   const [isSavingFallback, setIsSavingFallback] = useState(false);
   const [isSavingCustomer, setIsSavingCustomer] = useState(false);
   const [assistantAnswer, setAssistantAnswer] = useState<{
@@ -107,62 +137,83 @@ export function DashboardScreen() {
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false);
   const [micBannerDismissed, setMicBannerDismissed] = useState(false);
   const [isAddItemVisible, setIsAddItemVisible] = useState(false);
-  const [itemName, setItemName] = useState('');
-  const [itemQuantity, setItemQuantity] = useState('0');
-  const [itemCost, setItemCost] = useState('');
-  const [itemPrice, setItemPrice] = useState('');
+  const [itemName, setItemName] = useState("");
+  const [itemQuantity, setItemQuantity] = useState("0");
+  const [itemCost, setItemCost] = useState("");
+  const [itemPrice, setItemPrice] = useState("");
   const [itemFormError, setItemFormError] = useState<string | null>(null);
   const [isSavingItem, setIsSavingItem] = useState(false);
   const hasSpeechRecognitionNative = speechRecognitionRuntime !== null;
-  const isGuestMode = authMode === 'guest' || appState?.mode === 'guest';
-  const isMicDisabled = microphonePermission === 'denied';
+  const isGuestMode = authMode === "guest" || appState?.mode === "guest";
+  const isMicDisabled = microphonePermission === "denied";
 
   const lowStockItems = useMemo(
-    () => inventoryItems.filter((item) => item.currentStock <= item.lowStockThreshold),
+    () =>
+      inventoryItems.filter(
+        (item) => item.currentStock <= item.lowStockThreshold,
+      ),
     [inventoryItems],
   );
   const inventoryValue = useMemo(
-    () => inventoryItems.reduce((total, item) => total + item.currentStock * item.price, 0),
+    () =>
+      inventoryItems.reduce(
+        (total, item) => total + item.currentStock * item.price,
+        0,
+      ),
     [inventoryItems],
   );
 
   const selectedFallbackItem = useMemo(
-    () => inventoryItems.find((item) => item.id === fallbackItemId) ?? inventoryItems[0] ?? null,
+    () =>
+      inventoryItems.find((item) => item.id === fallbackItemId) ??
+      inventoryItems[0] ??
+      null,
     [fallbackItemId, inventoryItems],
   );
 
-  const buildConfirmationText = useCallback((parserResult: ParserResult) => {
-    const itemSummary = parserResult.items
-      .map((item) => `${Math.abs(item.quantity_delta)} ${item.item_name}`)
-      .join(' + ');
+  const buildConfirmationText = useCallback(
+    (parserResult: ParserResult) => {
+      const itemSummary = parserResult.items
+        .map((item) => `${Math.abs(item.quantity_delta)} ${item.item_name}`)
+        .join(" + ");
 
-    if (parserResult.intent === 'restock') {
-      return `Dagdag ${itemSummary}?`;
-    }
+      if (parserResult.intent === "restock") {
+        return `Dagdag ${itemSummary}?`;
+      }
 
-    if (parserResult.intent === 'utang') {
-      const customerName = parserResult.credit.customer_name ?? pendingCustomerName.trim();
-      return customerName ? `Utang ni ${customerName}: ${itemSummary}?` : `Utang: ${itemSummary}?`;
-    }
+      if (parserResult.intent === "utang") {
+        const customerName =
+          parserResult.credit.customer_name ?? pendingCustomerName.trim();
+        return customerName
+          ? `Utang ni ${customerName}: ${itemSummary}?`
+          : `Utang: ${itemSummary}?`;
+      }
 
-    return `Bawas ${itemSummary}?`;
-  }, [pendingCustomerName]);
+      return `Bawas ${itemSummary}?`;
+    },
+    [pendingCustomerName],
+  );
 
   const openFallback = useCallback(
     (options?: { parserResult?: ParserResult }) => {
       const parserResult = options?.parserResult;
-      const defaultItemId = inventoryItems[0]?.id ?? '';
-      const inferredItemId = parserResult?.items[0]?.item_id ?? (fallbackItemId || defaultItemId);
+      const defaultItemId = inventoryItems[0]?.id ?? "";
+      const inferredItemId =
+        parserResult?.items[0]?.item_id ?? (fallbackItemId || defaultItemId);
       const inferredQuantity = parserResult?.items[0]?.quantity ?? 1;
       const inferredIntent =
-        parserResult?.intent === 'sale' || parserResult?.intent === 'restock' || parserResult?.intent === 'utang'
+        parserResult?.intent === "sale" ||
+        parserResult?.intent === "restock" ||
+        parserResult?.intent === "utang"
           ? parserResult.intent
           : fallbackIntent;
 
       setFallbackIntent(inferredIntent);
       setFallbackItemId(inferredItemId);
       setFallbackQuantity(Math.max(1, Math.floor(inferredQuantity)));
-      setFallbackCustomerName(parserResult?.credit.customer_name ?? pendingCustomerName.trim());
+      setFallbackCustomerName(
+        parserResult?.credit.customer_name ?? pendingCustomerName.trim(),
+      );
       setIsFallbackVisible(true);
     },
     [fallbackIntent, fallbackItemId, inventoryItems, pendingCustomerName],
@@ -176,42 +227,53 @@ export function DashboardScreen() {
       try {
         const result = await submitLocalCommand(rawText, source);
 
-        if (result.status === 'applied') {
-          setCommandText('');
+        if (result.status === "applied") {
+          setCommandText("");
           setPendingParserResult(null);
-          setPendingCustomerName('');
-          setCommandMessage('Naitala na. Hihintayin lang ang internet para maipadala.');
+          setPendingCustomerName("");
+          setCommandMessage(
+            "Naitala na. Hihintayin lang ang internet para maipadala.",
+          );
           return;
         }
 
-        if (result.status === 'online_required') {
+        if (result.status === "online_required") {
           setPendingParserResult(null);
-          setPendingCustomerName('');
+          setPendingCustomerName("");
           setIsSubmittingQuestion(true);
           await stopSpeaking();
-          const answer = await submitAssistantQuestion(rawText, source === 'voice' ? 'voice' : 'text');
+          const answer = await submitAssistantQuestion(
+            rawText,
+            source === "voice" ? "voice" : "text",
+          );
           setAssistantAnswer({
             questionText: rawText,
             answerText: answer.answerText,
             spokenText: answer.spokenText,
           });
-          setCommandMessage('Nasagot na ang tanong mo.');
+          setCommandMessage("Nasagot na ang tanong mo.");
           return;
         }
 
-        if (result.status === 'needs_confirmation') {
+        if (result.status === "needs_confirmation") {
           setPendingParserResult(result.parserResult);
-          setPendingCustomerName(result.parserResult.credit.customer_name ?? '');
-          setCommandMessage('Pakikumpirma muna bago itala.');
+          setPendingCustomerName(
+            result.parserResult.credit.customer_name ?? "",
+          );
+          setCommandMessage("Pakikumpirma muna bago itala.");
           return;
         }
 
         setPendingParserResult(null);
         setPendingCustomerName('');
-        setCommandMessage('Hindi malinaw ang utos. Pakiulit o ayusin ang sulat.');
-        openFallback();
+        setCommandMessage('Hindi malinaw ang sinabi mo. Pakiulit o ayusin ang pag-type.');
+        openFallback({ parserResult: result.parserResult });
       } catch (caughtError) {
-        setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Hindi naitala. Subukan ulit.');
+        setCommandMessage(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Hindi naitala. Subukan ulit.",
+        );
       } finally {
         setIsSubmittingCommand(false);
         setIsSubmittingQuestion(false);
@@ -222,7 +284,7 @@ export function DashboardScreen() {
 
   const handleSpeakAssistantAnswer = useCallback(async () => {
     if (!assistantAnswer?.spokenText) {
-      setCommandMessage('Wala pang babasahing sagot.');
+      setCommandMessage("Wala pang babasahing sagot.");
       return;
     }
 
@@ -232,18 +294,18 @@ export function DashboardScreen() {
     });
 
     if (!result.spoken) {
-      setCommandMessage('Hindi mabasa nang malakas sa phone na ito.');
+      setCommandMessage("Hindi mabasa nang malakas sa phone na ito.");
       return;
     }
 
     if (result.fallbackUsed) {
-      setCommandMessage('Binasa muna sa English para tuloy ang sagot.');
+      setCommandMessage("Binasa muna sa English para tuloy ang sagot.");
     }
   }, [assistantAnswer]);
 
   const pendingNeedsCustomer =
-    pendingParserResult?.intent === 'utang' &&
-    pendingParserResult?.notes.includes('missing_customer_name') &&
+    pendingParserResult?.intent === "utang" &&
+    pendingParserResult?.notes.includes("missing_customer_name") &&
     !pendingCustomerName.trim();
 
   const handleConfirmPending = useCallback(async () => {
@@ -252,7 +314,7 @@ export function DashboardScreen() {
     }
 
     if (pendingNeedsCustomer) {
-      setCommandMessage('Ilagay muna kung kanino ang utang.');
+      setCommandMessage("Ilagay muna kung kanino ang utang.");
       openFallback({ parserResult: pendingParserResult });
       return;
     }
@@ -263,15 +325,27 @@ export function DashboardScreen() {
     try {
       await confirmLocalCommand(pendingParserResult, pendingCustomerName);
       setPendingParserResult(null);
-      setPendingCustomerName('');
-      setCommandText('');
-      setCommandMessage('Naitala na. Hihintayin lang ang internet para maipadala.');
+      setPendingCustomerName("");
+      setCommandText("");
+      setCommandMessage(
+        "Naitala na. Hihintayin lang ang internet para maipadala.",
+      );
     } catch (caughtError) {
-      setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Hindi naituloy. Subukan ulit.');
+      setCommandMessage(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Hindi naituloy. Subukan ulit.",
+      );
     } finally {
       setPendingAction(false);
     }
-  }, [confirmLocalCommand, openFallback, pendingCustomerName, pendingNeedsCustomer, pendingParserResult]);
+  }, [
+    confirmLocalCommand,
+    openFallback,
+    pendingCustomerName,
+    pendingNeedsCustomer,
+    pendingParserResult,
+  ]);
 
   const handleManualAdjust = useCallback(
     async (itemId: string, direction: -1 | 1) => {
@@ -280,9 +354,15 @@ export function DashboardScreen() {
 
       try {
         await applyManualAdjustment(itemId, direction);
-        setCommandMessage('Nabago na ang bilang. Hihintayin lang ang internet para maipadala.');
+        setCommandMessage(
+          "Nabago na ang bilang. Hihintayin lang ang internet para maipadala.",
+        );
       } catch (caughtError) {
-        setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Hindi nabago ang bilang. Subukan ulit.');
+        setCommandMessage(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Hindi nabago ang bilang. Subukan ulit.",
+        );
       } finally {
         setManualAdjustingItemId(null);
       }
@@ -297,22 +377,22 @@ export function DashboardScreen() {
     const price = Number(itemPrice);
 
     if (!trimmedName) {
-      setItemFormError('Ilagay ang pangalan ng item.');
+      setItemFormError("Ilagay ang pangalan ng item.");
       return;
     }
 
     if (!Number.isInteger(quantity) || quantity < 0) {
-      setItemFormError('Ang quantity ay dapat zero o mas mataas.');
+      setItemFormError("Ang quantity ay dapat zero o mas mataas.");
       return;
     }
 
     if (Number.isNaN(cost) || cost < 0) {
-      setItemFormError('Ang cost price ay dapat zero o mas mataas.');
+      setItemFormError("Ang cost price ay dapat zero o mas mataas.");
       return;
     }
 
     if (Number.isNaN(price) || price < 0) {
-      setItemFormError('Ang selling price ay dapat zero o mas mataas.');
+      setItemFormError("Ang selling price ay dapat zero o mas mataas.");
       return;
     }
 
@@ -325,14 +405,18 @@ export function DashboardScreen() {
         cost,
         price,
       });
-      setItemName('');
-      setItemQuantity('0');
-      setItemCost('');
-      setItemPrice('');
+      setItemName("");
+      setItemQuantity("0");
+      setItemCost("");
+      setItemPrice("");
       setIsAddItemVisible(false);
-      setCommandMessage('Naidagdag na ang item.');
+      setCommandMessage("Naidagdag na ang item.");
     } catch (caughtError) {
-      setItemFormError(caughtError instanceof Error ? caughtError.message : 'Hindi naidagdag ang item.');
+      setItemFormError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Hindi naidagdag ang item.",
+      );
     } finally {
       setIsSavingItem(false);
     }
@@ -340,14 +424,18 @@ export function DashboardScreen() {
 
   const startListening = useCallback(async () => {
     if (!hasSpeechRecognitionNative) {
-      setCommandMessage('Voice input needs a development build. You can type your command instead.');
+      setCommandMessage(
+        "Hindi pa puwede ang voice input dito. I-type muna ang utos mo.",
+      );
       return;
     }
 
-    if (microphonePermission === 'denied') {
+    if (microphonePermission === "denied") {
       const nextStatus = await requestMicrophonePermission();
-      if (nextStatus === 'denied') {
-        setCommandMessage('Kailangan ng microphone access para sa voice input. I-tap ang mic button para i-enable sa Settings.');
+      if (nextStatus === "denied") {
+        setCommandMessage(
+          "Kailangan ng microphone access para sa voice input. I-tap ang mic button para i-enable sa Settings.",
+        );
         await openDeviceSettings();
         return;
       }
@@ -361,14 +449,14 @@ export function DashboardScreen() {
 
     try {
       if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) {
-        setCommandMessage('Hindi available ang voice input sa phone na ito.');
+        setCommandMessage("Hindi available ang voice input sa phone na ito.");
         return;
       }
 
-      if (microphonePermission === 'pending') {
+      if (microphonePermission === "pending") {
         const permission = await requestMicrophonePermission();
-        if (permission !== 'granted') {
-          setCommandMessage('Payagan ang mic para makapagsalita ka ng utos.');
+        if (permission !== "granted") {
+          setCommandMessage("Payagan ang mic para makapagsalita ka ng utos.");
           return;
         }
       }
@@ -378,13 +466,17 @@ export function DashboardScreen() {
       }
 
       ExpoSpeechRecognitionModule.start({
-        lang: 'fil-PH',
+        lang: "fil-PH",
         interimResults: true,
         maxAlternatives: 1,
         continuous: false,
       });
     } catch (caughtError) {
-      setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Hindi nagsimula ang voice input.');
+      setCommandMessage(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Hindi nagsimula ang voice input.",
+      );
       setIsListening(false);
     }
   }, [
@@ -396,20 +488,20 @@ export function DashboardScreen() {
     requestMicrophonePermission,
   ]);
 
-  useSpeechRecognitionEvent('start', () => {
+  useSpeechRecognitionEvent("start", () => {
     setIsListening(true);
   });
 
-  useSpeechRecognitionEvent('end', () => {
+  useSpeechRecognitionEvent("end", () => {
     setIsListening(false);
   });
 
-  useSpeechRecognitionEvent('error', (event) => {
+  useSpeechRecognitionEvent("error", (event) => {
     setIsListening(false);
-    setCommandMessage(event.message || 'Hindi nakuha nang maayos ang boses.');
+    setCommandMessage(event.message || "Hindi nakuha nang maayos ang boses.");
   });
 
-  useSpeechRecognitionEvent('result', (event) => {
+  useSpeechRecognitionEvent("result", (event) => {
     if (!event.isFinal || event.results.length === 0) {
       return;
     }
@@ -421,12 +513,12 @@ export function DashboardScreen() {
     }
 
     setCommandText(transcript);
-    void processCommand(transcript, 'voice');
+    void processCommand(transcript, "voice");
   });
 
   const saveFallback = useCallback(async () => {
     if (!selectedFallbackItem) {
-      setCommandMessage('Pumili muna ng produkto.');
+      setCommandMessage("Pumili muna ng produkto.");
       return;
     }
 
@@ -437,15 +529,20 @@ export function DashboardScreen() {
         intent: fallbackIntent,
         itemId: selectedFallbackItem.id,
         quantity: fallbackQuantity,
-        customerName: fallbackIntent === 'utang' ? fallbackCustomerName : undefined,
+        customerName:
+          fallbackIntent === "utang" ? fallbackCustomerName : undefined,
       });
       setIsFallbackVisible(false);
       setPendingParserResult(null);
-      setPendingCustomerName('');
-      setCommandText('');
-      setCommandMessage('Naitala na.');
+      setPendingCustomerName("");
+      setCommandText("");
+      setCommandMessage("Naitala na.");
     } catch (caughtError) {
-      setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Hindi naitala. Subukan ulit.');
+      setCommandMessage(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Hindi naitala. Subukan ulit.",
+      );
     } finally {
       setIsSavingFallback(false);
     }
@@ -461,7 +558,7 @@ export function DashboardScreen() {
     const trimmed = fallbackCustomerName.trim();
 
     if (!trimmed) {
-      setCommandMessage('Ilagay muna ang pangalan.');
+      setCommandMessage("Ilagay muna ang pangalan.");
       return;
     }
 
@@ -470,59 +567,55 @@ export function DashboardScreen() {
     try {
       const customer = await createLocalCustomer(trimmed);
       setFallbackCustomerName(customer.name);
-      setCommandMessage('Naidagdag na ang pangalan.');
+      setCommandMessage("Naidagdag na ang pangalan.");
     } catch (caughtError) {
-      setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Hindi naidagdag ang pangalan.');
+      setCommandMessage(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Hindi naidagdag ang pangalan.",
+      );
     } finally {
       setIsSavingCustomer(false);
     }
   }, [createLocalCustomer, fallbackCustomerName]);
 
-  const showPendingStrip = appState?.mode === 'authenticated' && pendingTransactions.length > 0;
+  const showPendingStrip =
+    appState?.mode === "authenticated" && pendingTransactions.length > 0;
   const showGuestBanner = isGuestMode && !guestBannerDismissed;
   const showMicBanner = isMicDisabled && !micBannerDismissed;
 
   return (
-    <SafeAreaView edges={['top']} style={styles.screen}>
-      <View style={styles.topBar}>
-        <View style={styles.topBarLeft}>
-          <View style={styles.brandIcon}>
-            <Ionicons color="#1f7a63" name="storefront-outline" size={18} />
-          </View>
-          <View style={styles.brandCopy}>
-            <Text style={styles.brandName}>Tindai</Text>
-            <Text numberOfLines={1} style={styles.storeName}>
-              {store?.name ?? 'My Store'}
+    <SafeAreaView edges={["top"]} style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>Tindahan</Text>
+          <View style={styles.avatarBadge}>
+            <Text style={styles.avatarBadgeText}>
+              {getStoreInitial(store?.name)}
             </Text>
           </View>
         </View>
-        <View style={styles.topBarRight}>
-          <View style={styles.statusPill}>
-            <Text style={styles.statusText}>{appState?.mode === 'authenticated' ? 'May account' : 'Walang account'}</Text>
-          </View>
-          <TouchableOpacity activeOpacity={0.7} onPress={() => void refresh()} style={styles.iconButton}>
-            {isLoading ? (
-              <ActivityIndicator color="#1f7a63" size="small" />
-            ) : (
-              <Ionicons color="#1f7a63" name="refresh-outline" size={22} />
-            )}
-          </TouchableOpacity>
-          {syncNotice ? <View style={styles.offlineDot} /> : null}
-        </View>
-      </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {showGuestBanner ? (
           <View style={styles.bannerCard}>
             <View style={styles.bannerBody}>
-              <Text style={styles.bannerTitle}>Lokal lang ang data mo.</Text>
-              <Text style={styles.bannerText}>Lokal lang ang data mo. Mag-sign in para ma-backup sa cloud.</Text>
+              <Text style={styles.bannerTitle}>{mobileCopy.dashboardGuestTitle}</Text>
+              <Text style={styles.bannerText}>{mobileCopy.dashboardGuestBody}</Text>
             </View>
             <View style={styles.bannerActions}>
-              <Pressable onPress={() => void showLogin()} style={styles.bannerPrimaryAction}>
-                <Text style={styles.bannerPrimaryLabel}>Sign In</Text>
+              <Pressable
+                onPress={() => void showLogin()}
+                style={styles.bannerPrimaryAction}
+              >
+                <Text style={styles.bannerPrimaryLabel}>{mobileCopy.dashboardGuestAction}</Text>
               </Pressable>
-              <Pressable onPress={() => setGuestBannerDismissed(true)} style={styles.bannerDismissAction}>
+              <Pressable
+                onPress={() => setGuestBannerDismissed(true)}
+                style={styles.bannerDismissAction}
+              >
                 <Text style={styles.bannerDismissLabel}>Isara</Text>
               </Pressable>
             </View>
@@ -532,10 +625,17 @@ export function DashboardScreen() {
         {showMicBanner ? (
           <View style={styles.warningBanner}>
             <View style={styles.bannerBody}>
-              <Text style={styles.bannerTitle}>Kailangan ng microphone access para sa voice input.</Text>
-              <Text style={styles.bannerText}>I-tap ang mic button para i-enable sa Settings.</Text>
+              <Text style={styles.bannerTitle}>
+                Kailangan ng microphone access para sa voice input.
+              </Text>
+              <Text style={styles.bannerText}>
+                I-tap ang mic button para i-enable sa Settings.
+              </Text>
             </View>
-            <Pressable onPress={() => setMicBannerDismissed(true)} style={styles.bannerDismissAction}>
+            <Pressable
+              onPress={() => setMicBannerDismissed(true)}
+              style={styles.bannerDismissAction}
+            >
               <Text style={styles.bannerDismissLabel}>Isara</Text>
             </Pressable>
           </View>
@@ -551,18 +651,28 @@ export function DashboardScreen() {
         ) : null}
 
         <View style={styles.voiceSection}>
-          <View style={styles.voiceAmbientLarge} />
-          <View style={styles.voiceAmbientSmall} />
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => void startListening()}
-            style={[styles.voiceButton, isMicDisabled && styles.voiceButtonDisabled]}
+            style={[
+              styles.voiceButton,
+              isMicDisabled && styles.voiceButtonDisabled,
+            ]}
           >
-            <Ionicons color="#ffffff" name={isListening ? 'stop-outline' : 'mic-outline'} size={56} />
+            <Ionicons
+              color="#ffffff"
+              name={isListening ? "stop-outline" : "mic-outline"}
+              size={56}
+            />
           </TouchableOpacity>
-          <Text style={styles.voiceLabel}>{isListening ? 'NAKIKINIG...' : 'BOSES'}</Text>
-          <Text style={styles.voiceTitle}>Pindutin para ilista ang benta</Text>
-          <Pressable onPress={() => setIsAddItemVisible(true)} style={styles.addItemButton}>
+          <Text style={styles.voiceLabel}>
+            {isListening ? "NAKIKINIG..." : "BOSIS"}
+          </Text>
+          <Text style={styles.voiceTitle}>Tap para magsalita ng utos</Text>
+          <Pressable
+            onPress={() => setIsAddItemVisible(true)}
+            style={styles.addItemButton}
+          >
             <Ionicons color="#00604c" name="add-circle-outline" size={18} />
             <Text style={styles.addItemButtonLabel}>Magdagdag ng item</Text>
           </Pressable>
@@ -581,8 +691,11 @@ export function DashboardScreen() {
           <TouchableOpacity
             activeOpacity={0.85}
             disabled={isSubmittingCommand}
-            onPress={() => void processCommand(commandText, 'typed')}
-            style={[styles.commandButton, isSubmittingCommand && styles.commandButtonDisabled]}
+            onPress={() => void processCommand(commandText, "typed")}
+            style={[
+              styles.commandButton,
+              isSubmittingCommand && styles.commandButtonDisabled,
+            ]}
           >
             {isSubmittingCommand ? (
               <ActivityIndicator color="#ffffff" size="small" />
@@ -590,29 +703,39 @@ export function DashboardScreen() {
               <Ionicons color="#ffffff" name="send-outline" size={20} />
             )}
           </TouchableOpacity>
-          <TouchableOpacity activeOpacity={0.85} onPress={() => openFallback()} style={styles.fallbackButton}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => openFallback()}
+            style={styles.fallbackButton}
+          >
             <Ionicons color="#00604c" name="create-outline" size={20} />
           </TouchableOpacity>
         </View>
 
         {isSubmittingQuestion ? (
           <View style={styles.assistantCard}>
-            <Text style={styles.assistantTitle}>Sumasagot si Tindai...</Text>
+            <Text style={styles.assistantTitle}>Sumasagot si Tinday...</Text>
             <ActivityIndicator color="#00604c" size="small" />
           </View>
         ) : null}
 
         {assistantAnswer ? (
           <View style={styles.assistantCard}>
-            <Text style={styles.assistantTitle}>Sagot ni Tindai</Text>
-            <Text style={styles.assistantText}>{assistantAnswer.answerText}</Text>
+            <Text style={styles.assistantTitle}>Sagot ni Tinday</Text>
+            <Text style={styles.assistantText}>
+              {assistantAnswer.answerText}
+            </Text>
             <View style={styles.assistantActions}>
               <TouchableOpacity
                 activeOpacity={0.85}
                 onPress={() => void handleSpeakAssistantAnswer()}
                 style={styles.assistantActionButton}
               >
-                <Ionicons color="#00604c" name="volume-high-outline" size={18} />
+                <Ionicons
+                  color="#00604c"
+                  name="volume-high-outline"
+                  size={18}
+                />
                 <Text style={styles.assistantActionText}>Basahin</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -620,7 +743,11 @@ export function DashboardScreen() {
                 onPress={() => void stopSpeaking()}
                 style={styles.assistantActionButton}
               >
-                <Ionicons color="#00604c" name="stop-circle-outline" size={18} />
+                <Ionicons
+                  color="#00604c"
+                  name="stop-circle-outline"
+                  size={18}
+                />
                 <Text style={styles.assistantActionText}>Ihinto</Text>
               </TouchableOpacity>
             </View>
@@ -629,20 +756,33 @@ export function DashboardScreen() {
 
         {pendingParserResult ? (
           <View style={styles.confirmCard}>
-            <Text style={styles.confirmText}>{buildConfirmationText(pendingParserResult)}</Text>
-            {pendingNeedsCustomer ? <Text style={styles.helperText}>Kulang ang pangalan ng may utang.</Text> : null}
+            <Text style={styles.confirmText}>
+              {buildConfirmationText(pendingParserResult)}
+            </Text>
+            {pendingNeedsCustomer ? (
+              <Text style={styles.helperText}>
+                Kulang ang pangalan ng may utang.
+              </Text>
+            ) : null}
             <View style={styles.confirmActions}>
               <TouchableOpacity
                 activeOpacity={0.85}
                 disabled={pendingAction}
                 onPress={() => void handleConfirmPending()}
-                style={[styles.confirmButton, pendingAction && styles.commandButtonDisabled]}
+                style={[
+                  styles.confirmButton,
+                  pendingAction && styles.commandButtonDisabled,
+                ]}
               >
-                <Text style={styles.confirmButtonText}>{pendingAction ? 'Tinatala...' : 'Itala'}</Text>
+                <Text style={styles.confirmButtonText}>
+                  {pendingAction ? "Tinatala..." : "Itala"}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 activeOpacity={0.85}
-                onPress={() => openFallback({ parserResult: pendingParserResult })}
+                onPress={() =>
+                  openFallback({ parserResult: pendingParserResult })
+                }
                 style={styles.secondaryButton}
               >
                 <Text style={styles.secondaryButtonText}>Ayusin</Text>
@@ -651,7 +791,7 @@ export function DashboardScreen() {
                 activeOpacity={0.85}
                 onPress={() => {
                   setPendingParserResult(null);
-                  setPendingCustomerName('');
+                  setPendingCustomerName("");
                 }}
                 style={styles.secondaryButton}
               >
@@ -661,7 +801,9 @@ export function DashboardScreen() {
           </View>
         ) : null}
 
-        {commandMessage ? <Text style={styles.commandMessage}>{commandMessage}</Text> : null}
+        {commandMessage ? (
+          <Text style={styles.commandMessage}>{commandMessage}</Text>
+        ) : null}
 
         {error ? (
           <View style={styles.errorCard}>
@@ -670,21 +812,19 @@ export function DashboardScreen() {
           </View>
         ) : null}
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Buod Ngayon</Text>
-        </View>
-
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryValue}>{inventoryItems.length}</Text>
             <Text style={styles.summaryLabel}>Produkto</Text>
           </View>
-          <View style={[styles.summaryCard, styles.summaryCardWarning]}>
-            <Text style={[styles.summaryValue, styles.summaryValueWarning]}>{lowStockItems.length}</Text>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryValue}>{lowStockItems.length}</Text>
             <Text style={styles.summaryLabel}>Malapit maubos</Text>
           </View>
-          <View style={[styles.summaryCard, styles.summaryCardWide]}>
-            <Text style={styles.summaryValue}>P{inventoryValue.toFixed(0)}</Text>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryValue}>
+              P{inventoryValue.toFixed(0)}
+            </Text>
             <Text style={styles.summaryLabel}>Halaga ng paninda</Text>
           </View>
         </View>
@@ -696,25 +836,32 @@ export function DashboardScreen() {
             <Text style={styles.emptyText}>
               Maglagay muna ng paninda para makapagtala ka ng benta at utang.
             </Text>
-            <Pressable onPress={() => setIsAddItemVisible(true)} style={styles.emptyActionButton}>
+            <Pressable
+              onPress={() => setIsAddItemVisible(true)}
+              style={styles.emptyActionButton}
+            >
               <Text style={styles.emptyActionLabel}>Magdagdag ng item</Text>
             </Pressable>
           </View>
         ) : (
-          <>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Kamakailang Tala</Text>
-            </View>
-            <View style={styles.activityCard}>
+          <View style={styles.activityCard}>
             {inventoryItems.slice(0, 8).map((item, index) => (
               <View
                 key={item.id}
-                style={[styles.activityItem, index < Math.min(inventoryItems.length, 8) - 1 ? styles.activityDivider : undefined]}
+                style={[
+                  styles.activityItem,
+                  index < Math.min(inventoryItems.length, 8) - 1
+                    ? styles.activityDivider
+                    : undefined,
+                ]}
               >
                 <View style={styles.activityBody}>
                   <Text style={styles.activityLabel}>{item.name}</Text>
                   <Text style={styles.activityTime}>
-                    {item.currentStock} {item.unit} {item.currentStock <= item.lowStockThreshold ? '- Malapit maubos' : ''}
+                    {item.currentStock} {item.unit}{" "}
+                    {item.currentStock <= item.lowStockThreshold
+                      ? "- Malapit maubos"
+                      : ""}
                   </Text>
                 </View>
                 <View style={styles.adjustWrap}>
@@ -739,8 +886,7 @@ export function DashboardScreen() {
                 </View>
               </View>
             ))}
-            </View>
-          </>
+          </View>
         )}
 
         {assistantInteractions.length > 0 ? (
@@ -751,21 +897,29 @@ export function DashboardScreen() {
                 key={entry.clientInteractionId}
                 style={[
                   styles.activityItem,
-                  index < Math.min(assistantInteractions.length, 4) - 1 ? styles.activityDivider : undefined,
+                  index < Math.min(assistantInteractions.length, 4) - 1
+                    ? styles.activityDivider
+                    : undefined,
                 ]}
               >
                 <View style={styles.activityBody}>
                   <Text style={styles.activityLabel}>{entry.questionText}</Text>
-                  <Text style={styles.activityTime}>{entry.answerText ?? 'Walang sagot pa.'}</Text>
+                  <Text style={styles.activityTime}>
+                    {entry.answerText ?? "Walang sagot pa."}
+                  </Text>
                 </View>
               </View>
             ))}
           </View>
         ) : null}
-
       </ScrollView>
 
-      <Modal animationType="slide" transparent visible={isAddItemVisible} onRequestClose={() => setIsAddItemVisible(false)}>
+      <Modal
+        animationType="slide"
+        transparent
+        visible={isAddItemVisible}
+        onRequestClose={() => setIsAddItemVisible(false)}
+      >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>Magdagdag ng item</Text>
@@ -810,36 +964,65 @@ export function DashboardScreen() {
               onChangeText={setItemPrice}
             />
 
-            {itemFormError ? <Text style={styles.formErrorText}>{itemFormError}</Text> : null}
+            {itemFormError ? (
+              <Text style={styles.formErrorText}>{itemFormError}</Text>
+            ) : null}
 
             <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setIsAddItemVisible(false)} style={styles.secondaryButton}>
+              <TouchableOpacity
+                onPress={() => setIsAddItemVisible(false)}
+                style={styles.secondaryButton}
+              >
                 <Text style={styles.secondaryButtonText}>Kanselahin</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => void handleAddItem()} style={styles.confirmButton} disabled={isSavingItem}>
-                <Text style={styles.confirmButtonText}>{isSavingItem ? 'Nagse-save...' : 'I-save ang item'}</Text>
+              <TouchableOpacity
+                onPress={() => void handleAddItem()}
+                style={styles.confirmButton}
+                disabled={isSavingItem}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {isSavingItem ? "Nagse-save..." : "I-save ang item"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      <Modal animationType="slide" transparent visible={isFallbackVisible} onRequestClose={() => setIsFallbackVisible(false)}>
+      <Modal
+        animationType="slide"
+        transparent
+        visible={isFallbackVisible}
+        onRequestClose={() => setIsFallbackVisible(false)}
+      >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>Mabilis na tala</Text>
             <View style={styles.intentRow}>
               {[
-                { key: 'sale', label: 'Bawas' },
-                { key: 'restock', label: 'Dagdag' },
-                { key: 'utang', label: 'Utang' },
+                { key: "sale", label: "Bawas" },
+                { key: "restock", label: "Dagdag" },
+                { key: "utang", label: "Utang" },
               ].map((intent) => (
                 <TouchableOpacity
                   key={intent.key}
-                  onPress={() => setFallbackIntent(intent.key as 'sale' | 'restock' | 'utang')}
-                  style={[styles.intentChip, fallbackIntent === intent.key && styles.intentChipActive]}
+                  onPress={() =>
+                    setFallbackIntent(
+                      intent.key as "sale" | "restock" | "utang",
+                    )
+                  }
+                  style={[
+                    styles.intentChip,
+                    fallbackIntent === intent.key && styles.intentChipActive,
+                  ]}
                 >
-                  <Text style={[styles.intentChipText, fallbackIntent === intent.key && styles.intentChipTextActive]}>
+                  <Text
+                    style={[
+                      styles.intentChipText,
+                      fallbackIntent === intent.key &&
+                        styles.intentChipTextActive,
+                    ]}
+                  >
                     {intent.label}
                   </Text>
                 </TouchableOpacity>
@@ -847,12 +1030,20 @@ export function DashboardScreen() {
             </View>
 
             <Text style={styles.modalLabel}>Produkto</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.itemPickerRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.itemPickerRow}
+            >
               {inventoryItems.map((item) => (
                 <TouchableOpacity
                   key={item.id}
                   onPress={() => setFallbackItemId(item.id)}
-                  style={[styles.itemChip, (fallbackItemId || inventoryItems[0]?.id) === item.id && styles.itemChipActive]}
+                  style={[
+                    styles.itemChip,
+                    (fallbackItemId || inventoryItems[0]?.id) === item.id &&
+                      styles.itemChipActive,
+                  ]}
                 >
                   <Text style={styles.itemChipText}>{item.name}</Text>
                 </TouchableOpacity>
@@ -862,18 +1053,23 @@ export function DashboardScreen() {
             <Text style={styles.modalLabel}>Dami</Text>
             <View style={styles.qtyRow}>
               <TouchableOpacity
-                onPress={() => setFallbackQuantity((current) => Math.max(1, current - 1))}
+                onPress={() =>
+                  setFallbackQuantity((current) => Math.max(1, current - 1))
+                }
                 style={styles.qtyButton}
               >
                 <Ionicons color="#ffffff" name="remove" size={16} />
               </TouchableOpacity>
               <Text style={styles.qtyValue}>{fallbackQuantity}</Text>
-              <TouchableOpacity onPress={() => setFallbackQuantity((current) => current + 1)} style={styles.qtyButton}>
+              <TouchableOpacity
+                onPress={() => setFallbackQuantity((current) => current + 1)}
+                style={styles.qtyButton}
+              >
                 <Ionicons color="#ffffff" name="add" size={16} />
               </TouchableOpacity>
             </View>
 
-            {fallbackIntent === 'utang' ? (
+            {fallbackIntent === "utang" ? (
               <>
                 <Text style={styles.modalLabel}>May utang</Text>
                 <TextInput
@@ -886,7 +1082,10 @@ export function DashboardScreen() {
                 />
                 <TouchableOpacity
                   onPress={() => void handleSaveCustomer()}
-                  style={[styles.addNameButton, isSavingCustomer && styles.commandButtonDisabled]}
+                  style={[
+                    styles.addNameButton,
+                    isSavingCustomer && styles.commandButtonDisabled,
+                  ]}
                   disabled={isSavingCustomer}
                 >
                   {isSavingCustomer ? (
@@ -895,9 +1094,17 @@ export function DashboardScreen() {
                     <Text style={styles.addNameText}>Idagdag ang pangalan</Text>
                   )}
                 </TouchableOpacity>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.itemPickerRow}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.itemPickerRow}
+                >
                   {customers.map((customer) => (
-                    <TouchableOpacity key={customer.id} onPress={() => setFallbackCustomerName(customer.name)} style={styles.itemChip}>
+                    <TouchableOpacity
+                      key={customer.id}
+                      onPress={() => setFallbackCustomerName(customer.name)}
+                      style={styles.itemChip}
+                    >
                       <Text style={styles.itemChipText}>{customer.name}</Text>
                     </TouchableOpacity>
                   ))}
@@ -906,11 +1113,20 @@ export function DashboardScreen() {
             ) : null}
 
             <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setIsFallbackVisible(false)} style={styles.secondaryButton}>
+              <TouchableOpacity
+                onPress={() => setIsFallbackVisible(false)}
+                style={styles.secondaryButton}
+              >
                 <Text style={styles.secondaryButtonText}>Kanselahin</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => void saveFallback()} style={styles.confirmButton} disabled={isSavingFallback}>
-                <Text style={styles.confirmButtonText}>{isSavingFallback ? 'Tinatala...' : 'Itala'}</Text>
+              <TouchableOpacity
+                onPress={() => void saveFallback()}
+                style={styles.confirmButton}
+                disabled={isSavingFallback}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {isSavingFallback ? "Tinatala..." : "Itala"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -923,93 +1139,53 @@ export function DashboardScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f7faf7',
-  },
-  topBar: {
-    minHeight: 68,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e3e0',
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  topBarLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flexShrink: 1,
-  },
-  topBarRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginLeft: 12,
-  },
-  brandIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#e8f2f0',
-  },
-  brandCopy: {
-    flexShrink: 1,
-    gap: 1,
-  },
-  brandName: {
-    color: '#1f7a63',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f1f4f1',
-  },
-  storeName: {
-    color: '#3e4945',
-    fontSize: 12,
-    fontWeight: '600',
-    flexShrink: 1,
-  },
-  statusPill: {
-    borderRadius: 999,
-    backgroundColor: '#ebefeb',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    maxWidth: 120,
-  },
-  statusText: {
-    color: '#1f7a63',
-    fontSize: 12,
-    fontWeight: '800',
+    backgroundColor: "#ffffff",
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingTop: 10,
     paddingBottom: 120,
-    gap: 16,
+    gap: 14,
+  },
+  headerRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  headerTitle: {
+    color: "#145746",
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+  },
+  avatarBadge: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: "rgba(31, 122, 99, 0.14)",
+    borderRadius: 24,
+    borderWidth: 1,
+    height: 48,
+    justifyContent: "center",
+    width: 48,
+  },
+  avatarBadgeText: {
+    color: "#145746",
+    fontSize: 15,
+    fontWeight: "800",
   },
   bannerCard: {
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#dce9ff',
-    backgroundColor: '#dce9ff',
+    borderColor: "#d8eee4",
+    backgroundColor: "#f1fbf6",
     padding: 12,
     gap: 10,
   },
   warningBanner: {
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#f0d6aa',
-    backgroundColor: '#fff7ea',
+    borderColor: "#f0d6aa",
+    backgroundColor: "#fff7ea",
     padding: 12,
     gap: 10,
   },
@@ -1017,368 +1193,301 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   bannerTitle: {
-    color: '#1f2925',
+    color: "#1f2925",
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: "800",
     lineHeight: 18,
   },
   bannerText: {
-    color: '#4d5a53',
+    color: "#4d5a53",
     fontSize: 13,
     lineHeight: 18,
   },
   bannerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   bannerPrimaryAction: {
     minHeight: 36,
     borderRadius: 10,
-    backgroundColor: '#00604c',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#00604c",
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 14,
   },
   bannerPrimaryLabel: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   bannerDismissAction: {
     minHeight: 36,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#d8dbd9',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: "#d8dbd9",
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 14,
   },
   bannerDismissLabel: {
-    color: '#3e4945',
+    color: "#3e4945",
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   pendingStrip: {
-    backgroundColor: '#e9f6f1',
+    backgroundColor: "#e9f6f1",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#d0ebe1',
+    borderColor: "#d0ebe1",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   pendingStripText: {
-    color: '#00604c',
+    color: "#00604c",
     fontSize: 12,
-    fontWeight: '700',
-  },
-  offlineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: '#b28200',
+    fontWeight: "700",
   },
   voiceSection: {
-    position: 'relative',
-    overflow: 'hidden',
-    alignItems: 'center',
-    paddingVertical: 28,
-    paddingHorizontal: 16,
-    gap: 10,
-    borderRadius: 20,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e0e3e0',
-    shadowColor: '#1f7a63',
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
-  },
-  voiceAmbientLarge: {
-    position: 'absolute',
-    width: 192,
-    height: 192,
-    borderRadius: 999,
-    backgroundColor: 'rgba(31,122,99,0.06)',
-  },
-  voiceAmbientSmall: {
-    position: 'absolute',
-    width: 132,
-    height: 132,
-    borderRadius: 999,
-    backgroundColor: 'rgba(31,122,99,0.1)',
+    alignItems: "center",
+    paddingVertical: 10,
+    gap: 8,
   },
   voiceButton: {
     width: 128,
     height: 128,
     borderRadius: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#00604c',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#00604c",
   },
   voiceButtonDisabled: {
-    backgroundColor: '#8ba79e',
+    backgroundColor: "#8ba79e",
   },
   voiceLabel: {
-    color: '#505f76',
+    color: "#00604c",
     fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
+    fontWeight: "800",
   },
   voiceTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#181d1b',
-    textAlign: 'center',
-    lineHeight: 28,
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#181d1b",
+    textAlign: "center",
+    lineHeight: 30,
     paddingHorizontal: 20,
   },
   addItemButton: {
-    minHeight: 46,
+    minHeight: 42,
     borderRadius: 999,
-    borderWidth: 2,
-    borderColor: '#bec9c3',
-    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: "#d8dbd9",
+    backgroundColor: "#ffffff",
     paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   addItemButtonLabel: {
-    color: '#00604c',
+    color: "#00604c",
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   commandCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 999,
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e0e3e0',
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderColor: "#e7e5e4",
+    flexDirection: "row",
+    alignItems: "center",
     padding: 8,
     gap: 8,
-    shadowColor: '#000000',
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
   },
   commandInput: {
     flex: 1,
     minHeight: 44,
-    color: '#181d1b',
+    color: "#181d1b",
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     paddingHorizontal: 10,
   },
   commandButton: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#00604c',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#00604c",
   },
   fallbackButton: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: '#d8dbd9',
-    backgroundColor: '#e8f2f0',
+    borderColor: "#d8dbd9",
+    backgroundColor: "#ffffff",
   },
   commandButtonDisabled: {
     opacity: 0.65,
   },
   commandMessage: {
-    alignSelf: 'center',
-    color: '#00604c',
-    fontSize: 12,
-    fontWeight: '700',
+    color: "#3e4945",
+    fontSize: 13,
+    fontWeight: "700",
     lineHeight: 18,
-    backgroundColor: '#e8f2f0',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    textAlign: 'center',
   },
   assistantCard: {
-    backgroundColor: '#f1fbf6',
+    backgroundColor: "#f1fbf6",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#d8eee4',
+    borderColor: "#d8eee4",
     padding: 12,
     gap: 6,
   },
   assistantTitle: {
-    color: '#00604c',
+    color: "#00604c",
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   assistantText: {
-    color: '#1f2925',
+    color: "#1f2925",
     fontSize: 14,
     lineHeight: 19,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   assistantActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
     marginTop: 4,
   },
   assistantActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     minHeight: 36,
     paddingHorizontal: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#cfe7dd',
-    backgroundColor: '#ffffff',
+    borderColor: "#cfe7dd",
+    backgroundColor: "#ffffff",
   },
   assistantActionText: {
-    color: '#00604c',
+    color: "#00604c",
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   confirmCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e7e5e4',
+    borderColor: "#e7e5e4",
     padding: 12,
     gap: 10,
   },
   confirmText: {
-    color: '#181d1b',
+    color: "#181d1b",
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   helperText: {
-    color: '#6c5f00',
+    color: "#6c5f00",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   customerInput: {
     minHeight: 42,
     borderWidth: 1,
-    borderColor: '#dfe2e0',
+    borderColor: "#dfe2e0",
     borderRadius: 10,
     paddingHorizontal: 10,
-    color: '#181d1b',
+    color: "#181d1b",
   },
   confirmActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   confirmButton: {
     flex: 1,
     minHeight: 40,
     borderRadius: 10,
-    backgroundColor: '#00604c',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#00604c",
+    alignItems: "center",
+    justifyContent: "center",
   },
   confirmButtonText: {
-    color: '#ffffff',
-    fontWeight: '700',
+    color: "#ffffff",
+    fontWeight: "700",
   },
   secondaryButton: {
     flex: 1,
     minHeight: 40,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#d8dbd9',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: "#d8dbd9",
+    alignItems: "center",
+    justifyContent: "center",
   },
   secondaryButtonText: {
-    color: '#3e4945',
-    fontWeight: '700',
-  },
-  sectionHeader: {
-    marginTop: 2,
-  },
-  sectionTitle: {
-    color: '#181d1b',
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 28,
+    color: "#3e4945",
+    fontWeight: "700",
   },
   summaryRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
-    flexWrap: 'wrap',
   },
   summaryCard: {
-    width: '48%',
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#f1f4f1',
-    gap: 3,
-    minHeight: 92,
-    justifyContent: 'space-between',
-  },
-  summaryCardWarning: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#d97706',
-  },
-  summaryCardWide: {
-    width: '100%',
-    backgroundColor: '#f7fbf9',
-  },
-  summaryValue: {
-    color: '#00604c',
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  summaryValueWarning: {
-    color: '#d97706',
-  },
-  summaryLabel: {
-    color: '#4d5a53',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  errorCard: {
-    backgroundColor: '#ffdad6',
+    flex: 1,
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 12,
-    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: "#f5f5f4",
+    gap: 3,
+  },
+  summaryValue: {
+    color: "#00604c",
+    fontSize: 22,
+    fontWeight: "800",
+  },
+  summaryLabel: {
+    color: "#4d5a53",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  errorCard: {
+    backgroundColor: "#ffdad6",
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: "row",
     gap: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   errorText: {
-    color: '#93000a',
+    color: "#93000a",
     flex: 1,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   emptyCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#f5f5f4',
+    borderColor: "#f5f5f4",
     gap: 8,
   },
   emptyTitle: {
-    color: '#181d1b',
+    color: "#181d1b",
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   emptyText: {
-    color: '#4d5a53',
+    color: "#4d5a53",
     fontSize: 14,
     lineHeight: 20,
   },
@@ -1386,119 +1495,119 @@ const styles = StyleSheet.create({
     marginTop: 4,
     minHeight: 44,
     borderRadius: 12,
-    backgroundColor: '#00604c',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#00604c",
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 16,
   },
   emptyActionLabel: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#f5f5f4',
+    borderColor: "#f5f5f4",
     gap: 6,
   },
   recentTitle: {
-    color: '#181d1b',
+    color: "#181d1b",
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 6,
   },
   activityCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#f1f4f1',
-    overflow: 'hidden',
+    borderColor: "#f5f5f4",
+    overflow: "hidden",
   },
   activityItem: {
     padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   activityDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f4',
+    borderBottomColor: "#f5f5f4",
   },
   activityBody: {
     flex: 1,
     gap: 2,
   },
   activityLabel: {
-    color: '#181d1b',
+    color: "#181d1b",
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   activityTime: {
-    color: '#4d5a53',
+    color: "#4d5a53",
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   adjustWrap: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 6,
   },
   adjustButton: {
     width: 30,
     height: 30,
     borderRadius: 8,
-    backgroundColor: '#00604c',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#00604c",
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    justifyContent: "flex-end",
   },
   modalSheet: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     padding: 16,
     gap: 10,
-    maxHeight: '85%',
+    maxHeight: "85%",
   },
   modalTitle: {
-    color: '#181d1b',
+    color: "#181d1b",
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   modalLabel: {
-    color: '#3e4945',
+    color: "#3e4945",
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   intentRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   intentChip: {
     borderWidth: 1,
-    borderColor: '#d8dbd9',
-    backgroundColor: '#ffffff',
+    borderColor: "#d8dbd9",
+    backgroundColor: "#ffffff",
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
   intentChipActive: {
-    backgroundColor: '#00604c',
-    borderColor: '#00604c',
+    backgroundColor: "#00604c",
+    borderColor: "#00604c",
   },
   intentChipText: {
-    color: '#3e4945',
+    color: "#3e4945",
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   intentChipTextActive: {
-    color: '#ffffff',
+    color: "#ffffff",
   },
   itemPickerRow: {
     gap: 8,
@@ -1506,63 +1615,63 @@ const styles = StyleSheet.create({
   },
   itemChip: {
     borderWidth: 1,
-    borderColor: '#d8dbd9',
+    borderColor: "#d8dbd9",
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   itemChipActive: {
-    borderColor: '#00604c',
-    backgroundColor: '#e3f8f0',
+    borderColor: "#00604c",
+    backgroundColor: "#e3f8f0",
   },
   itemChipText: {
-    color: '#181d1b',
+    color: "#181d1b",
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   addNameButton: {
     minHeight: 36,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#c4e8dc',
-    backgroundColor: '#f2fbf7',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: "#c4e8dc",
+    backgroundColor: "#f2fbf7",
+    alignItems: "center",
+    justifyContent: "center",
   },
   addNameText: {
-    color: '#00604c',
+    color: "#00604c",
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   qtyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   qtyButton: {
     width: 34,
     height: 34,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#00604c',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#00604c",
   },
   qtyValue: {
     minWidth: 36,
-    textAlign: 'center',
-    color: '#181d1b',
+    textAlign: "center",
+    color: "#181d1b",
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   modalActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
     marginTop: 6,
   },
   formErrorText: {
-    color: '#9b1c12',
+    color: "#9b1c12",
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
     lineHeight: 18,
   },
 });

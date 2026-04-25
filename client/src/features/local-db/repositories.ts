@@ -8,6 +8,8 @@ import type {
   LocalInventoryItem,
   LocalStore,
   LocalTransactionSummary,
+  LocalUtangCustomerLedger,
+  LocalUtangEntrySummary,
   MigrationStatus,
   PermissionStatus,
 } from './types';
@@ -92,6 +94,26 @@ type CustomerRow = {
   store_id: string;
   name: string;
   utang_balance: number;
+};
+
+type UtangCustomerLedgerRow = {
+  customer_id: string;
+  customer_name: string;
+  utang_balance: number;
+  entry_count: number;
+  latest_entry_at: string | null;
+  item_summary: string | null;
+};
+
+type UtangEntrySummaryRow = {
+  entry_id: string;
+  customer_id: string;
+  customer_name: string;
+  amount: number;
+  note: string | null;
+  created_at: string;
+  sync_status: string | null;
+  item_summary: string | null;
 };
 
 type AssistantInteractionRow = {
@@ -606,6 +628,104 @@ export class CustomerRepository {
       name: trimmed,
       utangBalance: 0,
     };
+  }
+
+  async listUtangLedgerCustomersForStore(storeId: string): Promise<LocalUtangCustomerLedger[]> {
+    const rows = await this.database.getAllAsync<UtangCustomerLedgerRow>(
+      `select
+         c.id as customer_id,
+         c.name as customer_name,
+         c.utang_balance,
+         count(ue.id) as entry_count,
+         max(ue.created_at) as latest_entry_at,
+         coalesce(
+           (
+             select group_concat(summary_text, ', ')
+             from (
+               select distinct coalesce(
+                 (
+                   select group_concat(cast(abs(ti.quantity_delta) as int) || 'x ' || coalesce(ii.name, 'Item'), ', ')
+                   from transaction_items ti
+                   left join inventory_items ii
+                     on ii.id = ti.item_id and ii.store_id = ti.store_id
+                   where ti.transaction_id = ue2.transaction_id
+                     and ti.store_id = ue2.store_id
+                 ),
+                 ue2.note
+               ) as summary_text
+               from utang_entries ue2
+               where ue2.store_id = c.store_id
+                 and ue2.customer_id = c.id
+               order by ue2.created_at desc
+               limit 2
+             )
+           ),
+           ''
+         ) as item_summary
+       from customers c
+       left join utang_entries ue
+         on ue.store_id = c.store_id and ue.customer_id = c.id
+       where c.store_id = ?
+         and c.is_active = 1
+         and c.archived_at is null
+         and c.utang_balance > 0
+       group by c.id, c.name, c.utang_balance
+       order by c.utang_balance desc, latest_entry_at desc, c.name asc`,
+      [storeId],
+    );
+
+    return rows.map((row) => ({
+      customerId: row.customer_id,
+      customerName: row.customer_name,
+      utangBalance: row.utang_balance,
+      entryCount: row.entry_count,
+      latestEntryAt: row.latest_entry_at,
+      itemSummary: row.item_summary ?? '',
+    }));
+  }
+
+  async listRecentUtangEntriesForStore(storeId: string, limit = 20): Promise<LocalUtangEntrySummary[]> {
+    const rows = await this.database.getAllAsync<UtangEntrySummaryRow>(
+      `select
+         ue.id as entry_id,
+         ue.customer_id,
+         c.name as customer_name,
+         ue.amount,
+         ue.note,
+         ue.created_at,
+         t.sync_status,
+         coalesce(
+           (
+             select group_concat(cast(abs(ti.quantity_delta) as int) || 'x ' || coalesce(ii.name, 'Item'), ', ')
+             from transaction_items ti
+             left join inventory_items ii
+               on ii.id = ti.item_id and ii.store_id = ti.store_id
+             where ti.transaction_id = ue.transaction_id
+               and ti.store_id = ue.store_id
+           ),
+           ''
+         ) as item_summary
+       from utang_entries ue
+       inner join customers c
+         on c.id = ue.customer_id and c.store_id = ue.store_id
+       left join transactions t
+         on t.id = ue.transaction_id and t.store_id = ue.store_id
+       where ue.store_id = ?
+       order by ue.created_at desc
+       limit ?`,
+      [storeId, limit],
+    );
+
+    return rows.map((row) => ({
+      entryId: row.entry_id,
+      customerId: row.customer_id,
+      customerName: row.customer_name,
+      amount: row.amount,
+      note: row.note,
+      createdAt: row.created_at,
+      syncStatus: row.sync_status ?? 'pending',
+      itemSummary: row.item_summary ?? '',
+    }));
   }
 }
 

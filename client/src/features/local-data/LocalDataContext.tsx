@@ -33,6 +33,8 @@ import type {
   LocalInventoryItem,
   LocalStore,
   LocalTransactionSummary,
+  LocalUtangCustomerLedger,
+  LocalUtangEntrySummary,
 } from '@/features/local-db/types';
 import {
   archiveInventoryItem,
@@ -47,7 +49,9 @@ type LocalDataState = {
   store: LocalStore | null;
   inventoryItems: LocalInventoryItem[];
   customers: LocalCustomer[];
+  utangCustomers: LocalUtangCustomerLedger[];
   recentTransactions: LocalTransactionSummary[];
+  recentUtangEntries: LocalUtangEntrySummary[];
   assistantInteractions: LocalAssistantInteraction[];
   pendingTransactions: LocalTransactionSummary[];
   isLoading: boolean;
@@ -335,7 +339,9 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<LocalStore | null>(null);
   const [inventoryItems, setInventoryItems] = useState<LocalInventoryItem[]>([]);
   const [customers, setCustomers] = useState<LocalCustomer[]>([]);
+  const [utangCustomers, setUtangCustomers] = useState<LocalUtangCustomerLedger[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<LocalTransactionSummary[]>([]);
+  const [recentUtangEntries, setRecentUtangEntries] = useState<LocalUtangEntrySummary[]>([]);
   const [assistantInteractions, setAssistantInteractions] = useState<LocalAssistantInteraction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -362,7 +368,9 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
     setStore(cachedStore);
     setInventoryItems(cachedStore ? await inventoryRepository.listInventoryForStore(cachedStore.id) : []);
     setCustomers(cachedStore ? await customerRepository.listCustomersForStore(cachedStore.id) : []);
+    setUtangCustomers(cachedStore ? await customerRepository.listUtangLedgerCustomersForStore(cachedStore.id) : []);
     setRecentTransactions(cachedStore ? await transactionRepository.listRecentTransactionsForStore(cachedStore.id) : []);
+    setRecentUtangEntries(cachedStore ? await customerRepository.listRecentUtangEntriesForStore(cachedStore.id) : []);
     setAssistantInteractions(
       cachedStore ? await assistantInteractionRepository.listRecentAssistantInteractionsForStore(cachedStore.id) : [],
     );
@@ -383,7 +391,9 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
       await createRepositories();
     setInventoryItems(await inventoryRepository.listInventoryForStore(storeId));
     setCustomers(await customerRepository.listCustomersForStore(storeId));
+    setUtangCustomers(await customerRepository.listUtangLedgerCustomersForStore(storeId));
     setRecentTransactions(await transactionRepository.listRecentTransactionsForStore(storeId));
+    setRecentUtangEntries(await customerRepository.listRecentUtangEntriesForStore(storeId));
     setAssistantInteractions(await assistantInteractionRepository.listRecentAssistantInteractionsForStore(storeId));
   }, []);
 
@@ -636,13 +646,22 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
       }
 
       const clientInteractionId = `device-assistant-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-      const onlineAnswer = await queryAssistantOnline({
-        accessToken,
-        clientInteractionId,
-        questionText: trimmed,
-        inputMode,
-        outputMode: 'text_and_speech',
-      });
+      let onlineAnswer: Awaited<ReturnType<typeof queryAssistantOnline>>;
+      try {
+        onlineAnswer = await queryAssistantOnline({
+          accessToken,
+          clientInteractionId,
+          questionText: trimmed,
+          inputMode,
+          outputMode: 'text_and_speech',
+        });
+      } catch (caughtError) {
+        if (isConnectivityIssue(caughtError)) {
+          throw new Error('Kailangan ng internet para masagot ang tanong.');
+        }
+
+        throw caughtError;
+      }
 
       const { assistantInteractionRepository } = await createRepositories();
       await assistantInteractionRepository.upsertAssistantInteraction({
@@ -989,7 +1008,9 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
           setStore(null);
           setInventoryItems([]);
           setCustomers([]);
+          setUtangCustomers([]);
           setRecentTransactions([]);
+          setRecentUtangEntries([]);
           setAssistantInteractions([]);
         }
 
@@ -1188,7 +1209,9 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
       store,
       inventoryItems,
       customers,
+      utangCustomers,
       recentTransactions,
+      recentUtangEntries,
       assistantInteractions,
       pendingTransactions: recentTransactions.filter((transaction) => transaction.syncStatus === 'pending'),
       isLoading,
@@ -1218,6 +1241,8 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
       syncNotice,
       inventoryItems,
       isLoading,
+      utangCustomers,
+      recentUtangEntries,
       recentTransactions,
       refresh,
       renameLocalStore,

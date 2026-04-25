@@ -1,12 +1,26 @@
 import Link from 'next/link';
 
-import { SiteHeader } from '@/components/SiteHeader';
-
 export default function Home() {
   return (
     <main className="min-h-screen bg-white text-slate-900">
       <div className="mx-auto max-w-7xl px-5 lg:px-12">
-        <SiteHeader />
+        <header className="py-4">
+          <div className="flex items-center gap-2 text-base font-bold text-emerald-900">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-xs">✦</span>
+            Tindai
+          </div>
+          <nav className="hidden items-center gap-8 text-sm text-slate-600 md:flex">
+            <a className="font-semibold text-emerald-700 underline underline-offset-8" href="#">
+              Home
+            </a>
+            <a href="#">Features</a>
+            <Link href="/paano-gamitin" className="transition hover:text-emerald-800">
+              Paano Gamitin
+            </Link>
+            <a href="#">Pricing</a>
+          </nav>
+          <button className="rounded-lg bg-emerald-700 px-4 py-2 text-xs font-semibold text-white">Get App</button>
+        </header>
 
         <section className="grid min-h-[calc(100vh-72px)] items-center gap-10 py-6 md:grid-cols-2 md:py-10">
           <div className="mx-auto w-full max-w-none md:mx-0 md:max-w-3xl">

@@ -50,6 +50,26 @@ export type LocalCustomer = {
   utangBalance: number;
 };
 
+export type LocalUtangCustomerLedger = {
+  customerId: string;
+  customerName: string;
+  utangBalance: number;
+  entryCount: number;
+  latestEntryAt: string | null;
+  itemSummary: string;
+};
+
+export type LocalUtangEntrySummary = {
+  entryId: string;
+  customerId: string;
+  customerName: string;
+  amount: number;
+  note: string | null;
+  createdAt: string;
+  syncStatus: string;
+  itemSummary: string;
+};
+
 export type LocalTransactionSource = 'voice' | 'typed' | 'manual';
 
 export type LocalTransactionSummary = {

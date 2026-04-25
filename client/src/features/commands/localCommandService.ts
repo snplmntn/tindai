@@ -74,7 +74,7 @@ export async function applyConfirmedParserResult({
 
   const readyResult: ParserResult = {
     ...parserResult,
-    confidence: Math.max(parserResult.confidence, 0.85),
+    confidence: Math.max(parserResult.confidence, 0.6),
     status: 'ready_to_apply',
     credit:
       parserResult.credit.is_utang && !parserResult.credit.customer_name && normalizedCustomerName

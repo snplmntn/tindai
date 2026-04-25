@@ -13,7 +13,31 @@ type GeminiGenerateContentResponse = {
   }>;
 };
 
-export async function generateGeminiText(prompt: string): Promise<string | null> {
+function extractJsonPayload(rawResponse: string) {
+  const trimmed = rawResponse.trim().replace(/^\uFEFF/, '');
+  if (trimmed.startsWith('```')) {
+    const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    if (fenced?.[1]) {
+      return extractJsonPayload(fenced[1]);
+    }
+  }
+
+  const firstObjectIndex = trimmed.indexOf('{');
+  const lastObjectIndex = trimmed.lastIndexOf('}');
+  if (firstObjectIndex >= 0 && lastObjectIndex > firstObjectIndex) {
+    return trimmed.slice(firstObjectIndex, lastObjectIndex + 1).trim();
+  }
+
+  return trimmed;
+}
+
+export async function generateGeminiText(
+  prompt: string,
+  options?: {
+    responseMimeType?: 'application/json' | 'text/plain';
+    responseSchema?: Record<string, unknown>;
+  },
+): Promise<string | null> {
   const env = getEnv();
   if (!env.GEMINI_API_KEY) {
     return null;
@@ -36,6 +60,8 @@ export async function generateGeminiText(prompt: string): Promise<string | null>
         generationConfig: {
           temperature: 0.2,
           maxOutputTokens: 180,
+          ...(options?.responseMimeType ? { responseMimeType: options.responseMimeType } : {}),
+          ...(options?.responseSchema ? { responseSchema: options.responseSchema } : {}),
         },
       }),
     },
@@ -55,7 +81,7 @@ export function validateGeminiTransactionResponse(
   rawResponse: string,
 ): GeminiTransactionVerification {
   try {
-    const parsed = JSON.parse(rawResponse) as Partial<GeminiTransactionVerification>;
+    const parsed = JSON.parse(extractJsonPayload(rawResponse)) as Partial<GeminiTransactionVerification>;
 
     if (!parsed || typeof parsed !== 'object') {
       throw new Error('Response must be a JSON object');

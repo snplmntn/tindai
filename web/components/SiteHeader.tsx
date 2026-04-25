@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 
 type SiteHeaderProps = {
@@ -9,14 +8,7 @@ export function SiteHeader({ showTryAppCta = false }: SiteHeaderProps) {
   return (
     <header className="flex items-center justify-between py-4">
       <Link href="/" className="flex items-center gap-2 text-base font-bold text-emerald-900">
-        <Image
-          src="/logo.png"
-          alt="Tindai"
-          width={28}
-          height={28}
-          className="h-7 w-auto object-contain"
-          priority
-        />
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-xs">✦</span>
         Tindai
       </Link>
       {showTryAppCta ? (

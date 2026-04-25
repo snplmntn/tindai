@@ -143,6 +143,70 @@ describe('CustomerRepository', () => {
       utangBalance: 150,
     });
   });
+
+  it('lists active utang ledger customers with item summaries and latest activity', async () => {
+    const database = {
+      getAllAsync: vi.fn().mockResolvedValue([
+        {
+          customer_id: 'customer-1',
+          customer_name: 'Mang Juan',
+          utang_balance: 150,
+          entry_count: 2,
+          latest_entry_at: '2026-04-25T12:00:00.000Z',
+          item_summary: '2x Coke Mismo, 1x Lucky 7 Sardines',
+        },
+      ]),
+    } as unknown as SQLite.SQLiteDatabase;
+
+    const repository = new CustomerRepository(database);
+    const customers = await repository.listUtangLedgerCustomersForStore('store-1');
+
+    expect(database.getAllAsync).toHaveBeenCalledWith(expect.stringContaining('from customers c'), ['store-1']);
+    expect(customers).toEqual([
+      {
+        customerId: 'customer-1',
+        customerName: 'Mang Juan',
+        utangBalance: 150,
+        entryCount: 2,
+        latestEntryAt: '2026-04-25T12:00:00.000Z',
+        itemSummary: '2x Coke Mismo, 1x Lucky 7 Sardines',
+      },
+    ]);
+  });
+
+  it('lists recent utang entries with customer and item details', async () => {
+    const database = {
+      getAllAsync: vi.fn().mockResolvedValue([
+        {
+          entry_id: 'utang-1',
+          customer_id: 'customer-1',
+          customer_name: 'Mang Juan',
+          amount: 40,
+          note: 'Kumuha si Mang Juan ng dalawang Coke, ilista mo muna.',
+          created_at: '2026-04-25T12:00:00.000Z',
+          sync_status: 'pending',
+          item_summary: '2x Coke Mismo',
+        },
+      ]),
+    } as unknown as SQLite.SQLiteDatabase;
+
+    const repository = new CustomerRepository(database);
+    const entries = await repository.listRecentUtangEntriesForStore('store-1');
+
+    expect(database.getAllAsync).toHaveBeenCalledWith(expect.stringContaining('from utang_entries ue'), ['store-1', 20]);
+    expect(entries).toEqual([
+      {
+        entryId: 'utang-1',
+        customerId: 'customer-1',
+        customerName: 'Mang Juan',
+        amount: 40,
+        note: 'Kumuha si Mang Juan ng dalawang Coke, ilista mo muna.',
+        createdAt: '2026-04-25T12:00:00.000Z',
+        syncStatus: 'pending',
+        itemSummary: '2x Coke Mismo',
+      },
+    ]);
+  });
 });
 
 describe('InventoryRepository', () => {

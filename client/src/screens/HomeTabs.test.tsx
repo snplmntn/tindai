@@ -36,6 +36,10 @@ vi.mock('@/screens/tabs/InventoryScreen', () => ({
   InventoryScreen: () => null,
 }));
 
+vi.mock('@/screens/tabs/UtangScreen', () => ({
+  UtangScreen: () => null,
+}));
+
 vi.mock('@/screens/tabs/ProfileScreen', () => ({
   ProfileScreen: () => null,
 }));
@@ -55,6 +59,14 @@ describe('HomeTabs', () => {
     });
 
     expect(options.headerShown).toBe(false);
+  });
+
+  it('places Utang to the left of Dashboard in the bottom tab order', () => {
+    const element = HomeTabs();
+    const screens = element.props.children;
+    const screenNames = screens.map((screen: { props: { name: string } }) => screen.props.name);
+
+    expect(screenNames).toEqual(['Inventory', 'Utang', 'Dashboard', 'Analytics', 'Profile']);
   });
 
   it('uses a white tab shell with green active states', () => {

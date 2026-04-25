@@ -1,4 +1,4 @@
-import type { LocalInventoryItem } from '@/features/local-db/types';
+import type { LocalCustomer, LocalInventoryItem } from '@/features/local-db/types';
 
 export type AnalyticsSalesRow = {
   itemId: string;
@@ -15,6 +15,16 @@ type AnalyticsMetric = {
   label: string;
   value: string;
   caption: string;
+};
+
+type AnalyticsUtangCustomer = {
+  customerName: string;
+  balance: string;
+};
+
+type AnalyticsUtangSummary = {
+  totalBalance: string;
+  topCustomers: AnalyticsUtangCustomer[];
 };
 
 export type AnalyticsListItem = {
@@ -59,10 +69,12 @@ export type AnalyticsViewModel = {
   overview: {
     salesToday: AnalyticsMetric;
     salesThisMonth: AnalyticsMetric;
+    itemsSoldToday: AnalyticsMetric;
     topSelling: AnalyticsListItem[];
     lowStock: AnalyticsListItem[];
     fastMoving: AnalyticsListItem[];
     slowMoving: AnalyticsListItem[];
+    utangSummary: AnalyticsUtangSummary;
   };
   insights: {
     salesTrend: AnalyticsChartPoint[];
@@ -87,6 +99,7 @@ type BuildAnalyticsViewModelInput = {
   currencyCode: string;
   timezone: string;
   inventoryItems: LocalInventoryItem[];
+  customers: LocalCustomer[];
   salesRows: AnalyticsSalesRow[];
   now?: string;
 };
@@ -126,15 +139,16 @@ type ForecastAggregate = {
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const SHOPPING_PRESETS: AnalyticsShoppingPreset[] = [
-  { key: '7d', label: '7 days', days: 7 },
-  { key: '14d', label: '14 days', days: 14 },
-  { key: '30d', label: '1 month', days: 30 },
+  { key: '7d', label: '7 araw', days: 7 },
+  { key: '14d', label: '14 araw', days: 14 },
+  { key: '30d', label: '1 buwan', days: 30 },
 ];
 
 export function buildAnalyticsViewModel({
   currencyCode,
   timezone,
   inventoryItems,
+  customers,
   salesRows,
   now = new Date().toISOString(),
 }: BuildAnalyticsViewModelInput): AnalyticsViewModel {
@@ -165,23 +179,28 @@ export function buildAnalyticsViewModel({
 
   const overview = {
     salesToday: buildSalesMetric({
-      label: 'Sales Today',
+      label: 'Benta Ngayon',
       currencyCode,
       rows: salesTodayRows,
       hasIncompletePricing,
     }),
     salesThisMonth: buildSalesMetric({
-      label: 'Sales This Month',
+      label: 'Benta Ngayong Buwan',
       currencyCode,
       rows: salesThisMonthRows,
       hasIncompletePricing,
     }),
+    itemsSoldToday: {
+      label: 'Nabenta Ngayon',
+      value: `${formatCount(salesTodayRows.reduce((total, row) => total + row.unitsSold, 0))} piraso`,
+      caption: 'Nabenta ngayon',
+    },
     topSelling: aggregateProductRows(last30Rows)
       .slice(0, 3)
       .map((product) => ({
         itemId: product.itemId,
         itemName: product.itemName,
-        detail: `${formatCount(product.unitsSold)} ${product.unit} sold in 30 days`,
+        detail: `${formatCount(product.unitsSold)} ${product.unit} na nabenta sa 30 araw`,
       })),
     lowStock: inventoryItems
       .filter((item) => item.currentStock <= item.lowStockThreshold)
@@ -190,7 +209,7 @@ export function buildAnalyticsViewModel({
       .map((item) => ({
         itemId: item.id,
         itemName: item.name,
-        detail: `${formatCount(item.currentStock)} ${item.unit} left · reorder at ${formatCount(item.lowStockThreshold)}`,
+        detail: `${formatCount(item.currentStock)} ${item.unit} na lang · bumili ulit pag umabot sa ${formatCount(item.lowStockThreshold)}`,
         tone: 'warning' as const,
       })),
     fastMoving: aggregateProductRows(recent7Rows)
@@ -198,16 +217,17 @@ export function buildAnalyticsViewModel({
       .map((product) => ({
         itemId: product.itemId,
         itemName: product.itemName,
-        detail: `${formatCount(product.unitsSold)} ${product.unit} sold in 7 days`,
+        detail: `${formatCount(product.unitsSold)} ${product.unit} na nabenta sa 7 araw`,
         tone: 'positive' as const,
       })),
     slowMoving: buildSlowMovingItems(inventoryItems, last30Rows),
+    utangSummary: buildUtangSummary(customers, currencyCode),
   };
 
   const demandDeltas = buildDemandDeltas(inventoryItems, recent7Rows, previous7Rows);
   const distinctDayCount = new Set(enrichedRows.map((row) => row.dayKey)).size;
   const insightsEmptyState =
-    distinctDayCount === 0 ? 'Need at least 7 days of sales to detect demand shifts.' : null;
+    distinctDayCount === 0 ? 'Magdagdag ng mga 7 araw na benta para makita rito ang galaw ng items.' : null;
 
   const salesTrend = buildDailyTrend({
     rows: recent7Rows,
@@ -233,7 +253,7 @@ export function buildAnalyticsViewModel({
       .map((item) => ({
         itemId: item.itemId,
         itemName: item.itemName,
-        detail: `Up by ${formatCount(item.delta)} ${item.unit} versus the prior 7 days`,
+        detail: `${formatCount(item.delta)} pang ${item.unit} ang nabenta kumpara noong nakaraang linggo`,
         tone: 'positive' as const,
       })),
     decliningDemand: demandDeltas
@@ -242,7 +262,7 @@ export function buildAnalyticsViewModel({
       .map((item) => ({
         itemId: item.itemId,
         itemName: item.itemName,
-        detail: `Down by ${formatCount(Math.abs(item.delta))} ${item.unit} versus the prior 7 days`,
+        detail: `${formatCount(Math.abs(item.delta))} na mas kaunting ${item.unit} ang nabenta kumpara noong nakaraang linggo`,
       })),
     emptyState: insightsEmptyState,
   };
@@ -254,7 +274,7 @@ export function buildAnalyticsViewModel({
     .map((item) => ({
       itemId: item.itemId,
       itemName: item.itemName,
-      detail: `${formatCount(item.averageDailyUnits)}/${item.unit} daily · ${Math.ceil(item.daysUntilStockout)} days left`,
+      detail: `${formatCount(item.averageDailyUnits)} ${item.unit} bawat araw · mga ${Math.ceil(item.daysUntilStockout)} araw na lang`,
       tone: 'warning' as const,
     }));
   const shoppingListByPreset = Object.fromEntries(
@@ -278,14 +298,13 @@ export function buildAnalyticsViewModel({
     forecast: forecasts.slice(0, 3).map((item) => ({
       itemId: item.itemId,
       itemName: item.itemName,
-      detail: `${formatCount(item.recentUnits)} ${item.unit} sold in 7 days · ${Math.ceil(item.daysUntilStockout)} days of stock`,
+      detail: `${formatCount(item.recentUnits)} ${item.unit} na nabenta sa 7 araw · mga ${Math.ceil(item.daysUntilStockout)} araw na lang`,
     })),
     restockSoon,
     shoppingPresets: SHOPPING_PRESETS,
     shoppingListByPreset,
     recommendations,
-    emptyState:
-      forecasts.length === 0 ? 'Forecasts will appear after a few days of local sales.' : null,
+    emptyState: forecasts.length === 0 ? 'Lalabas ito pag may ilang araw nang benta.' : null,
   };
 
   if (!hasPricedRows && enrichedRows.length === 0) {
@@ -314,8 +333,8 @@ function buildSalesMetric({
   if (rows.length === 0) {
     return {
       label,
-      value: '0 units',
-      caption: 'No priced sales yet',
+      value: '0 piraso',
+      caption: 'Wala pang presyong benta',
     };
   }
 
@@ -326,14 +345,14 @@ function buildSalesMetric({
     return {
       label,
       value: formatCurrency(revenue, currencyCode),
-      caption: hasIncompletePricing ? 'Estimated revenue' : 'Revenue',
+      caption: hasIncompletePricing ? 'Tantyang halaga ng benta' : 'Halaga ng benta',
     };
   }
 
   return {
     label,
-    value: `${formatCount(units)} units`,
-    caption: 'No priced sales yet',
+    value: `${formatCount(units)} piraso`,
+    caption: 'Wala pang presyong benta',
   };
 }
 
@@ -383,14 +402,14 @@ function buildSlowMovingItems(
         return {
           itemId: item.id,
           itemName: item.name,
-          detail: `No sales in 30 days`,
+          detail: 'Walang benta sa 30 araw',
         };
       }
 
       return {
         itemId: item.id,
         itemName: item.name,
-        detail: `${formatCount(aggregate.unitsSold)} ${item.unit} sold in 30 days`,
+        detail: `${formatCount(aggregate.unitsSold)} ${item.unit} na nabenta sa 30 araw`,
       };
     })
     .sort((left, right) => {
@@ -423,8 +442,8 @@ function buildDemandDeltas(
 
       return {
         itemId,
-        itemName: inventoryItem?.name ?? recentItem?.itemName ?? previousItem?.itemName ?? 'Unknown Item',
-        unit: inventoryItem?.unit ?? recentItem?.unit ?? previousItem?.unit ?? 'pcs',
+        itemName: inventoryItem?.name ?? recentItem?.itemName ?? previousItem?.itemName ?? 'Hindi kilalang item',
+        unit: inventoryItem?.unit ?? recentItem?.unit ?? previousItem?.unit ?? 'piraso',
         recentUnits: recentItem?.unitsSold ?? 0,
         previousUnits: previousItem?.unitsSold ?? 0,
         delta: (recentItem?.unitsSold ?? 0) - (previousItem?.unitsSold ?? 0),
@@ -444,7 +463,7 @@ function buildDailyTrend({
   timezone: string;
   mode: 'units' | 'revenue';
 }): AnalyticsChartPoint[] {
-  const dayFormat = new Intl.DateTimeFormat('en-US', {
+  const dayFormat = new Intl.DateTimeFormat('fil-PH', {
     weekday: 'short',
     timeZone: timezone,
   });
@@ -460,7 +479,7 @@ function buildDailyTrend({
     points.push({
       label: dayFormat.format(date),
       value,
-      displayValue: mode === 'revenue' ? formatCurrency(value, 'PHP') : `${formatCount(value)} units`,
+      displayValue: mode === 'revenue' ? formatCurrency(value, 'PHP') : `${formatCount(value)} piraso`,
     });
   }
 
@@ -534,7 +553,7 @@ function buildShoppingList({
         horizonDays,
         projectedUnitsNeeded,
         recommendedBuyQuantity,
-        reason: `${formatCount(inventoryItem.currentStock)} ${forecast.unit} on hand · need about ${formatCount(projectedUnitsNeeded)} ${forecast.unit} for the next ${horizonDays} days`,
+        reason: `${formatCount(inventoryItem.currentStock)} ${forecast.unit} na lang · kailangan ng mga ${formatCount(projectedUnitsNeeded)} sa susunod na ${horizonDays} araw`,
         daysUntilStockout: forecast.daysUntilStockout,
       };
     })
@@ -568,8 +587,8 @@ function buildRecommendations({
 }): AnalyticsRecommendation[] {
   if (restockSoon.length > 0) {
     return restockSoon.map((item, index) => ({
-      title: index === 0 ? 'Act Soon' : 'Restock Planning',
-      body: `${item.itemName} is moving quickly. Restock within ${extractDays(item.detail)} days if sales continue.`,
+      title: index === 0 ? 'Bumili Na' : 'Planuhin ang Bili',
+      body: `${item.itemName} ay mabilis mabenta. Bumili ulit sa loob ng ${extractDays(item.detail)} araw kung pareho pa rin ang benta.`,
     }));
   }
 
@@ -578,8 +597,8 @@ function buildRecommendations({
   if (rising) {
     return [
       {
-        title: 'Demand Signal',
-        body: `${rising.itemName} is trending up this week. Prepare extra stock before the next peak day.`,
+        title: 'Mas Mabenta',
+        body: `${rising.itemName} ay mas mabenta ngayong linggo. Maghanda ng dagdag na stock bago ang susunod na dagsa.`,
       },
     ];
   }
@@ -587,20 +606,36 @@ function buildRecommendations({
   if (forecasts.length > 0) {
     return [
       {
-        title: 'Inventory Stable',
-        body: 'Current stock coverage looks stable for the next few days based on recent local sales.',
+        title: 'Okay Pa ang Stock',
+        body: 'Mukhang sapat pa ang stock mo sa susunod na mga araw base sa recent na benta.',
       },
     ];
   }
 
   return [
     {
-      title: 'Build History',
+      title: 'Kulang Pa ang Tala',
       body: hasPricedRows
-        ? 'Keep logging sales locally. Forecasts will appear after a few days of activity.'
-        : 'Add prices and keep logging sales locally to unlock stronger demand guidance.',
+        ? 'Ituloy lang ang pagtatala ng benta. Mas gaganda ang view na ito pag may ilang araw pang dagdag.'
+        : 'Lagyan ng presyo at ituloy ang pagtatala ng benta para makapagbigay ito ng mas malinaw na payo.',
     },
   ];
+}
+
+function buildUtangSummary(customers: LocalCustomer[], currencyCode: string): AnalyticsUtangSummary {
+  const openCustomers = customers
+    .filter((customer) => customer.utangBalance > 0)
+    .sort((left, right) => right.utangBalance - left.utangBalance);
+
+  const totalBalance = openCustomers.reduce((total, customer) => total + customer.utangBalance, 0);
+
+  return {
+    totalBalance: formatCurrency(totalBalance, currencyCode),
+    topCustomers: openCustomers.slice(0, 3).map((customer) => ({
+      customerName: customer.name,
+      balance: formatCurrency(customer.utangBalance, currencyCode),
+    })),
+  };
 }
 
 function getDayKey(date: Date, timezone: string) {
@@ -645,7 +680,7 @@ function shortenLabel(value: string) {
 }
 
 function extractDays(detail: string) {
-  const match = detail.match(/(\d+)\s+days/);
+  const match = detail.match(/(\d+)\s+(?:days|araw)/);
   return match?.[1] ?? '3';
 }
 

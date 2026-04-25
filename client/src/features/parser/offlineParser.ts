@@ -8,6 +8,7 @@ export type ParserItem = {
   item_name: string;
   matched_alias: string;
   quantity: number;
+  quantity_explicit: boolean;
   quantity_delta: number;
   unit: string;
   confidence: number;
@@ -61,6 +62,7 @@ const NUMBER_WORDS: Record<string, number> = {
   'lima ka': 5,
   five: 5,
   unom: 6,
+  anim: 6,
   six: 6,
   pito: 7,
   seven: 7,
@@ -69,6 +71,7 @@ const NUMBER_WORDS: Record<string, number> = {
   siyam: 9,
   nine: 9,
   napulo: 10,
+  sampu: 10,
   ten: 10,
   onse: 11,
   eleven: 11,
@@ -92,10 +95,39 @@ const NUMBER_WORDS: Record<string, number> = {
   twenty: 20,
 };
 
-const SALE_TERMS = ['nakabenta', 'nabenta', 'bawas', 'sold', 'sell', 'baligya', 'nabaligya', 'gibaligya'];
+const SALE_TERMS = [
+  'nakabenta',
+  'nabenta',
+  'bawas',
+  'bumawas',
+  'bumili',
+  'binili',
+  'nabili',
+  'sold',
+  'sell',
+  'baligya',
+  'nabaligya',
+  'gibaligya',
+];
 const RESTOCK_TERMS = ['dagdag', 'nadagdagan', 'restock', 'refill', 'add', 'dugang', 'idugang', 'puni'];
-const UTANG_TERMS = ['utang', 'giutang', 'lista', 'ilista', 'palista', 'kumuha', 'lista sa utang', 'isulat sa utang'];
+const UTANG_TERMS = [
+  'utang',
+  'umutang',
+  'nag utang',
+  'nagutang',
+  'giutang',
+  'lista',
+  'i lista',
+  'ilista',
+  'palista',
+  'kumuha',
+  'lista sa utang',
+  'isulat sa utang',
+];
 const QUESTION_TERMS = ['ano', 'sino', 'ilan', 'magkano', 'low stock', 'unsa'];
+const READY_TO_APPLY_THRESHOLD = 0.6;
+const NEEDS_CONFIRMATION_THRESHOLD = 0.35;
+const CONFIRMATION_CAP = READY_TO_APPLY_THRESHOLD - 0.01;
 
 // STT spelling variants and common mishearings
 const STT_VARIANTS: Record<string, string> = {
@@ -137,6 +169,7 @@ export function parseOfflineCommand(rawText: string, inventoryItems: LocalInvent
     0.99,
     0.55 + (intent === 'utang' ? 0.15 : 0.2) + Math.max(...matchedItems.map((item) => item.confidence)) * 0.25,
   );
+  const hasOnlyExplicitQuantities = matchedItems.every((item) => item.quantity_explicit);
   const credit = isUtang
     ? customerName
       ? {
@@ -146,8 +179,13 @@ export function parseOfflineCommand(rawText: string, inventoryItems: LocalInvent
       : { is_utang: true }
     : { is_utang: false };
 
+  if (!hasOnlyExplicitQuantities) {
+    confidence = Math.min(confidence, CONFIRMATION_CAP);
+    notes.push('missing_quantity_assumed');
+  }
+
   if (isUtang && !customerName) {
-    confidence = Math.min(confidence, 0.84);
+    confidence = Math.min(confidence, CONFIRMATION_CAP);
     notes.push('missing_customer_name');
   }
 
@@ -168,7 +206,7 @@ function buildResult(
     normalized_text: normalizedText,
     intent,
     confidence,
-    status: getStatus(confidence),
+    status: intent === 'question' ? 'needs_confirmation' : getStatus(confidence),
     items,
     credit,
     notes,
@@ -176,11 +214,11 @@ function buildResult(
 }
 
 function getStatus(confidence: number): ParserStatus {
-  if (confidence >= 0.85) {
+  if (confidence >= READY_TO_APPLY_THRESHOLD) {
     return 'ready_to_apply';
   }
 
-  if (confidence >= 0.6) {
+  if (confidence >= NEEDS_CONFIRMATION_THRESHOLD) {
     return 'needs_confirmation';
   }
 
@@ -190,7 +228,8 @@ function getStatus(confidence: number): ParserStatus {
 function normalizeText(text: string) {
   let normalized = text
     .toLowerCase()
-    .replace(/[.,!?]/g, ' ')
+    .replace(/[.,!?/:;]/g, ' ')
+    .replace(/-/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -250,13 +289,15 @@ function matchInventoryItems(
         return null;
       }
 
-      const quantity = extractQuantityBeforeAlias(normalizedText, matchedAlias) ?? 1;
+      const extractedQuantity = extractQuantityAroundAlias(normalizedText, matchedAlias);
+      const quantity = extractedQuantity ?? 1;
 
       return {
         item_id: item.id,
         item_name: item.name,
         matched_alias: matchedAlias,
         quantity,
+        quantity_explicit: extractedQuantity !== null,
         quantity_delta: direction * quantity,
         unit: item.unit,
         confidence: matchedAlias === normalizeText(item.name) ? 0.95 : 0.9,
@@ -265,10 +306,31 @@ function matchInventoryItems(
     .filter((item): item is ParserItem => item !== null);
 }
 
-function extractQuantityBeforeAlias(normalizedText: string, alias: string) {
+function extractQuantityAroundAlias(normalizedText: string, alias: string) {
   const aliasIndex = normalizedText.indexOf(alias);
+  if (aliasIndex < 0) {
+    return null;
+  }
+
   const beforeAlias = normalizedText.slice(0, aliasIndex).trim();
-  const numbers = beforeAlias.match(/\b\d+(?:\.\d+)?\b/g);
+  const lastNumberBefore = extractLastNumber(beforeAlias);
+
+  if (lastNumberBefore !== null) {
+    return lastNumberBefore;
+  }
+
+  const afterAlias = normalizedText.slice(aliasIndex + alias.length).trim();
+  const directAfterMatch = afterAlias.match(/^(?:(?:na|ng|ka|pcs|pc|piraso)\s+)?(\d+(?:\.\d+)?)(?=\s|$)/);
+
+  if (directAfterMatch?.[1]) {
+    return Number(directAfterMatch[1]);
+  }
+
+  return null;
+}
+
+function extractLastNumber(text: string) {
+  const numbers = text.match(/\b\d+(?:\.\d+)?\b/g);
   const lastNumber = numbers?.at(-1);
 
   return lastNumber ? Number(lastNumber) : null;
@@ -282,8 +344,16 @@ function extractCustomerName(rawText: string) {
   }
 
   const niMatch = rawText.match(/\bni\s+(.+?)(?:\.|,|\s+ang\s+\d+|\s+\d+\s+ka|$)/i);
+  if (niMatch?.[1]) {
+    return cleanupName(niMatch[1]);
+  }
 
-  return niMatch?.[1] ? cleanupName(niMatch[1]) : undefined;
+  const kayMatch = rawText.match(/\bkay\s+(.+?)(?=\s+(?:ng|ug|og|ang)\b|[.,]|$)/i);
+  if (kayMatch?.[1]) {
+    return cleanupName(kayMatch[1]);
+  }
+
+  return undefined;
 }
 
 function cleanupName(name: string) {
