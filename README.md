@@ -88,6 +88,8 @@ Default server routes:
 - `GET /health`
 - `GET /api/v1/auth/me`
 - `GET /api/v1/profile/me`
+- `PATCH /api/v1/profile/me`
+- `DELETE /api/v1/profile/me/avatar`
 
 The server listens on the `PORT` from `.env`, which defaults to `4000`.
 
