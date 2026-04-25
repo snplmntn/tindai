@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { StatusBar } from 'expo-status-bar';
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,6 +13,7 @@ import {
   updateMyProfile,
   updateMyStoreName,
 } from '@/features/profile/profileApi';
+import { mobileCopy } from '@/copy/mobileCopy';
 import { colors } from '@/navigation/colors';
 
 function getDisplayName(profile: RemoteProfile | null) {
@@ -23,7 +25,7 @@ function getDisplayEmail(profile: RemoteProfile | null) {
 }
 
 function getDisplayStore(storeName: string | undefined) {
-  return storeName?.trim() || 'Aking Tindahan';
+  return storeName?.trim() || 'Wala pang pangalan ng tindahan';
 }
 
 function getAvatarUrl(profile: RemoteProfile | null) {
@@ -82,7 +84,6 @@ export function ProfileScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
-  const [isSwitchingDemoMode, setIsSwitchingDemoMode] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -145,10 +146,6 @@ export function ProfileScreen() {
   const displayStore = getDisplayStore(store?.name);
   const avatarUrl = getAvatarUrl(profile);
   const avatarInitials = getInitials(displayName);
-  const isOfflineDemoMode = !isAuthenticated;
-  const helperBody = isAuthenticated
-    ? 'Naka-save sa phone na ito ang detalye ng tindahan mo.'
-    : 'Mag-sign in para may online backup ang tala ng tindahan mo. Mananatili pa rin ito sa phone mo kahit walang internet.';
 
   const handleStartEdit = () => {
     setFullNameInput(profile?.fullName?.trim() || '');
@@ -181,7 +178,7 @@ export function ProfileScreen() {
       accessToken = data.session?.access_token ?? null;
 
       if (!accessToken) {
-        throw new Error('Mag-sign in ulit para magpatuloy.');
+        throw new Error('Please log in again to continue.');
       }
 
       const nextProfile = await updateMyProfile(accessToken, {
@@ -195,7 +192,7 @@ export function ProfileScreen() {
       await refresh();
       setIsEditing(false);
     } catch (caughtError) {
-      setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Hindi ma-save ang profile ngayon. Subukan ulit.');
+      setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Unable to save profile right now.');
 
       if (didUpdateProfile) {
         try {
@@ -225,49 +222,25 @@ export function ProfileScreen() {
       const accessToken = data.session?.access_token;
 
       if (!accessToken) {
-        throw new Error('Mag-sign in ulit para magpatuloy.');
+        throw new Error('Please log in again to continue.');
       }
 
       const nextProfile = await clearMyProfileAvatar(accessToken);
       setProfile(nextProfile);
       setAvatarUrlInput('');
     } catch (caughtError) {
-      setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Hindi maalis ang larawan ngayon. Subukan ulit.');
+      setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Unable to remove avatar right now.');
     } finally {
       setIsRemovingAvatar(false);
     }
   };
 
-  const handleToggleDemoMode = async () => {
-    if (isSwitchingDemoMode) {
-      return;
-    }
-
-    setIsSwitchingDemoMode(true);
-    setErrorMessage(null);
-    try {
-      if (isOfflineDemoMode) {
-        await showLogin();
-      } else {
-        await signOut();
-      }
-    } catch (caughtError) {
-      setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Hindi mabago ang mode ngayon. Subukan ulit.');
-    } finally {
-      setIsSwitchingDemoMode(false);
-    }
-  };
-
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar backgroundColor={colors.primary} style="light" />
       <ScrollView contentContainerStyle={styles.contentContainer} style={styles.screen}>
         <View style={styles.heroSection}>
-          <View style={styles.heroPatternLarge} />
-          <View style={styles.heroPatternSmall} />
-
           <View style={styles.heroContent}>
-            <Text style={styles.heroPageTitle}>Profile</Text>
-
             <View style={styles.heroAvatarShell}>
               {avatarUrl ? (
                 <Image source={{ uri: avatarUrl }} style={styles.heroAvatarImage} />
@@ -278,99 +251,67 @@ export function ProfileScreen() {
 
             <Text style={styles.heroName}>{displayName}</Text>
             <Text style={styles.heroEmail}>{displayEmail}</Text>
-
-            <View style={styles.storeBadge}>
-              <Text style={styles.storeBadgeIcon}>•</Text>
-              <Text style={styles.storeBadgeLabel}>{displayStore}</Text>
-            </View>
           </View>
         </View>
 
         <View style={styles.contentSection}>
-          <View style={styles.infoCard}>
-            <View style={styles.infoChip}>
-              <Text style={styles.infoChipIcon}>•</Text>
-              <Text style={styles.infoChipLabel}>Nasa phone ang tala mo</Text>
+          <View style={styles.detailsCardShell}>
+            <View style={styles.detailsCard}>
+              {isAuthenticated && isEditing ? (
+                <View style={styles.detailsEditContent}>
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>PANGALAN</Text>
+                    <TextInput
+                      value={fullNameInput}
+                      onChangeText={setFullNameInput}
+                      placeholder="May-ari ng Tindahan"
+                      style={styles.fieldInput}
+                      placeholderTextColor={colors.muted}
+                    />
+                  </View>
+
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>EMAIL</Text>
+                    <TextInput
+                      value={displayEmail}
+                      editable={false}
+                      selectTextOnFocus={false}
+                      style={styles.fieldInputReadOnly}
+                    />
+                  </View>
+
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>TINDAHAN</Text>
+                    <TextInput
+                      value={storeNameInput}
+                      onChangeText={setStoreNameInput}
+                      placeholder="Pangalan ng tindahan"
+                      style={styles.fieldInput}
+                      placeholderTextColor={colors.muted}
+                    />
+                  </View>
+
+                  {errorMessage ? <Text style={styles.errorMessage}>{errorMessage}</Text> : null}
+
+                  <View style={styles.detailsCardActions}>
+                    <Pressable style={styles.secondaryButton} onPress={handleCancelEdit}>
+                      <Text style={styles.secondaryButtonLabel}>{mobileCopy.profileCancelAction}</Text>
+                    </Pressable>
+                    <Pressable style={styles.primaryButton} onPress={() => void handleSaveProfile()} disabled={isSaving}>
+                      <Text style={styles.primaryButtonLabel}>
+                        {isSaving ? mobileCopy.profileSaveBusy : mobileCopy.profileSaveAction}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <SummaryRow label="PANGALAN" value={displayName} />
+                  <SummaryRow label="EMAIL" value={displayEmail} />
+                  <SummaryRow label="TINDAHAN" value={displayStore} isLast />
+                </>
+              )}
             </View>
-
-            <Text style={styles.infoBody}>{helperBody}</Text>
-          </View>
-
-          <View style={styles.demoModeCard}>
-            <Text style={styles.demoModeTitle}>Offline Mode / Online Mode</Text>
-            <Text style={styles.demoModeBody}>
-              {isOfflineDemoMode
-                ? 'Bukas ito: phone lang muna ang gamit ng tindahan mo.'
-                : 'Patayin ito kung gusto mong phone lang muna habang demo.'}
-            </Text>
-            <Pressable
-              style={styles.demoModeButton}
-              onPress={() => void handleToggleDemoMode()}
-              disabled={isSwitchingDemoMode}
-            >
-              <Text style={styles.demoModeButtonLabel}>
-                {isSwitchingDemoMode
-                  ? 'Ina-update...'
-                  : isOfflineDemoMode
-                    ? 'Online Mode'
-                    : 'Offline Mode'}
-              </Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.detailsCard}>
-            {isAuthenticated && isEditing ? (
-              <View style={styles.detailsEditContent}>
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>PANGALAN</Text>
-                  <TextInput
-                    value={fullNameInput}
-                    onChangeText={setFullNameInput}
-                    placeholder="May-ari ng tindahan"
-                    style={styles.fieldInput}
-                    placeholderTextColor={colors.muted}
-                  />
-                </View>
-
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>EMAIL</Text>
-                  <TextInput
-                    value={displayEmail}
-                    editable={false}
-                    selectTextOnFocus={false}
-                    style={styles.fieldInputReadOnly}
-                  />
-                </View>
-
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>TINDAHAN</Text>
-                  <TextInput
-                    value={storeNameInput}
-                    onChangeText={setStoreNameInput}
-                    placeholder="Aking Tindahan"
-                    style={styles.fieldInput}
-                    placeholderTextColor={colors.muted}
-                  />
-                </View>
-
-                {errorMessage ? <Text style={styles.errorMessage}>{errorMessage}</Text> : null}
-
-                <View style={styles.detailsCardActions}>
-                  <Pressable style={styles.secondaryButton} onPress={handleCancelEdit}>
-                    <Text style={styles.secondaryButtonLabel}>Kanselahin</Text>
-                  </Pressable>
-                  <Pressable style={styles.primaryButton} onPress={() => void handleSaveProfile()} disabled={isSaving}>
-                    <Text style={styles.primaryButtonLabel}>{isSaving ? 'Sine-save...' : 'I-save'}</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ) : (
-              <>
-                <SummaryRow label="PANGALAN" value={displayName} />
-                <SummaryRow label="EMAIL" value={displayEmail} />
-                <SummaryRow label="TINDAHAN" value={displayStore} isLast />
-              </>
-            )}
           </View>
 
           {isAuthenticated ? (
@@ -383,16 +324,16 @@ export function ProfileScreen() {
                     disabled={isRemovingAvatar}
                   >
                     <Text style={styles.secondaryButtonLabel}>
-                      {isRemovingAvatar ? 'Inaalis...' : 'Alisin ang larawan'}
+                      {isRemovingAvatar ? mobileCopy.profileRemoveAvatarBusy : mobileCopy.profileRemoveAvatar}
                     </Text>
                   </Pressable>
                 ) : (
                   <>
                     <Pressable style={styles.primaryButton} onPress={handleStartEdit}>
-                      <Text style={styles.primaryButtonLabel}>Ayusin ang profile</Text>
+                      <Text style={styles.primaryButtonLabel}>{mobileCopy.profileEditAction}</Text>
                     </Pressable>
                     <Pressable style={styles.secondaryButton} onPress={() => void signOut()}>
-                      <Text style={styles.secondaryButtonLabel}>Mag-sign out</Text>
+                      <Text style={styles.secondaryButtonLabel}>Sign out</Text>
                     </Pressable>
                   </>
                 )}
@@ -401,10 +342,10 @@ export function ProfileScreen() {
           ) : (
             <View style={styles.actionSection}>
               <Pressable style={styles.primaryButton} onPress={() => void showSignUp()}>
-                <Text style={styles.primaryButtonLabel}>Gumawa ng Account</Text>
+                <Text style={styles.primaryButtonLabel}>{mobileCopy.profileSignedOutCreateAccount}</Text>
               </Pressable>
               <Pressable style={styles.secondaryButton} onPress={showLogin}>
-                <Text style={styles.secondaryButtonLabel}>Mag-log In</Text>
+                <Text style={styles.secondaryButtonLabel}>{mobileCopy.profileSignedOutLogin}</Text>
               </Pressable>
             </View>
           )}
@@ -417,7 +358,7 @@ export function ProfileScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.primary,
   },
   screen: {
     flex: 1,
@@ -427,43 +368,15 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   heroSection: {
-    position: 'relative',
-    overflow: 'hidden',
     backgroundColor: colors.primary,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
     paddingHorizontal: 24,
-    paddingTop: 14,
+    paddingTop: 30,
     paddingBottom: 44,
-  },
-  heroPatternLarge: {
-    position: 'absolute',
-    top: -28,
-    right: -18,
-    width: 160,
-    height: 160,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  heroPatternSmall: {
-    position: 'absolute',
-    left: -24,
-    bottom: 18,
-    width: 92,
-    height: 92,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   heroContent: {
     alignItems: 'center',
-  },
-  heroPageTitle: {
-    alignSelf: 'stretch',
-    color: colors.surface,
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 28,
-    marginBottom: 24,
   },
   heroAvatarShell: {
     width: 84,
@@ -498,112 +411,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
-  storeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    marginTop: 12,
-  },
-  storeBadgeIcon: {
-    color: colors.surface,
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 16,
-  },
-  storeBadgeLabel: {
-    color: colors.surface,
-    fontSize: 14,
-    fontWeight: '600',
-    lineHeight: 20,
-  },
   contentSection: {
     gap: 18,
-    marginTop: -22,
+    marginTop: 18,
     paddingHorizontal: 24,
   },
-  infoCard: {
+  detailsCardShell: {
     borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(20, 87, 70, 0.08)',
-    backgroundColor: colors.surface,
-    padding: 16,
-    gap: 12,
-    shadowColor: colors.primaryDeep,
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    elevation: 2,
-  },
-  infoChip: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: 999,
-    backgroundColor: '#E8F2F0',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  infoChipIcon: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  infoChipLabel: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  infoBody: {
-    color: colors.text,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  demoModeCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(20, 87, 70, 0.08)',
-    backgroundColor: colors.surface,
-    padding: 16,
-    gap: 12,
-  },
-  demoModeTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  demoModeBody: {
-    color: colors.muted,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  demoModeButton: {
-    minHeight: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(102, 112, 107, 0.24)',
-    backgroundColor: '#E8F2F0',
-    paddingHorizontal: 16,
-  },
-  demoModeButtonLabel: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  detailsCard: {
-    borderRadius: 24,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 2,
     shadowColor: colors.primaryDeep,
     shadowOpacity: 0.06,
     shadowRadius: 14,
@@ -612,6 +426,13 @@ const styles = StyleSheet.create({
       height: 4,
     },
     elevation: 1,
+  },
+  detailsCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 2,
   },
   detailsEditContent: {
     gap: 14,

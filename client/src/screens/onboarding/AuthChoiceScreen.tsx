@@ -3,13 +3,14 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { mobileCopy } from '@/copy/mobileCopy';
 import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/navigation/colors';
 
 const valueProps = [
-  'Ilista ang benta gamit ang boses mo',
+  'I-track ang benta gamit ang boses mo',
   'Gumagana kahit walang internet',
-  'Makikita agad kung alin ang paubos na',
+  'Makikita agad ang malapit nang maubos',
 ];
 
 function SetupProgress() {
@@ -30,7 +31,7 @@ export function AuthChoiceScreen() {
     <SafeAreaView style={styles.screen}>
       <View style={styles.topBar}>
         <View style={styles.topBarSpacer} />
-        <Text style={styles.topBarTitle}>Pagsisimula</Text>
+        <Text style={styles.topBarTitle}>{mobileCopy.onboardingTopBarTitle}</Text>
         <View style={styles.topBarSpacer} />
       </View>
 
@@ -42,7 +43,7 @@ export function AuthChoiceScreen() {
             <Ionicons name="mic" size={38} color="#b1ffe4" />
           </View>
           <Text style={styles.brandTitle}>Tindai</Text>
-          <Text style={styles.brandSubtitle}>Imbentaryong pinapadali ng boses para sa tindahan mo.</Text>
+          <Text style={styles.brandSubtitle}>Boses-una na inventory para sa tindahan mo.</Text>
         </View>
 
         <View style={styles.valueList}>
@@ -55,8 +56,8 @@ export function AuthChoiceScreen() {
         </View>
 
         <View style={styles.actions}>
-          <PrimaryButton label="Mag-sign in o gumawa ng account" onPress={() => void showLogin()} />
-          <PrimaryButton label="Subukan muna bilang guest" onPress={() => void chooseGuestMode()} variant="ghost" />
+          <PrimaryButton label="Mag-sign In o Gumawa ng Account" onPress={() => void showLogin()} />
+          <PrimaryButton label="Simulan bilang Guest" onPress={() => void chooseGuestMode()} variant="ghost" />
         </View>
 
         <Text style={styles.disclaimer}>
@@ -70,7 +71,7 @@ export function AuthChoiceScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f7faf7',
+    backgroundColor: colors.background,
   },
   topBar: {
     minHeight: 64,

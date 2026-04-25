@@ -18,7 +18,6 @@ const mockedSubmitFallbackCommand = vi.fn(async () => undefined);
 const mockedCreateLocalCustomer = vi.fn(async (name: string) => ({ id: 'customer-2', name }));
 const mockedCreateLocalInventoryItem = vi.fn(async () => undefined);
 const mockedSubmitAssistantQuestion = vi.fn();
-const mockedLoadAnalyticsSalesRows = vi.fn();
 
 let mockedAuthMode: 'guest' | 'authenticated' = 'authenticated';
 let mockedMicrophonePermission: 'granted' | 'denied' | 'pending' = 'granted';
@@ -108,10 +107,6 @@ vi.mock('@/features/assistant/assistantLanguageDetection', () => ({
   detectLanguageStyle: () => 'tagalog',
 }));
 
-vi.mock('@/features/analytics/analyticsRepository', () => ({
-  loadAnalyticsSalesRows: (...args: unknown[]) => mockedLoadAnalyticsSalesRows(...args),
-}));
-
 vi.mock('@/services/ttsService', () => ({
   getLanguageCode: () => 'fil-PH',
   speakText: async () => ({ spoken: true, fallbackUsed: false }),
@@ -168,19 +163,6 @@ describe('DashboardScreen', () => {
     mockedCreateLocalCustomer.mockClear();
     mockedCreateLocalInventoryItem.mockClear();
     mockedSubmitAssistantQuestion.mockReset();
-    mockedLoadAnalyticsSalesRows.mockReset();
-    mockedLoadAnalyticsSalesRows.mockResolvedValue([
-      {
-        itemId: 'item-1',
-        itemName: 'Coke Mismo',
-        unit: 'pcs',
-        quantityDelta: -3,
-        unitPrice: 20,
-        lineTotal: 60,
-        occurredAt: '2026-04-26T01:00:00.000Z',
-        isUtang: false,
-      },
-    ]);
   });
 
   afterEach(() => {
@@ -190,11 +172,9 @@ describe('DashboardScreen', () => {
   it('renders the migrated dashboard hero and summary headings', async () => {
     const tree = await renderDashboardScreen();
 
-    expect(findTextNodes(tree, 'Mercado Store')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Pindutin para magtala ng benta')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Benta ngayong araw')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'P60')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Nabentang piraso')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Tindahan')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Tap para magsalita ng utos')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Produkto')).not.toHaveLength(0);
   });
 
   it('shows guest backup messaging and the add-item action', async () => {
@@ -203,16 +183,16 @@ describe('DashboardScreen', () => {
 
     const tree = await renderDashboardScreen();
 
-    expect(findTextNodes(tree, 'Mag-sign in para magkaroon ng online backup ang tindahan mo.')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Mag-sign in')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Sa phone lang naka-save ang data mo.')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Mag-log in')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Magdagdag ng item')).not.toHaveLength(0);
   });
 
   it('keeps the inventory controls visible in the migrated layout', async () => {
     const tree = await renderDashboardScreen();
 
-    expect(findTextNodes(tree, 'Mga huling tala')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Coke Mismo')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Malapit maubos')).not.toHaveLength(0);
     expect(findIconNodes(tree, 'remove')).not.toHaveLength(0);
     expect(findIconNodes(tree, 'add')).not.toHaveLength(0);
   });

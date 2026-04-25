@@ -165,9 +165,9 @@ type ForecastAggregate = {
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const SHOPPING_PRESETS: AnalyticsShoppingPreset[] = [
-  { key: '7d', label: '7 days', days: 7 },
-  { key: '14d', label: '14 days', days: 14 },
-  { key: '30d', label: '1 month', days: 30 },
+  { key: '7d', label: '7 araw', days: 7 },
+  { key: '14d', label: '14 araw', days: 14 },
+  { key: '30d', label: '1 buwan', days: 30 },
 ];
 
 function toNumber(value: number | string | null | undefined) {
@@ -220,7 +220,7 @@ function shortenLabel(value: string) {
 }
 
 function extractDays(detail: string) {
-  const match = detail.match(/(\d+)\s+days/);
+  const match = detail.match(/(\d+)\s+(?:days|araw)/);
   return match?.[1] ?? '3';
 }
 
@@ -263,14 +263,14 @@ function buildSlowMovingItems(inventoryItems: InventoryItem[], rows: EnrichedMov
         return {
           itemId: item.id,
           itemName: item.name,
-          detail: 'No sales in 30 days',
+          detail: 'Walang benta sa 30 araw',
         };
       }
 
       return {
         itemId: item.id,
         itemName: item.name,
-        detail: `${formatCount(aggregate.unitsSold)} ${item.unit} sold in 30 days`,
+        detail: `${formatCount(aggregate.unitsSold)} ${item.unit} na nabenta sa 30 araw`,
       };
     })
     .sort((left, right) => {
@@ -306,8 +306,8 @@ function buildDemandDeltas(
 
       return {
         itemId,
-        itemName: inventoryItem?.name ?? recentItem?.itemName ?? previousItem?.itemName ?? 'Unknown Item',
-        unit: inventoryItem?.unit ?? recentItem?.unit ?? previousItem?.unit ?? 'pcs',
+        itemName: inventoryItem?.name ?? recentItem?.itemName ?? previousItem?.itemName ?? 'Hindi kilalang item',
+        unit: inventoryItem?.unit ?? recentItem?.unit ?? previousItem?.unit ?? 'piraso',
         recentUnits: recentItem?.unitsSold ?? 0,
         previousUnits: previousItem?.unitsSold ?? 0,
         delta: (recentItem?.unitsSold ?? 0) - (previousItem?.unitsSold ?? 0),
@@ -322,7 +322,7 @@ function buildDailyRevenueTrend(params: {
   timezone: string;
   currencyCode: string;
 }): AnalyticsChartPoint[] {
-  const dayFormat = new Intl.DateTimeFormat('en-US', {
+  const dayFormat = new Intl.DateTimeFormat('fil-PH', {
     weekday: 'short',
     timeZone: params.timezone,
   });
@@ -381,8 +381,8 @@ function buildRecommendations(params: {
 }): AnalyticsRecommendation[] {
   if (params.restockSoon.length > 0) {
     return params.restockSoon.map((item, index) => ({
-      title: index === 0 ? 'Act Soon' : 'Restock Planning',
-      body: `${item.itemName} is moving quickly. Restock within ${extractDays(item.detail)} days if sales continue.`,
+      title: index === 0 ? 'Bumili Na' : 'Planuhin ang Bili',
+      body: `${item.itemName} ay mabilis mabenta. Bumili ulit sa loob ng ${extractDays(item.detail)} araw kung pareho pa rin ang benta.`,
     }));
   }
 
@@ -390,8 +390,8 @@ function buildRecommendations(params: {
   if (rising) {
     return [
       {
-        title: 'Demand Signal',
-        body: `${rising.itemName} is trending up this week. Prepare extra stock before the next peak day.`,
+        title: 'Mas Mabenta',
+        body: `${rising.itemName} ay mas mabenta ngayong linggo. Maghanda ng dagdag na stock bago ang susunod na dagsa.`,
       },
     ];
   }
@@ -399,18 +399,18 @@ function buildRecommendations(params: {
   if (params.forecasts.length > 0) {
     return [
       {
-        title: 'Inventory Stable',
-        body: 'Current stock coverage looks stable for the next few days based on recent sales.',
+        title: 'Okay Pa ang Stock',
+        body: 'Mukhang sapat pa ang stock mo sa susunod na mga araw base sa recent na benta.',
       },
     ];
   }
 
   return [
     {
-      title: 'Build History',
+      title: 'Kulang Pa ang Tala',
       body: params.hasPricedRows
-        ? 'Keep recording sales. Forecasts will appear after a few days of activity.'
-        : 'Add prices and keep recording sales to unlock stronger demand guidance.',
+        ? 'Ituloy lang ang pagtatala ng benta. Mas gaganda ang view na ito pag may ilang araw pang dagdag.'
+        : 'Lagyan ng presyo at ituloy ang pagtatala ng benta para makapagbigay ito ng mas malinaw na payo.',
     },
   ];
 }
@@ -445,7 +445,7 @@ function buildShoppingList(params: {
         horizonDays: params.horizonDays,
         projectedUnitsNeeded,
         recommendedBuyQuantity,
-        reason: `${formatCount(inventoryItem.currentStock)} ${forecast.unit} on hand · need about ${formatCount(projectedUnitsNeeded)} ${forecast.unit} for the next ${params.horizonDays} days`,
+        reason: `${formatCount(inventoryItem.currentStock)} ${forecast.unit} na lang · kailangan ng mga ${formatCount(projectedUnitsNeeded)} sa susunod na ${params.horizonDays} araw`,
         daysUntilStockout: forecast.daysUntilStockout,
       };
     })
@@ -476,14 +476,14 @@ function buildSalesMetric(params: {
     return {
       label: params.label,
       value: formatCurrency(params.grossSales, params.currencyCode),
-      caption: 'Revenue',
+      caption: 'Halaga ng benta',
     };
   }
 
   return {
     label: params.label,
-    value: `${formatCount(params.unitsSold)} units`,
-    caption: 'No priced sales yet',
+    value: `${formatCount(params.unitsSold)} piraso`,
+    caption: 'Wala pang presyong benta',
   };
 }
 
@@ -506,25 +506,27 @@ function buildPredictionPrompt(params: {
   shoppingList: AnalyticsShoppingListItem[];
   recommendations: AnalyticsRecommendation[];
 }) {
-  const forecastLine = params.forecast.length > 0 ? params.forecast.map((item) => item.detail).join(' | ') : 'No forecast items yet';
-  const restockLine = params.restockSoon.length > 0 ? params.restockSoon.map((item) => item.itemName).join(', ') : 'No urgent restock';
+  const forecastLine =
+    params.forecast.length > 0 ? params.forecast.map((item) => item.detail).join(' | ') : 'Wala pang taya';
+  const restockLine =
+    params.restockSoon.length > 0 ? params.restockSoon.map((item) => item.itemName).join(', ') : 'Wala pang kailangang i-restock agad';
   const shoppingListLine =
     params.shoppingList.length > 0
-      ? params.shoppingList.map((item) => `${item.itemName}: buy ${item.recommendedBuyQuantity} ${item.unit}`).join(' | ')
-      : 'No grocery trip items yet';
+      ? params.shoppingList.map((item) => `${item.itemName}: bumili ng ${item.recommendedBuyQuantity} ${item.unit}`).join(' | ')
+      : 'Wala pang item sa listahan';
   const recommendationLine =
     params.recommendations.length > 0
       ? params.recommendations.map((item) => `${item.title}: ${item.body}`).join(' | ')
-      : 'No recommendation yet';
+      : 'Wala pang payo';
 
   return [
-    'You are helping a small store owner.',
-    'Rewrite the analytics into one short practical summary (max 2 sentences, plain language, no markdown).',
+    'Tumutulong ka sa isang maliit na tindahan.',
+    'Isulat sa simple at malinaw na Tagalog ang maikling buod ng analytics (hanggang 2 pangungusap, walang markdown).',
     `Store: ${params.storeName}`,
-    `Forecast: ${forecastLine}`,
-    `Restock soon: ${restockLine}`,
-    `7-day grocery trip: ${shoppingListLine}`,
-    `Recommendations: ${recommendationLine}`,
+    `Taya: ${forecastLine}`,
+    `Dapat i-restock agad: ${restockLine}`,
+    `Listahan ng bibilhin sa 7 araw: ${shoppingListLine}`,
+    `Mga payo: ${recommendationLine}`,
   ].join('\n');
 }
 
@@ -622,8 +624,8 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
       const inventoryItem = inventoryById.get(row.item_id);
       return {
         itemId: row.item_id,
-        itemName: inventoryItem?.name ?? 'Unknown Item',
-        unit: inventoryItem?.unit ?? 'pcs',
+        itemName: inventoryItem?.name ?? 'Hindi kilalang item',
+        unit: inventoryItem?.unit ?? 'piraso',
         unitsSold,
         dayKey: getDayKey(occurredAtDate, timezone),
         daysAgo: Math.floor((nowDate.getTime() - occurredAtDate.getTime()) / DAY_IN_MS),
@@ -646,28 +648,28 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
 
   const overview = {
     salesToday: buildSalesMetric({
-      label: 'Sales Today',
+      label: 'Benta Ngayon',
       currencyCode: store.currencyCode,
       grossSales: salesTodayGross,
       unitsSold: salesTodayUnits,
     }),
     salesThisMonth: buildSalesMetric({
-      label: 'Sales This Month',
+      label: 'Benta Ngayong Buwan',
       currencyCode: store.currencyCode,
       grossSales: salesThisMonthGross,
       unitsSold: salesThisMonthUnits,
     }),
     itemsSoldToday: {
-      label: 'Items Sold Today',
-      value: `${formatCount(salesTodayUnits)} units`,
-      caption: 'Units sold today',
+      label: 'Nabenta Ngayon',
+      value: `${formatCount(salesTodayUnits)} piraso`,
+      caption: 'Nabenta ngayon',
     },
     topSelling: aggregateProductRows(last30Rows)
       .slice(0, 3)
       .map((item) => ({
         itemId: item.itemId,
         itemName: item.itemName,
-        detail: `${formatCount(item.unitsSold)} ${item.unit} sold in 30 days`,
+        detail: `${formatCount(item.unitsSold)} ${item.unit} na nabenta sa 30 araw`,
       })),
     lowStock: inventoryItems
       .filter((item) => item.currentStock <= item.lowStockThreshold)
@@ -676,7 +678,7 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
       .map((item) => ({
         itemId: item.id,
         itemName: item.name,
-        detail: `${formatCount(item.currentStock)} ${item.unit} left · reorder at ${formatCount(item.lowStockThreshold)}`,
+        detail: `${formatCount(item.currentStock)} ${item.unit} na lang · bumili ulit pag umabot sa ${formatCount(item.lowStockThreshold)}`,
         tone: 'warning' as const,
       })),
     fastMoving: aggregateProductRows(recent7Rows)
@@ -684,7 +686,7 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
       .map((item) => ({
         itemId: item.itemId,
         itemName: item.itemName,
-        detail: `${formatCount(item.unitsSold)} ${item.unit} sold in 7 days`,
+        detail: `${formatCount(item.unitsSold)} ${item.unit} na nabenta sa 7 araw`,
         tone: 'positive' as const,
       })),
     slowMoving: buildSlowMovingItems(inventoryItems, last30Rows),
@@ -713,7 +715,7 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
       .map((item) => ({
         itemId: item.itemId,
         itemName: item.itemName,
-        detail: `Up by ${formatCount(item.delta)} ${item.unit} versus the prior 7 days`,
+        detail: `${formatCount(item.delta)} pang ${item.unit} ang nabenta kumpara noong nakaraang linggo`,
         tone: 'positive' as const,
       })),
     decliningDemand: demandDeltas
@@ -722,11 +724,11 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
       .map((item) => ({
         itemId: item.itemId,
         itemName: item.itemName,
-        detail: `Down by ${formatCount(Math.abs(item.delta))} ${item.unit} versus the prior 7 days`,
+        detail: `${formatCount(Math.abs(item.delta))} na mas kaunting ${item.unit} ang nabenta kumpara noong nakaraang linggo`,
       })),
     emptyState:
       new Set(enrichedMovements.map((row) => row.dayKey)).size === 0
-        ? 'Need at least 7 days of sales to detect demand shifts.'
+        ? 'Magdagdag ng mga 7 araw na benta para makita rito ang galaw ng items.'
         : null,
   };
 
@@ -737,7 +739,7 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
     .map((item) => ({
       itemId: item.itemId,
       itemName: item.itemName,
-      detail: `${formatCount(item.averageDailyUnits)}/${item.unit} daily · ${Math.ceil(item.daysUntilStockout)} days left`,
+      detail: `${formatCount(item.averageDailyUnits)} ${item.unit} bawat araw · mga ${Math.ceil(item.daysUntilStockout)} araw na lang`,
       tone: 'warning' as const,
     }));
   const shoppingListByPreset = Object.fromEntries(
@@ -769,7 +771,7 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
           forecast: forecasts.slice(0, 3).map((item) => ({
             itemId: item.itemId,
             itemName: item.itemName,
-            detail: `${formatCount(item.recentUnits)} ${item.unit} sold in 7 days · ${Math.ceil(item.daysUntilStockout)} days of stock`,
+            detail: `${formatCount(item.recentUnits)} ${item.unit} na nabenta sa 7 araw · mga ${Math.ceil(item.daysUntilStockout)} araw na lang`,
           })),
           restockSoon,
           shoppingList: shoppingListByPreset['7d'],
@@ -779,7 +781,7 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
 
       if (typeof rawSummary === 'string' && rawSummary.trim()) {
         aiSummary = clipSummaryText(rawSummary);
-        recommendations = [{ title: 'AI Summary', body: aiSummary }, ...recommendations].slice(0, 4);
+        recommendations = [{ title: 'Simpleng Payo', body: aiSummary }, ...recommendations].slice(0, 4);
         modelStatus = 'gemini_enriched';
       }
     } catch {
@@ -791,13 +793,13 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
     forecast: forecasts.slice(0, 3).map((item) => ({
       itemId: item.itemId,
       itemName: item.itemName,
-      detail: `${formatCount(item.recentUnits)} ${item.unit} sold in 7 days · ${Math.ceil(item.daysUntilStockout)} days of stock`,
+      detail: `${formatCount(item.recentUnits)} ${item.unit} na nabenta sa 7 araw · mga ${Math.ceil(item.daysUntilStockout)} araw na lang`,
     })),
     restockSoon,
     shoppingPresets: SHOPPING_PRESETS,
     shoppingListByPreset,
     recommendations,
-    emptyState: forecasts.length === 0 ? 'Forecasts will appear after a few days of sales.' : null,
+    emptyState: forecasts.length === 0 ? 'Lalabas ito pag may ilang araw nang benta.' : null,
     modelStatus,
     aiSummary,
   };

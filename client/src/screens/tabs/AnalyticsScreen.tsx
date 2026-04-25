@@ -5,6 +5,7 @@ import { supabase } from '@/config/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { AnalyticsView } from '@/features/analytics/AnalyticsView';
 import { fetchAnalyticsSummary, type RemoteAnalyticsSummary } from '@/features/analytics/analyticsApi';
+import { analyticsText, type AnalyticsTabKey } from '@/features/analytics/analyticsCopy';
 import { loadAnalyticsSalesRows } from '@/features/analytics/analyticsRepository';
 import {
   buildAnalyticsViewModel,
@@ -12,8 +13,6 @@ import {
   type AnalyticsViewModel,
 } from '@/features/analytics/buildAnalyticsViewModel';
 import { useLocalData } from '@/features/local-data/LocalDataContext';
-
-type AnalyticsTabKey = 'Overview' | 'Insights' | 'Predictions & AI';
 
 export function AnalyticsScreen() {
   const navigation = useNavigation<any>();
@@ -59,7 +58,7 @@ export function AnalyticsScreen() {
             } catch (caughtError) {
               return {
                 rows: [] as AnalyticsSalesRow[],
-                error: caughtError instanceof Error ? caughtError.message : 'Unable to load local analytics.',
+                error: caughtError instanceof Error ? caughtError.message : 'Unable to load store data from this phone.',
               };
             }
           })(),
@@ -89,7 +88,7 @@ export function AnalyticsScreen() {
             } catch {
               return {
                 summary: null as RemoteAnalyticsSummary | null,
-                error: "Online analytics is unavailable. Showing this phone's recent records.",
+                error: "Online store view is unavailable. Showing recent records from this phone.",
               };
             }
           })(),
@@ -156,9 +155,9 @@ export function AnalyticsScreen() {
       emptyState={
         showEmptyState
           ? {
-              title: 'Wala pang mababasang galaw',
-              body: 'Magdagdag muna ng unang item para magsimulang lumabas dito ang benta, natitirang stock, at mga payo.',
-              actionLabel: 'Magdagdag ng unang item',
+              title: analyticsText.emptyStateTitle,
+              body: analyticsText.emptyStateBody,
+              actionLabel: analyticsText.emptyStateAction,
               onAction: handleAddFirstItem,
             }
           : null

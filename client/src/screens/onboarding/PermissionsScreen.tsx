@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { mobileCopy } from '@/copy/mobileCopy';
 import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/navigation/colors';
 
@@ -96,7 +97,7 @@ export function PermissionsScreen() {
     <SafeAreaView style={styles.screen}>
       <View style={styles.topBar}>
         <View style={styles.topBarSpacer} />
-        <Text style={styles.topBarTitle}>Pagsisimula</Text>
+        <Text style={styles.topBarTitle}>{mobileCopy.onboardingTopBarTitle}</Text>
         <View style={styles.topBarSpacer} />
       </View>
 
@@ -112,9 +113,9 @@ export function PermissionsScreen() {
         </View>
 
         <View style={styles.copyBlock}>
-          <Text style={styles.title}>Kailangan namin ng ilang pahintulot.</Text>
+          <Text style={styles.title}>Kailangan namin ng kaunting pahintulot.</Text>
           <Text style={styles.subtitle}>
-            Para gumana nang maayos ang voice input, kailangan ng app ng access sa mikropono at storage ng phone mo.
+            Upang magamit ang voice inventory nang maayos, kailangan ng app ng access sa iyong mikropono at device storage.
           </Text>
         </View>
 
@@ -131,7 +132,7 @@ export function PermissionsScreen() {
             icon="folder-outline"
             title="Storage"
             badge="Opsyonal"
-            body="Para makapag-save ng backup ng tala mo sa mismong device."
+            body="Para ma-save ang mga backup ng iyong inventory offline sa device."
             status={storagePermission}
           />
         </View>
@@ -139,7 +140,7 @@ export function PermissionsScreen() {
         <View style={styles.privacyNote}>
           <Ionicons name="lock-closed-outline" size={19} color={colors.muted} />
           <Text style={styles.privacyText}>
-            Gagamitin lang ang mga pahintulot na ito para gumana nang maayos ang app at manatiling ligtas ang tala ng tindahan mo.
+            Ginagamit lang ang pahintulot na ito para mapagana ang app at panatilihing ligtas ang tindahan mo.
           </Text>
         </View>
 
@@ -148,7 +149,7 @@ export function PermissionsScreen() {
           disabled={isSubmitting}
           style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]}
         >
-          <Text style={styles.primaryButtonText}>{isSubmitting ? 'Sandali lang...' : 'Payagan at magpatuloy'}</Text>
+          <Text style={styles.primaryButtonText}>{isSubmitting ? 'Sandali lang...' : 'Payagan at Magpatuloy'}</Text>
           {isSubmitting ? <ActivityIndicator color={colors.surface} size="small" /> : <Ionicons name="arrow-forward" size={18} color={colors.surface} />}
         </Pressable>
 
