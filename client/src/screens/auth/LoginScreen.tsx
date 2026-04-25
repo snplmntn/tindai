@@ -1,9 +1,9 @@
-import { FontAwesome } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AuthField } from '@/components/AuthField';
 import { AuthLayout } from '@/components/AuthLayout';
+import { GoogleSignInMark } from '@/components/GoogleSignInMark';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/navigation/colors';
@@ -105,7 +105,7 @@ export function LoginScreen() {
         label={isGoogleSubmitting ? 'Nag-sign in gamit ang Google...' : 'Mag-sign in gamit ang Google'}
         onPress={handleGoogleSignIn}
         variant="ghost"
-        leadingIcon={<FontAwesome name="google" size={16} color={colors.primaryDeep} />}
+        leadingIcon={<GoogleSignInMark />}
       />
 
       {googleSignInHint ? <Text style={styles.infoText}>{googleSignInHint}</Text> : null}

@@ -87,11 +87,13 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     position: 'absolute',
+    top: 11,
     right: 14,
     height: 32,
     width: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 2,
   },
   inputError: {
     borderColor: '#BA1A1A',

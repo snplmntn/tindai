@@ -438,8 +438,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
 
+          dispatch({ type: 'startNewAccountOnboarding' });
           await persistState({
             authMode: 'account',
+            onboardingCompleted: false,
+            tutorialShown: false,
           });
         } finally {
           setIsAuthLoading(false);

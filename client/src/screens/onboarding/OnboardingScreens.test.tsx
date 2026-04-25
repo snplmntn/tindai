@@ -162,8 +162,10 @@ describe('onboarding screens', () => {
 
     expect(findTextNodes(tree, 'Hakbang 2 ng 4')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Ikonekta ang account mo.')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'G')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Mag-sign in gamit ang Google')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Magpatuloy')).not.toHaveLength(0);
+    expect(tree.root.findAll((node) => String(node.type) === 'mock-icon' && node.props.name === 'eye')).not.toHaveLength(0);
   });
 
   it('renders step 3 permissions and completes through existing permission handlers', async () => {

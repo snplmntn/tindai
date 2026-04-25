@@ -40,4 +40,21 @@ describe('appFlowReducer', () => {
     expect(signedIn.authMode).toBe('account');
     expect(getActiveRoute(signedIn)).toEqual({ kind: 'permissions' });
   });
+
+  it('restarts onboarding for a newly created account even when this phone had completed onboarding before', () => {
+    const completedGuest = {
+      ...initialAppFlowState,
+      authMode: 'guest' as const,
+      onboardingCompleted: true,
+      tutorialShown: true,
+    };
+
+    const signedUp = appFlowReducer(completedGuest, { type: 'startNewAccountOnboarding' });
+
+    expect(signedUp.authMode).toBe('account');
+    expect(signedUp.isAuthenticated).toBe(true);
+    expect(signedUp.onboardingCompleted).toBe(false);
+    expect(signedUp.tutorialShown).toBe(false);
+    expect(getActiveRoute(signedUp)).toEqual({ kind: 'permissions' });
+  });
 });

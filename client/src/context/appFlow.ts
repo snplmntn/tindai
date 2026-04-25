@@ -26,6 +26,7 @@ export type AppFlowAction =
   | { type: 'setStoragePermission'; status: PermissionStatus }
   | { type: 'markTutorialShown' }
   | { type: 'signIn' }
+  | { type: 'startNewAccountOnboarding' }
   | { type: 'signOut' };
 
 export type ActiveRoute =
@@ -124,6 +125,15 @@ export function appFlowReducer(state: AppFlowState, action: AppFlowAction): AppF
         authMode: 'account',
         isAuthScreenVisible: false,
         isAuthenticated: true,
+      };
+    case 'startNewAccountOnboarding':
+      return {
+        ...normalizedState,
+        authMode: 'account',
+        isAuthScreenVisible: false,
+        isAuthenticated: true,
+        onboardingCompleted: false,
+        tutorialShown: false,
       };
     case 'signOut':
       return {
