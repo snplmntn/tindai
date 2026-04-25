@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/navigation/colors';
@@ -15,8 +15,11 @@ type AnalyticsViewProps = {
   storeName: string;
   activeTab: AnalyticsTabKey;
   onTabChange: (tab: AnalyticsTabKey) => void;
+  onRefresh: () => void;
   viewModel: AnalyticsViewModel;
   isLoading: boolean;
+  isRefreshing: boolean;
+  showSkeleton: boolean;
   error: string | null;
 };
 
@@ -26,15 +29,31 @@ export function AnalyticsView({
   storeName,
   activeTab,
   onTabChange,
+  onRefresh,
   viewModel,
   isLoading,
+  isRefreshing,
+  showSkeleton,
   error,
 }: AnalyticsViewProps) {
   const headerTitle = activeTab === 'Insights' ? 'Analytics Insights' : 'Business Insights';
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content} style={styles.screen} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        style={styles.screen}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            onRefresh={onRefresh}
+            refreshing={isRefreshing}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+            progressBackgroundColor={colors.surface}
+          />
+        }
+      >
         <View style={styles.shell}>
           <View style={styles.headerRow}>
             <View style={styles.headerMenuButton}>
@@ -73,12 +92,55 @@ export function AnalyticsView({
             </View>
           ) : null}
 
-          {activeTab === 'Overview' ? <OverviewTab isLoading={isLoading} viewModel={viewModel} /> : null}
-          {activeTab === 'Insights' ? <InsightsTab isLoading={isLoading} viewModel={viewModel} /> : null}
-          {activeTab === 'Predictions & AI' ? <PredictionsTab isLoading={isLoading} viewModel={viewModel} /> : null}
+          {showSkeleton ? <LoadingSkeleton activeTab={activeTab} /> : null}
+          {!showSkeleton && activeTab === 'Overview' ? <OverviewTab isLoading={isLoading} viewModel={viewModel} /> : null}
+          {!showSkeleton && activeTab === 'Insights' ? <InsightsTab isLoading={isLoading} viewModel={viewModel} /> : null}
+          {!showSkeleton && activeTab === 'Predictions & AI' ? <PredictionsTab isLoading={isLoading} viewModel={viewModel} /> : null}
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function LoadingSkeleton({ activeTab }: { activeTab: AnalyticsTabKey }) {
+  return (
+    <View style={styles.tabStack}>
+      <View style={styles.skeletonBanner}>
+        <View style={[styles.skeletonBlock, styles.skeletonIcon]} />
+        <View style={styles.skeletonBannerLines}>
+          <View style={[styles.skeletonBlock, styles.skeletonLineWide]} />
+          <View style={[styles.skeletonBlock, styles.skeletonLineFull]} />
+          <View style={[styles.skeletonBlock, styles.skeletonLineShort]} />
+        </View>
+      </View>
+
+      <Text style={styles.skeletonHint}>Loading analytics...</Text>
+
+      <View style={styles.metricGrid}>
+        <View style={styles.skeletonMetricCard}>
+          <View style={[styles.skeletonBlock, styles.skeletonMetricLabel]} />
+          <View style={[styles.skeletonBlock, styles.skeletonMetricValue]} />
+          <View style={[styles.skeletonBlock, styles.skeletonMetricCaption]} />
+        </View>
+        <View style={styles.skeletonMetricCard}>
+          <View style={[styles.skeletonBlock, styles.skeletonMetricLabel]} />
+          <View style={[styles.skeletonBlock, styles.skeletonMetricValue]} />
+          <View style={[styles.skeletonBlock, styles.skeletonMetricCaption]} />
+        </View>
+      </View>
+
+      <View style={styles.cardSurface}>
+        <View style={[styles.skeletonBlock, styles.skeletonSectionTitle]} />
+        <View style={[styles.skeletonBlock, styles.skeletonChart]} />
+      </View>
+
+      <View style={styles.cardSurface}>
+        <View style={[styles.skeletonBlock, styles.skeletonSectionTitle]} />
+        <View style={[styles.skeletonBlock, styles.skeletonListRow]} />
+        <View style={[styles.skeletonBlock, styles.skeletonListRow]} />
+        {activeTab === 'Predictions & AI' ? <View style={[styles.skeletonBlock, styles.skeletonListRow]} /> : null}
+      </View>
+    </View>
   );
 }
 
@@ -98,7 +160,7 @@ function OverviewTab({
     <View style={styles.tabStack}>
       <InsightBanner
         body={insightBody}
-        label={isLoading ? 'Refreshing overview' : 'Tinday\'s Insight'}
+        label={isLoading ? 'Refreshing overview' : 'Tindai\'s Insight'}
         title="Overview"
       />
 
@@ -145,7 +207,7 @@ function InsightsTab({
     <View style={styles.tabStack}>
       <InsightBanner
         body={insightBody}
-        label={isLoading ? 'Refreshing insights' : 'Tinday\'s Insight'}
+        label={isLoading ? 'Refreshing insights' : 'Tindai\'s Insight'}
         title="Insights"
       />
 
@@ -202,7 +264,12 @@ function PredictionsTab({
 }) {
   const leadItem = viewModel.predictions.restockSoon[0] ?? viewModel.predictions.forecast[0] ?? null;
   const predictionItems = mergePredictionItems(viewModel.predictions.forecast, viewModel.predictions.restockSoon);
-  const summaryTone = isLoading ? 'Refreshing local forecast' : 'Local forecast';
+  const summaryTone =
+    viewModel.predictions.modelStatus === 'gemini_enriched'
+      ? 'AI-enriched forecast'
+      : isLoading
+        ? 'Refreshing local forecast'
+        : 'Local forecast';
 
   return (
     <View style={styles.tabStack}>
@@ -1022,5 +1089,81 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 13,
     lineHeight: 18,
+  },
+  skeletonHint: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  skeletonBanner: {
+    flexDirection: 'row',
+    gap: 14,
+    borderRadius: 24,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+  },
+  skeletonBannerLines: {
+    flex: 1,
+    gap: 10,
+    justifyContent: 'center',
+  },
+  skeletonBlock: {
+    borderRadius: 10,
+    backgroundColor: 'rgba(31, 122, 99, 0.14)',
+  },
+  skeletonIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 248, 231, 0.82)',
+  },
+  skeletonLineWide: {
+    width: '48%',
+    height: 12,
+    backgroundColor: 'rgba(255,255,255,0.58)',
+  },
+  skeletonLineFull: {
+    width: '100%',
+    height: 14,
+    backgroundColor: 'rgba(255,255,255,0.74)',
+  },
+  skeletonLineShort: {
+    width: '80%',
+    height: 12,
+    backgroundColor: 'rgba(255,255,255,0.62)',
+  },
+  skeletonMetricCard: {
+    flex: 1,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    padding: 16,
+    gap: 10,
+  },
+  skeletonMetricLabel: {
+    width: '40%',
+    height: 10,
+  },
+  skeletonMetricValue: {
+    width: '64%',
+    height: 22,
+  },
+  skeletonMetricCaption: {
+    width: '52%',
+    height: 12,
+  },
+  skeletonSectionTitle: {
+    width: '44%',
+    height: 16,
+  },
+  skeletonChart: {
+    width: '100%',
+    height: 132,
+    borderRadius: 16,
+  },
+  skeletonListRow: {
+    width: '100%',
+    height: 50,
+    borderRadius: 14,
   },
 });

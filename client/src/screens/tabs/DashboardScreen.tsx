@@ -593,14 +593,14 @@ export function DashboardScreen() {
 
         {isSubmittingQuestion ? (
           <View style={styles.assistantCard}>
-            <Text style={styles.assistantTitle}>Sumasagot si Tinday...</Text>
+            <Text style={styles.assistantTitle}>Sumasagot si Tindai...</Text>
             <ActivityIndicator color="#00604c" size="small" />
           </View>
         ) : null}
 
         {assistantAnswer ? (
           <View style={styles.assistantCard}>
-            <Text style={styles.assistantTitle}>Sagot ni Tinday</Text>
+            <Text style={styles.assistantTitle}>Sagot ni Tindai</Text>
             <Text style={styles.assistantText}>{assistantAnswer.answerText}</Text>
             <View style={styles.assistantActions}>
               <TouchableOpacity

@@ -1,6 +1,16 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { type ReactNode, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Image,
+  type ImageSourcePropType,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
@@ -8,6 +18,7 @@ import { colors } from '@/navigation/colors';
 
 type AuthLayoutProps = {
   badge: string;
+  logoSource?: ImageSourcePropType;
   title: string;
   subtitle: string;
   submitLabel?: string;
@@ -21,6 +32,7 @@ type AuthLayoutProps = {
 
 export function AuthLayout({
   badge,
+  logoSource,
   title,
   subtitle,
   submitLabel,
@@ -65,8 +77,17 @@ export function AuthLayout({
           >
             <View style={styles.card}>
               <View style={styles.cardTopRow}>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{badge}</Text>
+                <View style={styles.brandCluster}>
+                  {logoSource ? (
+                    <Image
+                      source={logoSource}
+                      resizeMode="contain"
+                      style={styles.brandLogo}
+                    />
+                  ) : null}
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{badge}</Text>
+                  </View>
                 </View>
                 {dismissLabel && onDismiss ? (
                   <Pressable onPress={onDismiss} style={styles.dismissButton}>
@@ -147,6 +168,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 12,
+  },
+  brandCluster: {
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  brandLogo: {
+    width: 112,
+    height: 34,
   },
   badge: {
     alignSelf: 'flex-start',

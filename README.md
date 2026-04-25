@@ -90,6 +90,7 @@ Default server routes:
 - `GET /api/v1/profile/me`
 - `PATCH /api/v1/profile/me`
 - `DELETE /api/v1/profile/me/avatar`
+- `GET /api/v1/analytics/summary`
 
 The server listens on the `PORT` from `.env`, which defaults to `4000`.
 

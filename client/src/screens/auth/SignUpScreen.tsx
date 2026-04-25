@@ -75,6 +75,7 @@ export function SignUpScreen() {
   return (
     <AuthLayout
       badge="Create Account"
+      logoSource={require('../../assets/tindai-logo.png')}
       title="Set up your account"
       subtitle="Create an account with your name, store name, email, and password, or continue with Google."
       submitLabel="Create account"
