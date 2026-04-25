@@ -10,6 +10,7 @@ export function AuthChoiceScreen() {
   return (
     <AuthLayout
       badge="Tindai"
+      logoSource={require('../../assets/tindai-logo.png')}
       title="Simulan ang Tindai"
       subtitle="Voice-first na inventory para sa iyong sari-sari store."
     >

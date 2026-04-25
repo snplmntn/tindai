@@ -64,6 +64,7 @@ export function PermissionsScreen() {
   return (
     <AuthLayout
       badge="Permissions"
+      logoSource={require('../../assets/tindai-logo.png')}
       title="Kailangan muna ng pahintulot"
       subtitle="Papayagan ka pa ring makapasok agad sa dashboard. Kapag hindi pinayagan ang mic, pwede mo itong buksan mamaya."
     >

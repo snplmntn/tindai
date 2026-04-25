@@ -56,6 +56,8 @@ export type AnalyticsViewModel = {
     restockSoon: AnalyticsListItem[];
     recommendations: AnalyticsRecommendation[];
     emptyState: string | null;
+    modelStatus?: 'deterministic_fallback' | 'gemini_enriched';
+    aiSummary?: string | null;
   };
 };
 

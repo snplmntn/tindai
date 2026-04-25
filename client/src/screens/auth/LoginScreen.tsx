@@ -57,6 +57,7 @@ export function LoginScreen() {
   return (
     <AuthLayout
       badge="Store Access"
+      logoSource={require('../../assets/tindai-logo.png')}
       title="Welcome back"
       subtitle="Sign in with email and password or continue with Google."
       submitLabel="Sign in"

@@ -833,6 +833,52 @@ Assistant query rules:
 - The backend must not write inventory, transaction, movement, customer, or utang changes from this endpoint.
 - If the user asks for a mutation, the assistant should instruct them to use the normal sales/update command.
 
+### GET /api/v1/analytics/summary
+
+Purpose: Return store-scoped analytics for the mobile analytics tabs in one read-only payload.
+
+Response:
+
+```json
+{
+  "analytics": {
+    "meta": {
+      "generated_at": "ISO timestamp",
+      "store_id": "store_001",
+      "currency_code": "PHP",
+      "timezone": "Asia/Manila",
+      "prediction_mode": "deterministic|gemini_enriched"
+    },
+    "overview": {
+      "sales_today": {},
+      "sales_this_month": {},
+      "top_selling": [],
+      "low_stock": []
+    },
+    "insights": {
+      "sales_trend": [],
+      "demand_trend": [],
+      "rising_demand": [],
+      "declining_demand": []
+    },
+    "predictions": {
+      "forecast": [],
+      "restock_soon": [],
+      "recommendations": [],
+      "model_status": "deterministic_fallback|gemini_enriched",
+      "ai_summary": null
+    }
+  }
+}
+```
+
+Analytics summary rules:
+
+- Verify Supabase JWT and resolve the signed-in owner's one-store workspace.
+- Compute analytics from ledger-backed store data (`inventory_movements`, `transaction_items`, `transactions`, `inventory_items`, and existing sales views).
+- Keep this endpoint read-only. It must not mutate inventory, customers, transactions, movements, utang, or sync state.
+- If Gemini is unavailable, return deterministic predictions with a fallback model status.
+
 ### POST /api/demo/seed-store
 
 Purpose: Backend-only helper endpoint to seed demo inventory and opening stock safely for the signed-in user's store.
