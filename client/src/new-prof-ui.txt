@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+
+<html lang="tl"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Guest Profile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-lowest": "#FFFFFF",
+                        "surface-container-high": "#DCE9FF",
+                        "on-surface": "#181d1b",
+                        "primary-fixed": "#9ef3d7",
+                        "seafoam-mist": "#E8F2F0",
+                        "surface-dim": "#d7dbd7",
+                        "outline-variant": "#bec9c3",
+                        "surface-container-highest": "#D3E4FE",
+                        "tertiary": "#45566b",
+                        "on-primary-fixed-variant": "#005140",
+                        "error-container": "#ffdad6",
+                        "on-background": "#181d1b",
+                        "on-primary": "#ffffff",
+                        "primary-container": "#1F7A63",
+                        "surface-variant": "#e0e3e0",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#82d6bb",
+                        "on-primary-fixed": "#002018",
+                        "on-primary-container": "#b1ffe4",
+                        "surface": "#F8F9FF",
+                        "on-secondary-fixed-variant": "#38485e",
+                        "on-tertiary-container": "#e8f0ff",
+                        "background": "#f7faf7",
+                        "secondary-fixed": "#d3e3ff",
+                        "surface-container": "#ebefeb",
+                        "on-surface-variant": "#3e4945",
+                        "outline": "#6E7A74",
+                        "surface-tint": "#016b55",
+                        "secondary": "#505f76",
+                        "surface-container-low": "#f1f4f1",
+                        "on-secondary-fixed": "#0b1c30",
+                        "on-error": "#ffffff",
+                        "primary": "#00604c",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "inverse-surface": "#2d312f",
+                        "on-tertiary": "#ffffff",
+                        "error": "#BA1A1A",
+                        "on-tertiary-fixed": "#0b1c2f",
+                        "tertiary-container": "#5e6e84",
+                        "on-secondary-container": "#56657d",
+                        "secondary-fixed-dim": "#b7c7e2",
+                        "inverse-on-surface": "#eef2ee",
+                        "on-error-container": "#93000a",
+                        "inverse-primary": "#82d6bb",
+                        "tertiary-fixed": "#d3e4fe",
+                        "surface-bright": "#f7faf7",
+                        "secondary-container": "#d3e3ff"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "2xl": "1rem"
+                    },
+                    spacing: {
+                        "sm": "12px",
+                        "md": "24px",
+                        "container-max": "1280px",
+                        "xs": "4px",
+                        "base": "8px",
+                        "lg": "40px",
+                        "xl": "64px",
+                        "gutter": "24px"
+                    },
+                    fontFamily: {
+                        "h2": ["Manrope"],
+                        "display": ["Manrope"],
+                        "h1": ["Manrope"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Manrope"],
+                        "label-md": ["Inter"],
+                        "h3": ["Manrope"],
+                        "body-md": ["Manrope"]
+                    },
+                    fontSize: {
+                        "h2": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "h1": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "letterSpacing": "0", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "h3": ["20px", { "lineHeight": "28px", "letterSpacing": "0", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
+        .motif-pattern {
+            background-image: radial-gradient(circle at 10px 10px, rgba(255,255,255,0.05) 2px, transparent 0);
+            background-size: 30px 30px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen pb-24 antialiased flex flex-col md:items-center">
+<div class="w-full md:max-w-md bg-surface-container-lowest min-h-screen relative shadow-[0px_4px_20px_rgba(31,122,99,0.05)]">
+<div class="relative w-full pt-12 pb-16 px-6 bg-gradient-to-b from-[#1F7A63] to-[#00604C] overflow-hidden rounded-b-[32px] shadow-[0px_10px_40px_rgba(0,0,0,0.08)]">
+<div class="absolute inset-0 motif-pattern"></div>
+<div class="relative z-10 flex flex-col items-center text-center">
+<h1 class="font-h3 text-h3 text-on-primary mb-6 w-full text-left">Profile</h1>
+<div class="w-20 h-20 bg-surface-container-lowest rounded-full flex items-center justify-center shadow-lg mb-4">
+<span class="font-h2 text-h2 text-primary-container">SO</span>
+</div>
+<h2 class="font-h2 text-h2 text-on-primary mb-1">May-ari ng Tindahan</h2>
+<p class="font-body-md text-body-md text-on-primary/80 mb-1">Walang email</p>
+<div class="inline-flex items-center gap-1 bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full mt-2">
+<span class="material-symbols-outlined text-[16px] text-on-primary">storefront</span>
+<span class="font-label-md text-label-md text-on-primary">My Store</span>
+</div>
+</div>
+</div>
+<div class="px-6 -mt-6 relative z-20 flex flex-col gap-6">
+<div class="bg-surface-container-lowest p-4 rounded-2xl shadow-[0px_4px_20px_rgba(31,122,99,0.05)] border border-surface-dim flex flex-col gap-3">
+<div class="inline-flex items-center self-start gap-2 bg-seafoam-mist px-3 py-1.5 rounded-full">
+<span class="material-symbols-outlined text-[18px] text-primary-container" style="font-variation-settings: 'FILL' 1;">smartphone</span>
+<span class="font-label-md text-label-md text-primary-container">Lokal ang data mo</span>
+</div>
+<p class="font-body-md text-[14px] leading-relaxed text-[#3E4945]">
+                    Mag-sign in para ma-backup ang tindahan mo online. Hindi mawawala ang data mo kahit offline.
+                </p>
+</div>
+<div class="bg-surface-container-lowest rounded-2xl shadow-[0px_4px_20px_rgba(31,122,99,0.05)] overflow-hidden">
+<div class="flex items-center justify-between p-4 border-b border-surface-variant cursor-pointer hover:bg-surface transition-colors">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-1">PANGALAN</span>
+<span class="font-body-md text-body-md text-on-surface">May-ari ng Tindahan</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</div>
+<div class="flex items-center justify-between p-4 border-b border-surface-variant cursor-pointer hover:bg-surface transition-colors">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-1">EMAIL</span>
+<span class="font-body-md text-body-md text-on-surface">Walang email</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</div>
+<div class="flex items-center justify-between p-4 cursor-pointer hover:bg-surface transition-colors">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase tracking-wider mb-1">TINDAHAN</span>
+<span class="font-body-md text-body-md text-on-surface">My Store</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</div>
+</div>
+<div class="flex flex-col gap-3 mt-4">
+<button class="w-full py-3 px-4 bg-primary text-on-primary font-label-md text-label-md rounded-lg hover:bg-primary-container transition-colors shadow-sm">
+                    Gumawa ng Account
+                </button>
+<button class="w-full py-3 px-4 bg-transparent border border-outline-variant text-primary font-label-md text-label-md rounded-lg hover:bg-surface-container transition-colors">
+                    Mag-log In
+                </button>
+</div>
+</div>
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-safe pt-2 bg-white/90 backdrop-blur-md dark:bg-slate-950/90 border-t border-slate-100 dark:border-slate-800 shadow-[0px_-4px_20px_rgba(0,0,0,0.03)]">
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-600 px-3 py-1 hover:text-[#1F7A63] transition-all" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]">inventory_2</span>
+<span class="font-manrope text-[11px] font-medium tracking-wide">Inventory</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-600 px-3 py-1 hover:text-[#1F7A63] transition-all" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]">dashboard</span>
+<span class="font-manrope text-[11px] font-medium tracking-wide">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-600 px-3 py-1 hover:text-[#1F7A63] transition-all" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]">analytics</span>
+<span class="font-manrope text-[11px] font-medium tracking-wide">Analytics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#1F7A63] dark:text-[#28a183] bg-[#1F7A63]/5 rounded-xl px-3 py-1 scale-95 duration-200" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-manrope text-[11px] font-medium tracking-wide">Profile</span>
+</a>
+</nav>
+</div>
+</body></html>

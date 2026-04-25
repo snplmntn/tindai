@@ -56,12 +56,11 @@ export function LoginScreen() {
 
   return (
     <AuthLayout
-      badge="Store Access"
-      logoSource={require('../../assets/tindai-logo.png')}
-      title="Welcome back"
-      subtitle="Sign in with email and password or continue with Google."
-      submitLabel="Sign in"
-      alternateLabel="Need an account? Create one"
+      badge="Account backup"
+      title="Ikonekta ang account mo."
+      subtitle="I-save ang iyong imbentaryo at i-sync sa cloud para sa ligtas na backup."
+      submitLabel="Magpatuloy"
+      alternateLabel="Wala ka pang account? Gumawa dito."
       onSubmit={handleEmailSignIn}
       onAlternatePress={() => void showSignUp()}
       dismissLabel="Back to app"
@@ -103,7 +102,7 @@ export function LoginScreen() {
       </View>
 
       <PrimaryButton
-        label={isGoogleSubmitting ? 'Signing in with Google...' : 'Continue with Google'}
+        label={isGoogleSubmitting ? 'Nag-sign in gamit ang Google...' : 'Mag-sign in gamit ang Google'}
         onPress={handleGoogleSignIn}
         variant="ghost"
         leadingIcon={<FontAwesome name="google" size={16} color={colors.primaryDeep} />}

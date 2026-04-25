@@ -486,6 +486,20 @@ export function DashboardScreen() {
     <SafeAreaView edges={['top']} style={styles.screen}>
       <View style={styles.topBar}>
         <View style={styles.topBarLeft}>
+          <View style={styles.brandIcon}>
+            <Ionicons color="#1f7a63" name="storefront-outline" size={18} />
+          </View>
+          <View style={styles.brandCopy}>
+            <Text style={styles.brandName}>Tindai</Text>
+            <Text numberOfLines={1} style={styles.storeName}>
+              {store?.name ?? 'My Store'}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.topBarRight}>
+          <View style={styles.statusPill}>
+            <Text style={styles.statusText}>{appState?.mode === 'authenticated' ? 'May account' : 'Walang account'}</Text>
+          </View>
           <TouchableOpacity activeOpacity={0.7} onPress={() => void refresh()} style={styles.iconButton}>
             {isLoading ? (
               <ActivityIndicator color="#1f7a63" size="small" />
@@ -493,24 +507,16 @@ export function DashboardScreen() {
               <Ionicons color="#1f7a63" name="refresh-outline" size={22} />
             )}
           </TouchableOpacity>
-          <Text numberOfLines={1} style={styles.storeName}>
-            {store?.name ?? 'Tindai Store'}
-          </Text>
+          {syncNotice ? <View style={styles.offlineDot} /> : null}
         </View>
-        <View style={styles.statusPill}>
-          <Text style={styles.statusText}>{appState?.mode === 'authenticated' ? 'May account' : 'Walang account'}</Text>
-        </View>
-        {syncNotice ? (
-          <View style={styles.offlineDot} />
-        ) : null}
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {showGuestBanner ? (
           <View style={styles.bannerCard}>
             <View style={styles.bannerBody}>
-              <Text style={styles.bannerTitle}>Ang data ay local lang.</Text>
-              <Text style={styles.bannerText}>Mag-sign in para mag-sync sa cloud.</Text>
+              <Text style={styles.bannerTitle}>Lokal lang ang data mo.</Text>
+              <Text style={styles.bannerText}>Lokal lang ang data mo. Mag-sign in para ma-backup sa cloud.</Text>
             </View>
             <View style={styles.bannerActions}>
               <Pressable onPress={() => void showLogin()} style={styles.bannerPrimaryAction}>
@@ -545,6 +551,8 @@ export function DashboardScreen() {
         ) : null}
 
         <View style={styles.voiceSection}>
+          <View style={styles.voiceAmbientLarge} />
+          <View style={styles.voiceAmbientSmall} />
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => void startListening()}
@@ -552,8 +560,8 @@ export function DashboardScreen() {
           >
             <Ionicons color="#ffffff" name={isListening ? 'stop-outline' : 'mic-outline'} size={56} />
           </TouchableOpacity>
-          <Text style={styles.voiceLabel}>{isListening ? 'NAKIKINIG...' : 'BOSIS'}</Text>
-          <Text style={styles.voiceTitle}>Tap para magsalita ng utos</Text>
+          <Text style={styles.voiceLabel}>{isListening ? 'NAKIKINIG...' : 'BOSES'}</Text>
+          <Text style={styles.voiceTitle}>Pindutin para ilista ang benta</Text>
           <Pressable onPress={() => setIsAddItemVisible(true)} style={styles.addItemButton}>
             <Ionicons color="#00604c" name="add-circle-outline" size={18} />
             <Text style={styles.addItemButtonLabel}>Magdagdag ng item</Text>
@@ -662,16 +670,20 @@ export function DashboardScreen() {
           </View>
         ) : null}
 
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Buod Ngayon</Text>
+        </View>
+
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryValue}>{inventoryItems.length}</Text>
             <Text style={styles.summaryLabel}>Produkto</Text>
           </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryValue}>{lowStockItems.length}</Text>
+          <View style={[styles.summaryCard, styles.summaryCardWarning]}>
+            <Text style={[styles.summaryValue, styles.summaryValueWarning]}>{lowStockItems.length}</Text>
             <Text style={styles.summaryLabel}>Malapit maubos</Text>
           </View>
-          <View style={styles.summaryCard}>
+          <View style={[styles.summaryCard, styles.summaryCardWide]}>
             <Text style={styles.summaryValue}>P{inventoryValue.toFixed(0)}</Text>
             <Text style={styles.summaryLabel}>Halaga ng paninda</Text>
           </View>
@@ -689,7 +701,11 @@ export function DashboardScreen() {
             </Pressable>
           </View>
         ) : (
-          <View style={styles.activityCard}>
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Kamakailang Tala</Text>
+            </View>
+            <View style={styles.activityCard}>
             {inventoryItems.slice(0, 8).map((item, index) => (
               <View
                 key={item.id}
@@ -723,7 +739,8 @@ export function DashboardScreen() {
                 </View>
               </View>
             ))}
-          </View>
+            </View>
+          </>
         )}
 
         {assistantInteractions.length > 0 ? (
@@ -906,14 +923,15 @@ export function DashboardScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#fdfbf7',
+    backgroundColor: '#f7faf7',
   },
   topBar: {
-    height: 64,
+    minHeight: 68,
     borderBottomWidth: 1,
-    borderBottomColor: '#e7e5e4',
-    backgroundColor: '#fdfbf7',
-    paddingHorizontal: 16,
+    borderBottomColor: '#e0e3e0',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -921,8 +939,31 @@ const styles = StyleSheet.create({
   topBarLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     flexShrink: 1,
+  },
+  topBarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginLeft: 12,
+  },
+  brandIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e8f2f0',
+  },
+  brandCopy: {
+    flexShrink: 1,
+    gap: 1,
+  },
+  brandName: {
+    color: '#1f7a63',
+    fontSize: 20,
+    fontWeight: '800',
   },
   iconButton: {
     width: 36,
@@ -930,18 +971,20 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#f1f4f1',
   },
   storeName: {
-    color: '#1f7a63',
-    fontSize: 18,
-    fontWeight: '700',
+    color: '#3e4945',
+    fontSize: 12,
+    fontWeight: '600',
     flexShrink: 1,
   },
   statusPill: {
     borderRadius: 999,
-    backgroundColor: '#e3f8f0',
+    backgroundColor: '#ebefeb',
     paddingHorizontal: 10,
     paddingVertical: 5,
+    maxWidth: 120,
   },
   statusText: {
     color: '#1f7a63',
@@ -949,21 +992,21 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 120,
-    gap: 14,
+    gap: 16,
   },
   bannerCard: {
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#d8eee4',
-    backgroundColor: '#f1fbf6',
+    borderColor: '#dce9ff',
+    backgroundColor: '#dce9ff',
     padding: 12,
     gap: 10,
   },
   warningBanner: {
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#f0d6aa',
     backgroundColor: '#fff7ea',
@@ -1039,9 +1082,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#b28200',
   },
   voiceSection: {
+    position: 'relative',
+    overflow: 'hidden',
     alignItems: 'center',
-    paddingVertical: 10,
-    gap: 8,
+    paddingVertical: 28,
+    paddingHorizontal: 16,
+    gap: 10,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e0e3e0',
+    shadowColor: '#1f7a63',
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+  },
+  voiceAmbientLarge: {
+    position: 'absolute',
+    width: 192,
+    height: 192,
+    borderRadius: 999,
+    backgroundColor: 'rgba(31,122,99,0.06)',
+  },
+  voiceAmbientSmall: {
+    position: 'absolute',
+    width: 132,
+    height: 132,
+    borderRadius: 999,
+    backgroundColor: 'rgba(31,122,99,0.1)',
   },
   voiceButton: {
     width: 128,
@@ -1055,23 +1124,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#8ba79e',
   },
   voiceLabel: {
-    color: '#00604c',
+    color: '#505f76',
     fontSize: 12,
     fontWeight: '800',
+    letterSpacing: 1,
   },
   voiceTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#181d1b',
     textAlign: 'center',
-    lineHeight: 30,
+    lineHeight: 28,
     paddingHorizontal: 20,
   },
   addItemButton: {
-    minHeight: 42,
+    minHeight: 46,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#d8dbd9',
+    borderWidth: 2,
+    borderColor: '#bec9c3',
     backgroundColor: '#ffffff',
     paddingHorizontal: 14,
     flexDirection: 'row',
@@ -1085,13 +1155,18 @@ const styles = StyleSheet.create({
   },
   commandCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 14,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#e7e5e4',
+    borderColor: '#e0e3e0',
     flexDirection: 'row',
     alignItems: 'center',
     padding: 8,
     gap: 8,
+    shadowColor: '#000000',
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   commandInput: {
     flex: 1,
@@ -1117,16 +1192,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#d8dbd9',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#e8f2f0',
   },
   commandButtonDisabled: {
     opacity: 0.65,
   },
   commandMessage: {
-    color: '#3e4945',
-    fontSize: 13,
+    alignSelf: 'center',
+    color: '#00604c',
+    fontSize: 12,
     fontWeight: '700',
     lineHeight: 18,
+    backgroundColor: '#e8f2f0',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    textAlign: 'center',
   },
   assistantCard: {
     backgroundColor: '#f1fbf6',
@@ -1223,23 +1304,46 @@ const styles = StyleSheet.create({
     color: '#3e4945',
     fontWeight: '700',
   },
+  sectionHeader: {
+    marginTop: 2,
+  },
+  sectionTitle: {
+    color: '#181d1b',
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 28,
+  },
   summaryRow: {
     flexDirection: 'row',
     gap: 10,
+    flexWrap: 'wrap',
   },
   summaryCard: {
-    flex: 1,
+    width: '48%',
     backgroundColor: '#ffffff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#f5f5f4',
+    borderColor: '#f1f4f1',
     gap: 3,
+    minHeight: 92,
+    justifyContent: 'space-between',
+  },
+  summaryCardWarning: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#d97706',
+  },
+  summaryCardWide: {
+    width: '100%',
+    backgroundColor: '#f7fbf9',
   },
   summaryValue: {
     color: '#00604c',
     fontSize: 22,
     fontWeight: '800',
+  },
+  summaryValueWarning: {
+    color: '#d97706',
   },
   summaryLabel: {
     color: '#4d5a53',
@@ -1310,7 +1414,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#f5f5f4',
+    borderColor: '#f1f4f1',
     overflow: 'hidden',
   },
   activityItem: {

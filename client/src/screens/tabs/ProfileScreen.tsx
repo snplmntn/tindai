@@ -15,15 +15,15 @@ import {
 import { colors } from '@/navigation/colors';
 
 function getDisplayName(profile: RemoteProfile | null) {
-  return profile?.fullName?.trim() || 'Store owner';
+  return profile?.fullName?.trim() || 'May-ari ng Tindahan';
 }
 
 function getDisplayEmail(profile: RemoteProfile | null) {
-  return profile?.email?.trim() || 'No email available';
+  return profile?.email?.trim() || 'Walang email';
 }
 
 function getDisplayStore(storeName: string | undefined) {
-  return storeName?.trim() || 'No store connected';
+  return storeName?.trim() || 'My Store';
 }
 
 function getAvatarUrl(profile: RemoteProfile | null) {
@@ -61,9 +61,12 @@ function SummaryRow({ label, value, isLast = false }: SummaryRowProps) {
   return (
     <View style={[styles.summaryRow, !isLast && styles.summaryRowBorder]}>
       <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue} numberOfLines={2}>
-        {value}
-      </Text>
+      <View style={styles.summaryValueRow}>
+        <Text style={styles.summaryValue} numberOfLines={2}>
+          {value}
+        </Text>
+        <Text style={styles.summaryChevron}>›</Text>
+      </View>
     </View>
   );
 }
@@ -141,6 +144,9 @@ export function ProfileScreen() {
   const displayStore = getDisplayStore(store?.name);
   const avatarUrl = getAvatarUrl(profile);
   const avatarInitials = getInitials(displayName);
+  const helperBody = isAuthenticated
+    ? 'Handa ang detalye ng tindahan mo sa phone na ito.'
+    : 'Mag-sign in para ma-backup ang tindahan mo online. Hindi mawawala ang data mo kahit offline.';
 
   const handleStartEdit = () => {
     setFullNameInput(profile?.fullName?.trim() || '');
@@ -233,116 +239,132 @@ export function ProfileScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.contentContainer} style={styles.screen}>
-        <View style={styles.pageHeader}>
-          <Text style={styles.pageLabel}>Profile</Text>
-        </View>
+        <View style={styles.heroSection}>
+          <View style={styles.heroPatternLarge} />
+          <View style={styles.heroPatternSmall} />
 
-        <View style={styles.heroCard}>
-          <View style={styles.heroTopRow}>
-            <View style={styles.avatarShell}>
+          <View style={styles.heroContent}>
+            <Text style={styles.heroPageTitle}>Profile</Text>
+
+            <View style={styles.heroAvatarShell}>
               {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                <Image source={{ uri: avatarUrl }} style={styles.heroAvatarImage} />
               ) : (
-                <Text style={styles.avatarInitials}>{avatarInitials}</Text>
+                <Text style={styles.heroAvatarInitials}>{avatarInitials}</Text>
               )}
             </View>
 
-            <View style={styles.heroTextBlock}>
-              <Text style={styles.heroTitle}>{displayName}</Text>
-              <Text style={styles.heroMeta}>{displayEmail}</Text>
-              <Text style={styles.heroStore}>{displayStore}</Text>
+            <Text style={styles.heroName}>{displayName}</Text>
+            <Text style={styles.heroEmail}>{displayEmail}</Text>
+
+            <View style={styles.storeBadge}>
+              <Text style={styles.storeBadgeIcon}>•</Text>
+              <Text style={styles.storeBadgeLabel}>{displayStore}</Text>
             </View>
           </View>
-
-          <Text style={styles.heroBody}>
-            {isAuthenticated
-              ? 'Your account and store details are ready on this phone.'
-              : 'Sign in when you want this phone to stay connected to your store online.'}
-          </Text>
         </View>
 
-        <View style={styles.detailsCard}>
-          {isAuthenticated && isEditing ? (
-            <View style={styles.detailsEditContent}>
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Name</Text>
-                <TextInput
-                  value={fullNameInput}
-                  onChangeText={setFullNameInput}
-                  placeholder="Store owner"
-                  style={styles.fieldInput}
-                  placeholderTextColor={colors.muted}
-                />
+        <View style={styles.contentSection}>
+          <View style={styles.infoCard}>
+            <View style={styles.infoChip}>
+              <Text style={styles.infoChipIcon}>•</Text>
+              <Text style={styles.infoChipLabel}>Lokal ang data mo</Text>
+            </View>
+
+            <Text style={styles.infoBody}>{helperBody}</Text>
+          </View>
+
+          <View style={styles.detailsCard}>
+            {isAuthenticated && isEditing ? (
+              <View style={styles.detailsEditContent}>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.fieldLabel}>PANGALAN</Text>
+                  <TextInput
+                    value={fullNameInput}
+                    onChangeText={setFullNameInput}
+                    placeholder="May-ari ng Tindahan"
+                    style={styles.fieldInput}
+                    placeholderTextColor={colors.muted}
+                  />
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.fieldLabel}>EMAIL</Text>
+                  <TextInput
+                    value={displayEmail}
+                    editable={false}
+                    selectTextOnFocus={false}
+                    style={styles.fieldInputReadOnly}
+                  />
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.fieldLabel}>TINDAHAN</Text>
+                  <TextInput
+                    value={storeNameInput}
+                    onChangeText={setStoreNameInput}
+                    placeholder="My Store"
+                    style={styles.fieldInput}
+                    placeholderTextColor={colors.muted}
+                  />
+                </View>
+
+                {errorMessage ? <Text style={styles.errorMessage}>{errorMessage}</Text> : null}
+
+                <View style={styles.detailsCardActions}>
+                  <Pressable style={styles.secondaryButton} onPress={handleCancelEdit}>
+                    <Text style={styles.secondaryButtonLabel}>Cancel</Text>
+                  </Pressable>
+                  <Pressable style={styles.primaryButton} onPress={() => void handleSaveProfile()} disabled={isSaving}>
+                    <Text style={styles.primaryButtonLabel}>{isSaving ? 'Saving...' : 'Save'}</Text>
+                  </Pressable>
+                </View>
               </View>
+            ) : (
+              <>
+                <SummaryRow label="PANGALAN" value={displayName} />
+                <SummaryRow label="EMAIL" value={displayEmail} />
+                <SummaryRow label="TINDAHAN" value={displayStore} isLast />
+              </>
+            )}
+          </View>
 
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Email</Text>
-                <TextInput value={displayEmail} editable={false} selectTextOnFocus={false} style={styles.fieldInputReadOnly} />
-              </View>
-
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Store</Text>
-                <TextInput
-                  value={storeNameInput}
-                  onChangeText={setStoreNameInput}
-                  placeholder="My Store"
-                  style={styles.fieldInput}
-                  placeholderTextColor={colors.muted}
-                />
-              </View>
-
-              {errorMessage ? <Text style={styles.errorMessage}>{errorMessage}</Text> : null}
-
-              <View style={styles.detailsCardActions}>
-                <Pressable style={styles.ghostButton} onPress={handleCancelEdit}>
-                  <Text style={styles.ghostButtonLabel}>Cancel</Text>
-                </Pressable>
-                <Pressable style={styles.primaryButton} onPress={() => void handleSaveProfile()} disabled={isSaving}>
-                  <Text style={styles.primaryButtonLabel}>{isSaving ? 'Saving...' : 'Save'}</Text>
-                </Pressable>
+          {isAuthenticated ? (
+            <View style={styles.authenticatedSection}>
+              <View style={styles.actionSection}>
+                {isEditing ? (
+                  <Pressable
+                    style={styles.secondaryButton}
+                    onPress={() => void handleRemoveAvatar()}
+                    disabled={isRemovingAvatar}
+                  >
+                    <Text style={styles.secondaryButtonLabel}>
+                      {isRemovingAvatar ? 'Removing...' : 'Remove avatar'}
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <>
+                    <Pressable style={styles.primaryButton} onPress={handleStartEdit}>
+                      <Text style={styles.primaryButtonLabel}>Edit profile</Text>
+                    </Pressable>
+                    <Pressable style={styles.secondaryButton} onPress={() => void signOut()}>
+                      <Text style={styles.secondaryButtonLabel}>Sign out</Text>
+                    </Pressable>
+                  </>
+                )}
               </View>
             </View>
           ) : (
-            <>
-              <SummaryRow label="Name" value={displayName} />
-              <SummaryRow label="Email" value={displayEmail} />
-              <SummaryRow label="Store" value={displayStore} isLast />
-            </>
+            <View style={styles.actionSection}>
+              <Pressable style={styles.primaryButton} onPress={() => void showSignUp()}>
+                <Text style={styles.primaryButtonLabel}>Gumawa ng Account</Text>
+              </Pressable>
+              <Pressable style={styles.secondaryButton} onPress={showLogin}>
+                <Text style={styles.secondaryButtonLabel}>Mag-log In</Text>
+              </Pressable>
+            </View>
           )}
         </View>
-
-        {isAuthenticated ? (
-          <View style={styles.authenticatedSection}>
-            <View style={styles.actionSection}>
-              {isEditing ? (
-                <Pressable style={styles.ghostButton} onPress={() => void handleRemoveAvatar()} disabled={isRemovingAvatar}>
-                  <Text style={styles.ghostButtonLabel}>{isRemovingAvatar ? 'Removing...' : 'Remove avatar'}</Text>
-                </Pressable>
-              ) : (
-                <>
-                  <Pressable style={styles.ghostButton} onPress={handleStartEdit}>
-                    <Text style={styles.ghostButtonLabel}>Edit profile</Text>
-                  </Pressable>
-                  <Pressable style={styles.ghostButton} onPress={() => void signOut()}>
-                    <Text style={styles.ghostButtonLabel}>Sign out</Text>
-                  </Pressable>
-                </>
-              )}
-            </View>
-          </View>
-        ) : (
-          <View style={styles.actionSection}>
-            <Text style={styles.ctaBody}>Choose how you want to connect this phone to your account.</Text>
-            <View style={styles.ctaActions}>
-              <Pressable style={styles.ghostButton} onPress={showLogin}>
-                <Text style={styles.ghostButtonLabel}>Log in</Text>
-              </Pressable>
-              <Pressable style={styles.primaryButton} onPress={() => void showSignUp()}>
-                <Text style={styles.primaryButtonLabel}>Create account</Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -358,86 +380,161 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
     paddingBottom: 32,
-    gap: 18,
   },
-  pageHeader: {
-    paddingTop: 6,
+  heroSection: {
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: colors.primary,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 14,
+    paddingBottom: 44,
   },
-  pageLabel: {
-    color: colors.primaryDeep,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+  heroPatternLarge: {
+    position: 'absolute',
+    top: -28,
+    right: -18,
+    width: 160,
+    height: 160,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  heroCard: {
-    gap: 18,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: 22,
+  heroPatternSmall: {
+    position: 'absolute',
+    left: -24,
+    bottom: 18,
+    width: 92,
+    height: 92,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  heroTopRow: {
-    flexDirection: 'row',
+  heroContent: {
     alignItems: 'center',
-    gap: 16,
   },
-  avatarShell: {
-    width: 72,
-    height: 72,
+  heroPageTitle: {
+    alignSelf: 'stretch',
+    color: colors.surface,
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 28,
+    marginBottom: 24,
+  },
+  heroAvatarShell: {
+    width: 84,
+    height: 84,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: colors.surface,
     overflow: 'hidden',
+    marginBottom: 16,
   },
-  avatarImage: {
+  heroAvatarImage: {
     width: '100%',
     height: '100%',
   },
-  avatarInitials: {
-    color: colors.primaryDeep,
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-  },
-  heroTextBlock: {
-    flex: 1,
-    gap: 4,
-  },
-  heroTitle: {
-    color: colors.text,
+  heroAvatarInitials: {
+    color: colors.primary,
     fontSize: 28,
     fontWeight: '800',
-    lineHeight: 32,
   },
-  heroMeta: {
-    color: colors.text,
+  heroName: {
+    color: colors.surface,
+    fontSize: 24,
+    fontWeight: '700',
+    lineHeight: 30,
+    textAlign: 'center',
+  },
+  heroEmail: {
+    color: 'rgba(255,255,255,0.8)',
     fontSize: 15,
-    fontWeight: '600',
     lineHeight: 22,
+    textAlign: 'center',
+    marginTop: 4,
   },
-  heroStore: {
-    color: colors.muted,
+  storeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginTop: 12,
+  },
+  storeBadgeIcon: {
+    color: colors.surface,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 16,
+  },
+  storeBadgeLabel: {
+    color: colors.surface,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  contentSection: {
+    gap: 18,
+    marginTop: -22,
+    paddingHorizontal: 24,
+  },
+  infoCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(20, 87, 70, 0.08)',
+    backgroundColor: colors.surface,
+    padding: 16,
+    gap: 12,
+    shadowColor: colors.primaryDeep,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    elevation: 2,
+  },
+  infoChip: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: '#E8F2F0',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  infoChipIcon: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  infoChipLabel: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  infoBody: {
+    color: colors.text,
     fontSize: 14,
     lineHeight: 21,
   },
-  heroBody: {
-    color: colors.muted,
-    fontSize: 14,
-    lineHeight: 22,
-  },
   detailsCard: {
     borderRadius: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
     backgroundColor: colors.surface,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 2,
+    shadowColor: colors.primaryDeep,
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    elevation: 1,
   },
   detailsEditContent: {
     gap: 14,
@@ -445,28 +542,38 @@ const styles = StyleSheet.create({
   },
   summaryRow: {
     gap: 8,
-    paddingVertical: 16,
+    paddingVertical: 18,
   },
   summaryRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: 'rgba(31, 41, 37, 0.08)',
   },
   summaryLabel: {
     color: colors.muted,
     fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+  },
+  summaryValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   summaryValue: {
+    flex: 1,
     color: colors.text,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '500',
     lineHeight: 22,
+  },
+  summaryChevron: {
+    color: colors.muted,
+    fontSize: 20,
+    lineHeight: 20,
   },
   actionSection: {
     gap: 12,
-    paddingTop: 4,
+    paddingBottom: 8,
   },
   authenticatedSection: {
     paddingTop: 4,
@@ -478,33 +585,31 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
   },
   fieldInput: {
-    minHeight: 46,
-    borderRadius: 12,
+    minHeight: 48,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     color: colors.text,
     fontSize: 15,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   fieldInputReadOnly: {
-    minHeight: 46,
-    borderRadius: 12,
+    minHeight: 48,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceAlt,
     color: colors.muted,
     fontSize: 15,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   errorMessage: {
-    color: colors.accent,
+    color: '#B42318',
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 20,
@@ -513,21 +618,12 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 2,
   },
-  ctaBody: {
-    color: colors.muted,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  ctaActions: {
-    gap: 10,
-    marginTop: 4,
-  },
   primaryButton: {
     minHeight: 48,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primaryDeep,
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
   },
   primaryButtonLabel: {
@@ -535,18 +631,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  ghostButton: {
+  secondaryButton: {
     minHeight: 48,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: 'rgba(102, 112, 107, 0.24)',
+    backgroundColor: 'transparent',
     paddingHorizontal: 16,
   },
-  ghostButtonLabel: {
-    color: colors.text,
+  secondaryButtonLabel: {
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '700',
   },

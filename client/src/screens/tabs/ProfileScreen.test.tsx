@@ -174,6 +174,8 @@ describe('ProfileScreen', () => {
   it('shows authenticated profile details in read mode with edit action', async () => {
     const tree = await renderProfileScreen();
 
+    expect(findTextNodes(tree, 'Profile')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Lokal ang data mo')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Ana Mercado')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'ana@example.com')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Mercado Store')).not.toHaveLength(0);
@@ -282,8 +284,9 @@ describe('ProfileScreen', () => {
 
     const tree = await renderProfileScreen();
 
-    expect(findTextNodes(tree, 'Log in')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Create account')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Gumawa ng Account')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Mag-log In')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Walang email')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Edit profile')).toHaveLength(0);
   });
 });

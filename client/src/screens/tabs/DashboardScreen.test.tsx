@@ -1,0 +1,199 @@
+import { act, createElement } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import TestRenderer from 'react-test-renderer';
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+const originalConsoleError = console.error;
+
+const mockedRefresh = vi.fn(async () => undefined);
+const mockedShowLogin = vi.fn(async () => undefined);
+const mockedRequestMicrophonePermission = vi.fn(async () => 'granted');
+const mockedOpenDeviceSettings = vi.fn(async () => undefined);
+const mockedSubmitLocalCommand = vi.fn();
+const mockedConfirmLocalCommand = vi.fn();
+const mockedApplyManualAdjustment = vi.fn(async () => undefined);
+const mockedSubmitFallbackCommand = vi.fn(async () => undefined);
+const mockedCreateLocalCustomer = vi.fn(async (name: string) => ({ id: 'customer-2', name }));
+const mockedCreateLocalInventoryItem = vi.fn(async () => undefined);
+const mockedSubmitAssistantQuestion = vi.fn();
+
+let mockedAuthMode: 'guest' | 'authenticated' = 'authenticated';
+let mockedMicrophonePermission: 'granted' | 'denied' | 'pending' = 'granted';
+let mockedAppMode: 'guest' | 'authenticated' = 'authenticated';
+let mockedSyncNotice: string | null = null;
+
+vi.mock('@expo/vector-icons', () => ({
+  Ionicons: ({ ...props }: { children?: React.ReactNode }) => createElement('mock-icon', props),
+}));
+
+vi.mock('react-native', () => ({
+  ActivityIndicator: ({ ...props }: { children?: React.ReactNode }) => createElement('mock-activity-indicator', props),
+  Modal: ({ children, visible, ...props }: { children?: React.ReactNode; visible?: boolean }) =>
+    visible ? createElement('mock-modal', props, children) : null,
+  Pressable: ({ children, ...props }: { children?: React.ReactNode }) => createElement('mock-pressable', props, children),
+  ScrollView: ({ children, ...props }: { children?: React.ReactNode }) => createElement('mock-scroll-view', props, children),
+  StyleSheet: {
+    create: <T,>(styles: T) => styles,
+  },
+  Text: ({ children, ...props }: { children?: React.ReactNode }) => createElement('mock-text', props, children),
+  TextInput: ({ children, ...props }: { children?: React.ReactNode }) => createElement('mock-text-input', props, children),
+  TouchableOpacity: ({ children, ...props }: { children?: React.ReactNode }) =>
+    createElement('mock-touchable-opacity', props, children),
+  View: ({ children, ...props }: { children?: React.ReactNode }) => createElement('mock-view', props, children),
+}));
+
+vi.mock('react-native-safe-area-context', () => ({
+  SafeAreaView: ({ children, ...props }: { children?: React.ReactNode }) => createElement('safe-area-view', props, children),
+}));
+
+vi.mock('expo-speech-recognition', () => ({
+  ExpoSpeechRecognitionModule: {
+    isRecognitionAvailable: () => true,
+    requestPermissionsAsync: async () => ({ granted: true }),
+    start: () => undefined,
+    stop: () => undefined,
+  },
+  useSpeechRecognitionEvent: () => undefined,
+}));
+
+vi.mock('@/context/AuthContext', () => ({
+  useAuth: () => ({
+    authMode: mockedAuthMode,
+    microphonePermission: mockedMicrophonePermission,
+    requestMicrophonePermission: mockedRequestMicrophonePermission,
+    openDeviceSettings: mockedOpenDeviceSettings,
+    showLogin: mockedShowLogin,
+  }),
+}));
+
+vi.mock('@/features/local-data/LocalDataContext', () => ({
+  useLocalData: () => ({
+    appState: { mode: mockedAppMode },
+    store: { id: 'store-1', name: 'Mercado Store', currencyCode: 'PHP', timezone: 'Asia/Manila', ownerId: 'user-1', updatedAt: '2026-04-26T00:00:00.000Z' },
+    inventoryItems: [
+      {
+        id: 'item-1',
+        storeId: 'store-1',
+        name: 'Coke Mismo',
+        aliases: ['coke'],
+        unit: 'pcs',
+        cost: 10,
+        price: 20,
+        currentStock: 3,
+        lowStockThreshold: 5,
+        updatedAt: '2026-04-26T00:00:00.000Z',
+      },
+    ],
+    customers: [{ id: 'customer-1', name: 'Mang Juan' }],
+    assistantInteractions: [],
+    pendingTransactions: [],
+    isLoading: false,
+    error: null,
+    syncNotice: mockedSyncNotice,
+    refresh: mockedRefresh,
+    submitLocalCommand: mockedSubmitLocalCommand,
+    confirmLocalCommand: mockedConfirmLocalCommand,
+    applyManualAdjustment: mockedApplyManualAdjustment,
+    submitFallbackCommand: mockedSubmitFallbackCommand,
+    createLocalCustomer: mockedCreateLocalCustomer,
+    createLocalInventoryItem: mockedCreateLocalInventoryItem,
+    submitAssistantQuestion: mockedSubmitAssistantQuestion,
+  }),
+}));
+
+vi.mock('@/features/assistant/assistantLanguageDetection', () => ({
+  detectLanguageStyle: () => 'tagalog',
+}));
+
+vi.mock('@/services/ttsService', () => ({
+  getLanguageCode: () => 'fil-PH',
+  speakText: async () => ({ spoken: true, fallbackUsed: false }),
+  stopSpeaking: async () => undefined,
+}));
+
+import { DashboardScreen } from './DashboardScreen';
+
+function findTextNodes(tree: TestRenderer.ReactTestRenderer, text: string) {
+  return tree.root.findAll(
+    (node) =>
+      String(node.type) === 'mock-text' &&
+      node.children.some((child) => typeof child === 'string' && child.includes(text)),
+  );
+}
+
+function findIconNodes(tree: TestRenderer.ReactTestRenderer, name: string) {
+  return tree.root.findAll((node) => String(node.type) === 'mock-icon' && node.props.name === name);
+}
+
+async function renderDashboardScreen() {
+  let tree!: TestRenderer.ReactTestRenderer;
+
+  await act(async () => {
+    tree = TestRenderer.create(createElement(DashboardScreen));
+    await Promise.resolve();
+  });
+
+  return tree;
+}
+
+describe('DashboardScreen', () => {
+  beforeEach(() => {
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation((message: unknown, ...args: unknown[]) => {
+      if (typeof message === 'string' && message.includes('react-test-renderer is deprecated')) {
+        return;
+      }
+
+      originalConsoleError(message, ...args);
+    });
+
+    mockedAuthMode = 'authenticated';
+    mockedMicrophonePermission = 'granted';
+    mockedAppMode = 'authenticated';
+    mockedSyncNotice = null;
+    mockedRefresh.mockClear();
+    mockedShowLogin.mockClear();
+    mockedRequestMicrophonePermission.mockClear();
+    mockedOpenDeviceSettings.mockClear();
+    mockedSubmitLocalCommand.mockReset();
+    mockedConfirmLocalCommand.mockReset();
+    mockedApplyManualAdjustment.mockClear();
+    mockedSubmitFallbackCommand.mockClear();
+    mockedCreateLocalCustomer.mockClear();
+    mockedCreateLocalInventoryItem.mockClear();
+    mockedSubmitAssistantQuestion.mockReset();
+  });
+
+  afterEach(() => {
+    consoleErrorSpy?.mockRestore();
+  });
+
+  it('renders the migrated dashboard hero and summary headings', async () => {
+    const tree = await renderDashboardScreen();
+
+    expect(findTextNodes(tree, 'Tindai')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Pindutin para ilista ang benta')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Buod Ngayon')).not.toHaveLength(0);
+  });
+
+  it('shows guest backup messaging and the add-item action', async () => {
+    mockedAuthMode = 'guest';
+    mockedAppMode = 'guest';
+
+    const tree = await renderDashboardScreen();
+
+    expect(findTextNodes(tree, 'Lokal lang ang data mo. Mag-sign in para ma-backup sa cloud.')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Sign In')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Magdagdag ng item')).not.toHaveLength(0);
+  });
+
+  it('keeps the inventory controls visible in the migrated layout', async () => {
+    const tree = await renderDashboardScreen();
+
+    expect(findTextNodes(tree, 'Kamakailang Tala')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Coke Mismo')).not.toHaveLength(0);
+    expect(findIconNodes(tree, 'remove')).not.toHaveLength(0);
+    expect(findIconNodes(tree, 'add')).not.toHaveLength(0);
+  });
+});

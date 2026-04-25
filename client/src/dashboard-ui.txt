@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sari-Sari Store - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-fixed-dim": "#82d6bb",
+                    "tertiary": "#45566b",
+                    "background": "#f7faf7",
+                    "on-tertiary-fixed": "#0b1c2f",
+                    "on-secondary-container": "#56657d",
+                    "surface-dim": "#CBDBF5",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-highest": "#e0e3e0",
+                    "error-container": "#ffdad6",
+                    "tertiary-fixed-dim": "#b7c8e1",
+                    "on-primary-fixed": "#002018",
+                    "tertiary-container": "#5e6e84",
+                    "error": "#BA1A1A",
+                    "tertiary-fixed": "#d3e4fe",
+                    "surface-container": "#ebefeb",
+                    "outline": "#6E7A74",
+                    "on-secondary-fixed": "#0b1c30",
+                    "on-background": "#181d1b",
+                    "primary": "#00604c",
+                    "surface-tint": "#016b55",
+                    "inverse-primary": "#82d6bb",
+                    "surface-bright": "#f7faf7",
+                    "primary-container": "#1f7a63",
+                    "secondary-fixed": "#d3e3ff",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed-variant": "#38485e",
+                    "on-surface-variant": "#3e4945",
+                    "surface-container-high": "#DCE9FF",
+                    "on-primary-fixed-variant": "#005140",
+                    "primary-fixed": "#9ef3d7",
+                    "on-tertiary-container": "#e8f0ff",
+                    "secondary": "#505f76",
+                    "on-secondary": "#ffffff",
+                    "outline-variant": "#bec9c3",
+                    "on-primary-container": "#B1FFE4",
+                    "on-error-container": "#93000a",
+                    "on-error": "#ffffff",
+                    "inverse-on-surface": "#eef2ee",
+                    "surface": "#F8F9FF",
+                    "secondary-fixed-dim": "#b7c7e2",
+                    "inverse-surface": "#2d312f",
+                    "on-primary": "#ffffff",
+                    "on-surface": "#181d1b",
+                    "surface-container-low": "#f1f4f1",
+                    "on-tertiary-fixed-variant": "#38485d",
+                    "secondary-container": "#d3e3ff",
+                    "seafoam-mist": "#E8F2F0",
+                    "surface-variant": "#e0e3e0"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "xs": "4px",
+                    "xl": "64px",
+                    "md": "24px",
+                    "base": "8px",
+                    "sm": "12px",
+                    "container-max": "1280px",
+                    "lg": "40px"
+            },
+            "fontFamily": {
+                    "label-md": ["Inter"],
+                    "body-lg": ["Manrope"],
+                    "label-sm": ["Inter"],
+                    "body-md": ["Manrope"],
+                    "h3": ["Manrope"],
+                    "h2": ["Manrope"],
+                    "h1": ["Manrope"],
+                    "display": ["Manrope"]
+            },
+            "fontSize": {
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0", "fontWeight": "400"}],
+                    "h3": ["20px", {"lineHeight": "28px", "letterSpacing": "0", "fontWeight": "600"}],
+                    "h2": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "h1": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "display": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md min-h-screen flex flex-col pb-32">
+<!-- TopAppBar JSON Component -->
+<header class="w-full sticky top-0 z-50 bg-white dark:bg-slate-900 shadow-[0px_4px_20px_rgba(31,122,99,0.05)] shadow-sm dark:shadow-none flex justify-between items-center h-16 px-6 max-w-full transition-all duration-200 active:scale-95">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-[#1F7A63] dark:text-[#28a484]" data-icon="storefront">storefront</span>
+<h1 class="text-xl font-extrabold font-['Manrope'] text-[#1F7A63] tracking-tight">Tindai</h1>
+<span class="bg-surface-container text-on-surface-variant font-label-sm text-label-sm px-2 py-1 rounded-full ml-xs hidden sm:inline-flex">Walang account</span>
+</div>
+<div class="flex items-center gap-md">
+<span class="bg-surface-container text-on-surface-variant font-label-sm text-label-sm px-2 py-1 rounded-full sm:hidden">Walang account</span>
+<button class="hover:bg-slate-50 dark:hover:bg-slate-800/50 p-2 rounded-full transition-colors flex items-center justify-center text-slate-400 dark:text-slate-500">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+</button>
+</div>
+</header>
+<!-- Main Content Layout -->
+<main class="max-w-container-max mx-auto w-full px-6 py-6 flex flex-col gap-md md:grid md:grid-cols-12 md:gap-gutter">
+<div class="md:col-span-8 md:col-start-3 flex flex-col gap-md">
+<!-- Inline Warning Banners -->
+<div class="flex flex-col gap-base">
+<!-- Banner 1 -->
+<div class="bg-surface-container-high text-on-surface rounded-xl p-sm flex items-center justify-between shadow-[0px_4px_20px_rgba(31,122,99,0.05)]">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">cloud_off</span>
+<p class="font-label-md text-label-md text-on-secondary-fixed-variant">Lokal lang ang data mo. Mag-sign in para ma-backup sa cloud.</p>
+</div>
+<button class="bg-primary text-on-primary font-label-md text-label-md px-4 py-2 rounded-full hover:bg-surface-tint transition-colors whitespace-nowrap ml-md">
+                        Sign In
+                    </button>
+</div>
+<!-- Banner 2 -->
+<div class="bg-error-container text-on-error-container rounded-xl p-sm flex items-start gap-sm shadow-[0px_4px_20px_rgba(31,122,99,0.05)]">
+<span class="material-symbols-outlined mt-0.5" style="font-variation-settings: 'FILL' 1;">mic_off</span>
+<p class="font-label-md text-label-md">Kailangan ng mic access. Pindutin ang mic button para i-enable sa Settings.</p>
+</div>
+</div>
+<!-- Voice Command Hero -->
+<section class="mt-md bg-surface-container-lowest shadow-[0px_4px_20px_rgba(31,122,99,0.05)] rounded-xl p-xl flex flex-col items-center justify-center relative overflow-hidden">
+<!-- Subtle background ambient ring simulating pulse -->
+<div class="absolute w-48 h-48 bg-primary-container opacity-5 rounded-full z-0"></div>
+<div class="absolute w-32 h-32 bg-primary-container opacity-10 rounded-full z-0"></div>
+<!-- Mic Button -->
+<button class="relative z-10 w-[88px] h-[88px] bg-primary-container text-on-primary-container rounded-full flex items-center justify-center shadow-[0px_10px_40px_rgba(31,122,99,0.15)] hover:bg-surface-tint transition-all active:scale-95 shadow-inner">
+<span class="material-symbols-outlined text-[40px]" style="font-variation-settings: 'FILL' 1;">mic</span>
+</button>
+<h2 class="font-label-sm text-label-sm text-secondary uppercase mt-md z-10 tracking-widest">BOSES</h2>
+<p class="font-body-lg text-body-lg text-on-surface mt-xs z-10">Pindutin para ilista ang benta</p>
+<button class="mt-lg border-2 border-outline-variant text-primary font-label-md text-label-md px-6 py-3 rounded-full hover:bg-surface-container-low transition-colors z-10 flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                    Magdagdag ng item
+                </button>
+</section>
+<!-- Text Command Bar & Confirmation -->
+<section class="flex flex-col gap-sm">
+<!-- Command Bar -->
+<div class="bg-surface-container-lowest shadow-[0px_10px_40px_rgba(0,0,0,0.08)] rounded-full px-2 py-2 flex items-center justify-between border border-surface-variant">
+<input class="bg-transparent border-none outline-none w-full px-4 font-body-md text-body-md text-on-surface focus:ring-0" readonly="" type="text" value="Nakabenta ako ng dalawan"/>
+<div class="flex items-center gap-xs pr-1">
+<button class="bg-seafoam-mist text-primary p-2 rounded-full hover:bg-surface-container transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="bg-primary-container text-on-primary-container p-2 rounded-full hover:bg-primary hover:text-on-primary transition-colors flex items-center justify-center shadow-[0px_4px_12px_rgba(31,122,99,0.2)]">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</div>
+<!-- Status -->
+<div class="flex items-center justify-center gap-xs text-primary bg-seafoam-mist px-4 py-2 rounded-full self-center">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<p class="font-label-sm text-label-sm">Naidagdag na ang item. Kakalangang na-update</p>
+</div>
+</section>
+<!-- Today's Summary (Buod Ngayon) -->
+<section class="mt-md">
+<h3 class="font-h3 text-h3 text-on-background mb-sm">Buod Ngayon</h3>
+<div class="grid grid-cols-3 gap-sm md:gap-md">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest shadow-[0px_4px_20px_rgba(31,122,99,0.05)] rounded-xl p-md flex flex-col justify-between border border-surface-container-low">
+<span class="font-label-sm text-label-sm text-secondary uppercase mb-xs">Total Products</span>
+<span class="font-h1 text-h1 text-on-surface">1</span>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest shadow-[0px_4px_20px_rgba(31,122,99,0.05)] rounded-xl p-md flex flex-col justify-between border-l-4 border-l-[#D97706] border border-surface-container-low">
+<span class="font-label-sm text-label-sm text-secondary uppercase mb-xs">Low Stock</span>
+<span class="font-h1 text-h1 text-[#D97706]">1</span>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest shadow-[0px_4px_20px_rgba(31,122,99,0.05)] rounded-xl p-md flex flex-col justify-between border border-surface-container-low bg-gradient-to-br from-surface-container-lowest to-seafoam-mist">
+<span class="font-label-sm text-label-sm text-primary uppercase mb-xs">Total Value</span>
+<span class="font-h1 text-h1 text-primary">₱27</span>
+</div>
+</div>
+</section>
+<!-- Recent Activity (Kamakailang Tala) -->
+<section class="mt-md mb-xl">
+<h3 class="font-h3 text-h3 text-on-background mb-sm">Kamakailang Tala</h3>
+<div class="bg-surface-container-lowest shadow-[0px_4px_20px_rgba(31,122,99,0.05)] rounded-xl p-md flex items-center justify-between border border-surface-container-low">
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 bg-surface-container-high rounded-full flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">inventory_2</span>
+</div>
+<div class="flex flex-col">
+<h4 class="font-h3 text-h3 text-on-surface">Bdjs</h4>
+<div class="flex items-center gap-xs mt-1">
+<span class="bg-[#FEF3C7] text-[#D97706] font-label-sm text-label-sm px-2 py-0.5 rounded-full">Malapit maubos</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-xs bg-surface-container-low rounded-full p-1 border border-surface-variant">
+<button class="w-8 h-8 rounded-full flex items-center justify-center text-secondary hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-[18px]">remove</span>
+</button>
+<span class="font-label-md text-label-md text-on-surface w-6 text-center">3</span>
+<button class="w-8 h-8 rounded-full bg-surface-container-lowest shadow-sm flex items-center justify-center text-primary hover:bg-seafoam-mist transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- BottomNavBar JSON Component -->
+<nav class="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md fixed bottom-0 left-0 w-full z-50 border-t border-slate-100 dark:border-slate-800 shadow-[0px_-10px_40px_rgba(0,0,0,0.04)] shadow-xl flex justify-around items-center h-20 px-4 pb-safe md:hidden">
+<!-- Inventory (Inactive) -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:text-[#1F7A63] dark:hover:text-[#28a484] transition-transform duration-300 ease-out active:scale-90 flex-1" href="#">
+<span class="material-symbols-outlined mb-1">inventory_2</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase">Inventory</span>
+</a>
+<!-- Dashboard (Active) -->
+<a class="flex flex-col items-center justify-center text-[#1F7A63] dark:text-[#28a484] bg-[#1F7A63]/5 rounded-xl px-4 py-1.5 hover:text-[#1F7A63] dark:hover:text-[#28a484] transition-transform duration-300 ease-out active:scale-90 flex-1" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase">Dashboard</span>
+</a>
+<!-- Analytics (Inactive) -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:text-[#1F7A63] dark:hover:text-[#28a484] transition-transform duration-300 ease-out active:scale-90 flex-1" href="#">
+<span class="material-symbols-outlined mb-1">analytics</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase">Analytics</span>
+</a>
+<!-- Profile (Inactive) -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 hover:text-[#1F7A63] dark:hover:text-[#28a484] transition-transform duration-300 ease-out active:scale-90 flex-1" href="#">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-['Inter'] text-[11px] font-medium tracking-wide uppercase">Profile</span>
+</a>
+</nav>
+<!-- Desktop Navigation Alternative (Fluid to Desktop Adaptation) -->
+<nav class="hidden md:flex fixed top-16 left-0 h-full w-64 bg-surface-container-lowest shadow-[4px_0px_20px_rgba(31,122,99,0.02)] flex-col py-lg px-md gap-sm border-r border-surface-container z-40">
+<a class="flex items-center gap-sm px-4 py-3 rounded-xl text-secondary hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-sm px-4 py-3 rounded-xl bg-seafoam-mist text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-sm px-4 py-3 rounded-xl text-secondary hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+<a class="flex items-center gap-sm px-4 py-3 rounded-xl text-secondary hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md">Profile</span>
+</a>
+</nav>
+</body></html>

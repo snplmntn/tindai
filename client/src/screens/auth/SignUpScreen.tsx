@@ -74,12 +74,11 @@ export function SignUpScreen() {
 
   return (
     <AuthLayout
-      badge="Create Account"
-      logoSource={require('../../assets/tindai-logo.png')}
-      title="Set up your account"
-      subtitle="Create an account with your name, store name, email, and password, or continue with Google."
-      submitLabel="Create account"
-      alternateLabel="Already have an account? Sign in"
+      badge="Account backup"
+      title="Ikonekta ang account mo."
+      subtitle="Gumawa ng account para ma-save ang tindahan mo online at maibalik ang data kapag nagpalit ka ng phone."
+      submitLabel="Gumawa ng Account"
+      alternateLabel="May account ka na? Mag-sign in"
       onSubmit={handleEmailSignUp}
       onAlternatePress={() => void showLogin()}
       dismissLabel="Back to app"
@@ -163,7 +162,7 @@ export function SignUpScreen() {
       </View>
 
       <PrimaryButton
-        label={isGoogleSubmitting ? 'Signing in with Google...' : 'Continue with Google'}
+        label={isGoogleSubmitting ? 'Nag-sign in gamit ang Google...' : 'Mag-sign in gamit ang Google'}
         onPress={handleGoogleSignIn}
         variant="ghost"
         leadingIcon={<FontAwesome name="google" size={16} color={colors.primaryDeep} />}
