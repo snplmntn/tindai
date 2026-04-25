@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-white text-slate-900">
@@ -12,6 +14,9 @@ export default function Home() {
               Home
             </a>
             <a href="#">Features</a>
+            <Link href="/paano-gamitin" className="transition hover:text-emerald-800">
+              Paano Gamitin
+            </Link>
             <a href="#">Pricing</a>
           </nav>
           <button className="rounded-lg bg-emerald-700 px-4 py-2 text-xs font-semibold text-white">Get App</button>
@@ -37,12 +42,12 @@ export default function Home() {
               >
                 Download on the App Store
               </a>
-              <a
-                href="#"
-                className="rounded-xl bg-slate-900 px-5 py-3 text-center text-sm font-semibold text-white shadow-sm"
+              <Link
+                href="/paano-gamitin"
+                className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
               >
-                Get it on Google Play
-              </a>
+                Paano Gamitin
+              </Link>
             </div>
 
             <p className="mt-3 text-[11px] text-slate-400">Subukan nang libre - walang credit card kailangan.</p>
