@@ -7,6 +7,7 @@ import { AnalyticsScreen } from '@/screens/tabs/AnalyticsScreen';
 import { DashboardScreen } from '@/screens/tabs/DashboardScreen';
 import { InventoryScreen } from '@/screens/tabs/InventoryScreen';
 import { ProfileScreen } from '@/screens/tabs/ProfileScreen';
+import { UtangScreen } from '@/screens/tabs/UtangScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -40,6 +41,8 @@ export function HomeTabs() {
           const iconName =
             route.name === 'Inventory'
               ? 'cube-outline'
+              : route.name === 'Utang'
+                ? 'receipt-outline'
               : route.name === 'Dashboard'
                 ? focused
                   ? 'mic'
@@ -71,6 +74,7 @@ export function HomeTabs() {
       })}
     >
       <Tab.Screen name="Inventory" component={InventoryScreen} />
+      <Tab.Screen name="Utang" component={UtangScreen} />
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
