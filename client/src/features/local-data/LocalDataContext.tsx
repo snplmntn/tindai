@@ -1,5 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { AppState } from 'react-native';
 import type * as SQLite from 'expo-sqlite';
+import * as Network from 'expo-network';
 
 import { getClientEnv } from '@/config/env';
 import { supabase } from '@/config/supabase';
@@ -88,6 +90,8 @@ type LocalDataState = {
 const LocalDataContext = createContext<LocalDataState | undefined>(undefined);
 const LOCAL_REFRESH_TIMEOUT_MS = 12000;
 const DEFAULT_SYNC_NOTICE = 'Offline now. Using local records. We will send updates when internet returns.';
+const AUTO_SYNC_COOLDOWN_MS = 15000;
+const AUTO_SYNC_POLL_INTERVAL_MS = 45000;
 
 async function createRepositories() {
   const database = await getLocalDatabase();
@@ -336,6 +340,8 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
+  const isAutoSyncRunningRef = useRef(false);
+  const lastAutoSyncAtRef = useRef(0);
 
   const loadCachedData = useCallback(async () => {
     const {
@@ -1105,6 +1111,76 @@ export function LocalDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const triggerAutoSync = useCallback(
+    async (_reason: 'network_reconnected' | 'app_foreground' | 'poll') => {
+      if (!isAuthenticated || isLoading || isAutoSyncRunningRef.current) {
+        return;
+      }
+
+      const hasPendingTransactions = recentTransactions.some((transaction) => transaction.syncStatus === 'pending');
+      if (!hasPendingTransactions) {
+        return;
+      }
+
+      const now = Date.now();
+      if (now - lastAutoSyncAtRef.current < AUTO_SYNC_COOLDOWN_MS) {
+        return;
+      }
+
+      isAutoSyncRunningRef.current = true;
+      lastAutoSyncAtRef.current = now;
+
+      try {
+        await refresh();
+      } finally {
+        isAutoSyncRunningRef.current = false;
+      }
+    },
+    [isAuthenticated, isLoading, recentTransactions, refresh],
+  );
+
+  useEffect(() => {
+    let wasOnline = false;
+
+    const toOnlineStatus = (state: Network.NetworkState) =>
+      Boolean(state.isConnected) && state.isInternetReachable !== false;
+
+    const primeNetworkStatus = async () => {
+      try {
+        const state = await Network.getNetworkStateAsync();
+        wasOnline = toOnlineStatus(state);
+      } catch {
+        wasOnline = false;
+      }
+    };
+
+    void primeNetworkStatus();
+
+    const networkSubscription = Network.addNetworkStateListener((state) => {
+      const isOnline = toOnlineStatus(state);
+      if (isOnline && !wasOnline) {
+        void triggerAutoSync('network_reconnected');
+      }
+      wasOnline = isOnline;
+    });
+
+    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        void triggerAutoSync('app_foreground');
+      }
+    });
+
+    const pollTimer = setInterval(() => {
+      void triggerAutoSync('poll');
+    }, AUTO_SYNC_POLL_INTERVAL_MS);
+
+    return () => {
+      networkSubscription.remove();
+      appStateSubscription.remove();
+      clearInterval(pollTimer);
+    };
+  }, [triggerAutoSync]);
 
   const value = useMemo(
     () => ({
