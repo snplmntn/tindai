@@ -146,6 +146,15 @@ function loadGoogleSigninModule() {
 }
 
 function loadSpeechRecognitionRuntime(): SpeechRecognitionModuleRuntime | null {
+  const hasNativeSpeechModule = Boolean(
+    (NativeModules as Record<string, unknown> | undefined)?.ExpoSpeechRecognition ??
+      (NativeModules as Record<string, unknown> | undefined)?.ExpoSpeechRecognitionModule,
+  );
+
+  if (!hasNativeSpeechModule) {
+    return null;
+  }
+
   try {
     return require('expo-speech-recognition') as SpeechRecognitionModuleRuntime;
   } catch {
@@ -282,15 +291,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isAuthLoading]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({
+    () => {
+      const permissions = {
+        ...initialAppFlowState.permissions,
+        ...(state.permissions ?? {}),
+      };
+
+      return {
       activeRoute: getActiveRoute(state),
       isAuthenticated: state.isAuthenticated,
       isAuthLoading,
       authError,
       authScreen: state.authScreen,
       authMode: state.authMode,
-      microphonePermission: state.permissions.microphone,
-      storagePermission: state.permissions.storage,
+      microphonePermission: permissions.microphone,
+      storagePermission: permissions.storage,
       onboardingCompleted: state.onboardingCompleted,
       tutorialShown: state.tutorialShown,
       isGoogleSignInEnabled: googleAvailability.enabled,
@@ -547,7 +562,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       openDeviceSettings: async () => {
         await Linking.openSettings();
       },
-    }),
+    };
+    },
     [authError, googleAvailability, isAuthLoading, state],
   );
 

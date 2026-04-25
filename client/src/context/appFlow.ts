@@ -48,84 +48,92 @@ export const initialAppFlowState: AppFlowState = {
 };
 
 export function appFlowReducer(state: AppFlowState, action: AppFlowAction): AppFlowState {
+  const normalizedState: AppFlowState = {
+    ...state,
+    permissions: {
+      ...initialAppFlowState.permissions,
+      ...(state.permissions ?? {}),
+    },
+  };
+
   switch (action.type) {
     case 'hydrate':
       return {
-        ...state,
+        ...normalizedState,
         ...action.state,
         permissions: {
-          ...state.permissions,
+          ...normalizedState.permissions,
           ...action.state.permissions,
         },
       };
     case 'chooseGuestMode':
       return {
-        ...state,
+        ...normalizedState,
         authMode: 'guest',
         isAuthScreenVisible: false,
       };
     case 'showLogin':
       return {
-        ...state,
+        ...normalizedState,
         authMode: 'account',
         authScreen: 'login',
         isAuthScreenVisible: true,
       };
     case 'showSignUp':
       return {
-        ...state,
+        ...normalizedState,
         authMode: 'account',
         authScreen: 'signUp',
         isAuthScreenVisible: true,
       };
     case 'closeAuth':
       return {
-        ...state,
-        authMode: state.isAuthenticated ? 'account' : null,
+        ...normalizedState,
+        authMode: normalizedState.isAuthenticated ? 'account' : null,
         isAuthScreenVisible: false,
       };
     case 'completeOnboarding':
       return {
-        ...state,
+        ...normalizedState,
         onboardingCompleted: true,
       };
     case 'setMicrophonePermission':
       return {
-        ...state,
+        ...normalizedState,
         permissions: {
-          ...state.permissions,
+          ...normalizedState.permissions,
           microphone: action.status,
         },
       };
     case 'setStoragePermission':
       return {
-        ...state,
+        ...normalizedState,
         permissions: {
-          ...state.permissions,
+          ...normalizedState.permissions,
           storage: action.status,
         },
       };
     case 'markTutorialShown':
       return {
-        ...state,
+        ...normalizedState,
         tutorialShown: true,
       };
     case 'signIn':
       return {
-        ...state,
+        ...normalizedState,
         authMode: 'account',
         isAuthScreenVisible: false,
         isAuthenticated: true,
       };
     case 'signOut':
       return {
-        ...state,
+        ...normalizedState,
         authMode: 'guest',
         isAuthScreenVisible: false,
         isAuthenticated: false,
       };
     default:
-      return state;
+      return normalizedState;
   }
 }
 
