@@ -13,6 +13,24 @@ type GeminiGenerateContentResponse = {
   }>;
 };
 
+function extractJsonPayload(rawResponse: string) {
+  const trimmed = rawResponse.trim().replace(/^\uFEFF/, '');
+  if (trimmed.startsWith('```')) {
+    const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    if (fenced?.[1]) {
+      return extractJsonPayload(fenced[1]);
+    }
+  }
+
+  const firstObjectIndex = trimmed.indexOf('{');
+  const lastObjectIndex = trimmed.lastIndexOf('}');
+  if (firstObjectIndex >= 0 && lastObjectIndex > firstObjectIndex) {
+    return trimmed.slice(firstObjectIndex, lastObjectIndex + 1).trim();
+  }
+
+  return trimmed;
+}
+
 export async function generateGeminiText(
   prompt: string,
   options?: {
@@ -63,7 +81,7 @@ export function validateGeminiTransactionResponse(
   rawResponse: string,
 ): GeminiTransactionVerification {
   try {
-    const parsed = JSON.parse(rawResponse) as Partial<GeminiTransactionVerification>;
+    const parsed = JSON.parse(extractJsonPayload(rawResponse)) as Partial<GeminiTransactionVerification>;
 
     if (!parsed || typeof parsed !== 'object') {
       throw new Error('Response must be a JSON object');

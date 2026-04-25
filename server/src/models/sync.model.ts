@@ -49,6 +49,48 @@ type CloudCustomer = {
   display_name: string;
 };
 
+const GEMINI_TRANSACTION_VERIFICATION_SCHEMA = {
+  type: 'object',
+  required: ['intent', 'confidence', 'items', 'credit', 'notes'],
+  properties: {
+    intent: {
+      type: 'string',
+      enum: ['sale', 'restock', 'utang', 'unknown'],
+    },
+    confidence: {
+      type: 'number',
+      minimum: 0,
+      maximum: 1,
+    },
+    items: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['spoken_name', 'matched_item_name', 'quantity_delta'],
+        properties: {
+          spoken_name: { type: 'string' },
+          matched_item_name: { type: 'string' },
+          quantity_delta: { type: 'number' },
+        },
+      },
+    },
+    credit: {
+      type: 'object',
+      required: ['is_utang', 'customer_name'],
+      properties: {
+        is_utang: { type: 'boolean' },
+        customer_name: {
+          type: ['string', 'null'],
+        },
+      },
+    },
+    notes: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+  },
+} as const;
+
 function mapTransactionSource(source: VerifyTransactionInput['source']) {
   if (source === 'typed') {
     return 'manual';
@@ -174,6 +216,7 @@ export async function verifyTransactionsForOwner(
           });
           const geminiResponse = await generateGeminiText(prompt, {
             responseMimeType: 'application/json',
+            responseSchema: GEMINI_TRANSACTION_VERIFICATION_SCHEMA,
           });
 
           if (geminiResponse) {
