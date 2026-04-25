@@ -13,6 +13,10 @@ const mockedApplyManualAdjustment = vi.fn<(itemId: string, direction: -1 | 1) =>
 const mockedCreateLocalInventoryItem = vi.fn<
   (entry: { name: string; quantity: number; cost: number; price: number }) => Promise<void>
 >(async () => undefined);
+const mockedUpdateInventoryItemMetadata = vi.fn<
+  (entry: { itemId: string; name: string; cost: number; price: number; lowStockThreshold: number }) => Promise<void>
+>(async () => undefined);
+const mockedArchiveLocalInventoryItem = vi.fn<(itemId: string) => Promise<void>>(async () => undefined);
 
 let mockedInventoryItems: LocalInventoryItem[] = [];
 let mockedPendingTransactions: Array<{
@@ -84,6 +88,8 @@ vi.mock('@/features/local-data/LocalDataContext', () => ({
     pendingTransactions: mockedPendingTransactions,
     applyManualAdjustment: mockedApplyManualAdjustment,
     createLocalInventoryItem: mockedCreateLocalInventoryItem,
+    updateInventoryItemMetadata: mockedUpdateInventoryItemMetadata,
+    archiveLocalInventoryItem: mockedArchiveLocalInventoryItem,
   }),
 }));
 
@@ -152,6 +158,8 @@ describe('InventoryScreen', () => {
 
     mockedApplyManualAdjustment.mockClear();
     mockedCreateLocalInventoryItem.mockClear();
+    mockedUpdateInventoryItemMetadata.mockClear();
+    mockedArchiveLocalInventoryItem.mockClear();
     mockedInventoryItems = [
       buildItem({
         id: 'item-softdrink',
@@ -273,13 +281,61 @@ describe('InventoryScreen', () => {
     });
   });
 
-  it('shows temporary hardcoded inventory items when local inventory is empty', async () => {
+  it('shows an empty inventory state when there are no items yet', async () => {
     mockedInventoryItems = [];
 
     const tree = await renderInventoryScreen();
 
-    expect(findTextNodes(tree, 'Sample list muna habang wala pang local items.')).not.toHaveLength(0);
-    expect(getRenderedItemNames(tree)).toEqual(['Coke Mismo', 'Lucky Me Pancit Canton', 'Safeguard']);
+    expect(findByTestId(tree, 'inventory-empty-state')).toBeDefined();
+    expect(findTextNodes(tree, 'Wala pang item')).not.toHaveLength(0);
+    expect(getRenderedItemNames(tree)).toEqual([]);
+  });
+
+  it('submits item edits through updateInventoryItemMetadata', async () => {
+    const tree = await renderInventoryScreen();
+
+    await act(async () => {
+      findByTestId(tree, 'inventory-open-item-item-softdrink').props.onPress();
+    });
+
+    await act(async () => {
+      findByTestId(tree, 'inventory-edit-open-button').props.onPress();
+    });
+
+    await act(async () => {
+      findByTestId(tree, 'inventory-edit-name-input').props.onChangeText('Softdrink Mismo Plus');
+      findByTestId(tree, 'inventory-edit-cost-input').props.onChangeText('13');
+      findByTestId(tree, 'inventory-edit-price-input').props.onChangeText('21');
+      findByTestId(tree, 'inventory-edit-threshold-input').props.onChangeText('6');
+    });
+
+    await act(async () => {
+      findByTestId(tree, 'inventory-edit-submit-button').props.onPress();
+      await Promise.resolve();
+    });
+
+    expect(mockedUpdateInventoryItemMetadata).toHaveBeenCalledWith({
+      itemId: 'item-softdrink',
+      name: 'Softdrink Mismo Plus',
+      cost: 13,
+      price: 21,
+      lowStockThreshold: 6,
+    });
+  });
+
+  it('archives an item from the detail sheet', async () => {
+    const tree = await renderInventoryScreen();
+
+    await act(async () => {
+      findByTestId(tree, 'inventory-open-item-item-softdrink').props.onPress();
+    });
+
+    await act(async () => {
+      findByTestId(tree, 'inventory-archive-button').props.onPress();
+      await Promise.resolve();
+    });
+
+    expect(mockedArchiveLocalInventoryItem).toHaveBeenCalledWith('item-softdrink');
   });
 
   it('shows a no-results state when search filters remove all items', async () => {

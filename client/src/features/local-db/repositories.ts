@@ -395,6 +395,8 @@ export class InventoryRepository {
       `select id, store_id, name, aliases_json, unit, cost, price, current_stock, low_stock_threshold, updated_at
        from inventory_items
        where store_id = ?
+         and is_active = 1
+         and archived_at is null
        order by name asc`,
       [storeId],
     );
@@ -485,6 +487,62 @@ export class InventoryRepository {
       lowStockThreshold,
       updatedAt: now,
     };
+  }
+
+  async upsertInventoryItem(item: LocalInventoryItem) {
+    await this.database.runAsync(
+      `insert into inventory_items (
+        id,
+        store_id,
+        name,
+        aliases_json,
+        unit,
+        cost,
+        price,
+        current_stock,
+        low_stock_threshold,
+        is_active,
+        archived_at,
+        updated_at
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, null, ?)
+      on conflict(id) do update set
+        store_id = excluded.store_id,
+        name = excluded.name,
+        aliases_json = excluded.aliases_json,
+        unit = excluded.unit,
+        cost = excluded.cost,
+        price = excluded.price,
+        current_stock = excluded.current_stock,
+        low_stock_threshold = excluded.low_stock_threshold,
+        is_active = 1,
+        archived_at = null,
+        updated_at = excluded.updated_at`,
+      [
+        item.id,
+        item.storeId,
+        item.name,
+        JSON.stringify(item.aliases),
+        item.unit,
+        item.cost,
+        item.price,
+        item.currentStock,
+        item.lowStockThreshold,
+        item.updatedAt,
+      ],
+    );
+  }
+
+  async archiveInventoryItemForStore(storeId: string, itemId: string) {
+    const now = new Date().toISOString();
+    await this.database.runAsync(
+      `update inventory_items
+       set is_active = 0,
+           archived_at = ?,
+           updated_at = ?
+       where store_id = ?
+         and id = ?`,
+      [now, now, storeId, itemId],
+    );
   }
 }
 

@@ -19,45 +19,6 @@ import { colors } from '@/navigation/colors';
 
 type SortMode = 'name' | 'stock_desc' | 'stock_asc';
 
-const TEMPORARY_INVENTORY_ITEMS: LocalInventoryItem[] = [
-  {
-    id: 'preview-coke',
-    storeId: 'preview-store',
-    name: 'Coke Mismo',
-    aliases: ['coke'],
-    unit: 'pcs',
-    cost: 14,
-    price: 20,
-    currentStock: 12,
-    lowStockThreshold: 4,
-    updatedAt: '2026-04-25T00:00:00.000Z',
-  },
-  {
-    id: 'preview-noodles',
-    storeId: 'preview-store',
-    name: 'Lucky Me Pancit Canton',
-    aliases: ['noodles', 'canton'],
-    unit: 'pcs',
-    cost: 12,
-    price: 18,
-    currentStock: 9,
-    lowStockThreshold: 5,
-    updatedAt: '2026-04-25T00:00:00.000Z',
-  },
-  {
-    id: 'preview-soap',
-    storeId: 'preview-store',
-    name: 'Safeguard',
-    aliases: ['soap'],
-    unit: 'pcs',
-    cost: 19,
-    price: 25,
-    currentStock: 6,
-    lowStockThreshold: 3,
-    updatedAt: '2026-04-25T00:00:00.000Z',
-  },
-];
-
 function getInitials(value: string) {
   const parts = value
     .trim()
@@ -138,8 +99,16 @@ function getItemMetaLine(item: LocalInventoryItem) {
 }
 
 export function InventoryScreen() {
-  const { appState, store, inventoryItems, pendingTransactions, applyManualAdjustment, createLocalInventoryItem } =
-    useLocalData();
+  const {
+    appState,
+    store,
+    inventoryItems,
+    pendingTransactions,
+    applyManualAdjustment,
+    createLocalInventoryItem,
+    updateInventoryItemMetadata,
+    archiveLocalInventoryItem,
+  } = useLocalData();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('name');
   const [lowStockOnly, setLowStockOnly] = useState(false);
@@ -154,10 +123,20 @@ export function InventoryScreen() {
   const [itemPrice, setItemPrice] = useState('');
   const [itemFormError, setItemFormError] = useState<string | null>(null);
   const [isSavingItem, setIsSavingItem] = useState(false);
+  const [isEditItemVisible, setIsEditItemVisible] = useState(false);
+  const [editItemName, setEditItemName] = useState('');
+  const [editItemCost, setEditItemCost] = useState('');
+  const [editItemPrice, setEditItemPrice] = useState('');
+  const [editItemThreshold, setEditItemThreshold] = useState('');
+  const [editFormError, setEditFormError] = useState<string | null>(null);
+  const [isUpdatingItem, setIsUpdatingItem] = useState(false);
+  const [isArchivingItem, setIsArchivingItem] = useState(false);
   const searchValue = normalizeSearchText(searchQuery);
   const showPendingPanel = appState?.mode === 'authenticated' && pendingTransactions.length > 0;
-  const isUsingTemporaryData = inventoryItems.length === 0;
-  const effectiveInventoryItems = isUsingTemporaryData ? TEMPORARY_INVENTORY_ITEMS : inventoryItems;
+  const effectiveInventoryItems = inventoryItems;
+  const isEmptyInventory = effectiveInventoryItems.length === 0;
+  const hasActiveSearch = searchValue.length > 0;
+  const hasActiveFilters = hasActiveSearch || lowStockOnly || sortMode !== 'name';
 
   const filteredItems = useMemo(() => {
     return effectiveInventoryItems
@@ -168,11 +147,6 @@ export function InventoryScreen() {
 
   const handleManualAdjust = useCallback(
     async (itemId: string, direction: -1 | 1) => {
-      if (isUsingTemporaryData) {
-        setFeedbackMessage('Sample items lang muna ito. Magdagdag ng totoong item para makapag-adjust.');
-        return;
-      }
-
       setManualAdjustingItemId(itemId);
       setFeedbackMessage(null);
 
@@ -185,8 +159,30 @@ export function InventoryScreen() {
         setManualAdjustingItemId(null);
       }
     },
-    [applyManualAdjustment, isUsingTemporaryData],
+    [applyManualAdjustment],
   );
+
+  const handleOpenAddItem = useCallback(() => {
+    setItemFormError(null);
+    setItemName('');
+    setItemQuantity('0');
+    setItemCost('');
+    setItemPrice('');
+    setIsAddItemVisible(true);
+  }, []);
+
+  const handleOpenEditItem = useCallback(() => {
+    if (!selectedItem) {
+      return;
+    }
+
+    setEditFormError(null);
+    setEditItemName(selectedItem.name);
+    setEditItemCost(selectedItem.cost === null ? '' : String(selectedItem.cost));
+    setEditItemPrice(String(selectedItem.price));
+    setEditItemThreshold(String(selectedItem.lowStockThreshold));
+    setIsEditItemVisible(true);
+  }, [selectedItem]);
 
   const handleAddItem = useCallback(async () => {
     const trimmedName = itemName.trim();
@@ -236,6 +232,77 @@ export function InventoryScreen() {
       setIsSavingItem(false);
     }
   }, [createLocalInventoryItem, itemCost, itemName, itemPrice, itemQuantity]);
+
+  const handleUpdateItem = useCallback(async () => {
+    if (!selectedItem) {
+      return;
+    }
+
+    const trimmedName = editItemName.trim();
+    const cost = Number(editItemCost);
+    const price = Number(editItemPrice);
+    const lowStockThreshold = Number(editItemThreshold);
+
+    if (!trimmedName) {
+      setEditFormError('Ilagay ang pangalan ng item.');
+      return;
+    }
+
+    if (Number.isNaN(cost) || cost < 0) {
+      setEditFormError('Ang cost price ay dapat zero o mas mataas.');
+      return;
+    }
+
+    if (Number.isNaN(price) || price < 0) {
+      setEditFormError('Ang selling price ay dapat zero o mas mataas.');
+      return;
+    }
+
+    if (Number.isNaN(lowStockThreshold) || lowStockThreshold < 0) {
+      setEditFormError('Ang low stock alert ay dapat zero o mas mataas.');
+      return;
+    }
+
+    setEditFormError(null);
+    setIsUpdatingItem(true);
+
+    try {
+      await updateInventoryItemMetadata({
+        itemId: selectedItem.id,
+        name: trimmedName,
+        cost,
+        price,
+        lowStockThreshold,
+      });
+      setIsEditItemVisible(false);
+      setSelectedItem(null);
+      setFeedbackMessage('Na-update na ang detalye ng item.');
+    } catch (caughtError) {
+      setEditFormError(caughtError instanceof Error ? caughtError.message : 'Hindi na-update ang item.');
+    } finally {
+      setIsUpdatingItem(false);
+    }
+  }, [editItemCost, editItemName, editItemPrice, editItemThreshold, selectedItem, updateInventoryItemMetadata]);
+
+  const handleArchiveItem = useCallback(async () => {
+    if (!selectedItem) {
+      return;
+    }
+
+    setIsArchivingItem(true);
+    setFeedbackMessage(null);
+
+    try {
+      await archiveLocalInventoryItem(selectedItem.id);
+      setIsEditItemVisible(false);
+      setSelectedItem(null);
+      setFeedbackMessage('Na-archive na ang item.');
+    } catch (caughtError) {
+      setFeedbackMessage(caughtError instanceof Error ? caughtError.message : 'Hindi na-archive ang item.');
+    } finally {
+      setIsArchivingItem(false);
+    }
+  }, [archiveLocalInventoryItem, selectedItem]);
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -326,36 +393,46 @@ export function InventoryScreen() {
               </View>
             ) : null}
 
-            {isUsingTemporaryData ? (
-              <View style={styles.previewCard} testID="inventory-preview-state">
-                <Text style={styles.previewTitle}>Sample list muna habang wala pang local items.</Text>
-                <Text style={styles.previewBody}>Magdagdag ng sarili mong item kapag handa ka na magtala sa tindahan.</Text>
-              </View>
-            ) : null}
-
             {filteredItems.length === 0 ? (
-              <View style={styles.emptyCard} testID="inventory-no-results-state">
+              <View
+                style={styles.emptyCard}
+                testID={isEmptyInventory && !hasActiveFilters ? 'inventory-empty-state' : 'inventory-no-results-state'}
+              >
                 <View style={styles.emptyIconWrap}>
-                  <Ionicons color={colors.primaryDeep} name="search-outline" size={24} />
+                  <Ionicons
+                    color={colors.primaryDeep}
+                    name={isEmptyInventory && !hasActiveFilters ? 'cube-outline' : 'search-outline'}
+                    size={24}
+                  />
                 </View>
-                <Text style={styles.emptyTitle}>Walang tumugma</Text>
-                <Text style={styles.emptyBody}>Subukan ang ibang hanap o alisin ang low stock filter.</Text>
-                <Pressable
-                  onPress={() => {
-                    setSearchQuery('');
-                    setLowStockOnly(false);
-                    setSortMode('name');
-                  }}
-                  style={styles.emptyAction}
-                >
-                  <Text style={styles.emptyActionText}>I-reset ang hanap</Text>
-                </Pressable>
+                <Text style={styles.emptyTitle}>{isEmptyInventory && !hasActiveFilters ? 'Wala pang item' : 'Walang tumugma'}</Text>
+                <Text style={styles.emptyBody}>
+                  {isEmptyInventory && !hasActiveFilters
+                    ? 'Magdagdag ng unang paninda para lumabas ang listahan dito.'
+                    : 'Subukan ang ibang hanap o alisin ang low stock filter.'}
+                </Text>
+                {!isEmptyInventory || hasActiveFilters ? (
+                  <Pressable
+                    onPress={() => {
+                      setSearchQuery('');
+                      setLowStockOnly(false);
+                      setSortMode('name');
+                    }}
+                    style={styles.emptyAction}
+                  >
+                    <Text style={styles.emptyActionText}>I-reset ang hanap</Text>
+                  </Pressable>
+                ) : null}
               </View>
             ) : (
               <View style={styles.itemList}>
                 {filteredItems.map((item) => (
                   <View key={item.id} style={styles.itemCard} testID={`item-card-${item.id}`}>
-                    <Pressable onPress={() => setSelectedItem(item)} style={styles.itemBody}>
+                    <Pressable
+                      testID={`inventory-open-item-${item.id}`}
+                      onPress={() => setSelectedItem(item)}
+                      style={styles.itemBody}
+                    >
                       <View style={styles.itemAvatar}>
                         <Text style={styles.itemAvatarText}>{getInitials(item.name)}</Text>
                       </View>
@@ -413,10 +490,7 @@ export function InventoryScreen() {
         <Pressable
           testID="inventory-add-open-button"
           accessibilityRole="button"
-          onPress={() => {
-            setItemFormError(null);
-            setIsAddItemVisible(true);
-          }}
+          onPress={handleOpenAddItem}
           style={styles.fab}
         >
           <Ionicons color="#FFFFFF" name="add" size={22} />
@@ -543,6 +617,78 @@ export function InventoryScreen() {
         </View>
       </Modal>
 
+      <Modal
+        animationType="slide"
+        transparent
+        visible={isEditItemVisible}
+        onRequestClose={() => setIsEditItemVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>Ayusin ang detalye</Text>
+
+            <Text style={styles.sheetLabel}>Pangalan ng item</Text>
+            <TextInput
+              testID="inventory-edit-name-input"
+              autoCapitalize="words"
+              onChangeText={setEditItemName}
+              placeholder="Hal. Bear Brand"
+              placeholderTextColor={colors.muted}
+              style={styles.formInput}
+              value={editItemName}
+            />
+
+            <Text style={styles.sheetLabel}>Cost price</Text>
+            <TextInput
+              testID="inventory-edit-cost-input"
+              keyboardType="decimal-pad"
+              onChangeText={setEditItemCost}
+              placeholder="0"
+              placeholderTextColor={colors.muted}
+              style={styles.formInput}
+              value={editItemCost}
+            />
+
+            <Text style={styles.sheetLabel}>Selling price</Text>
+            <TextInput
+              testID="inventory-edit-price-input"
+              keyboardType="decimal-pad"
+              onChangeText={setEditItemPrice}
+              placeholder="0"
+              placeholderTextColor={colors.muted}
+              style={styles.formInput}
+              value={editItemPrice}
+            />
+
+            <Text style={styles.sheetLabel}>Low stock alert</Text>
+            <TextInput
+              testID="inventory-edit-threshold-input"
+              keyboardType="number-pad"
+              onChangeText={setEditItemThreshold}
+              placeholder="0"
+              placeholderTextColor={colors.muted}
+              style={styles.formInput}
+              value={editItemThreshold}
+            />
+
+            {editFormError ? <Text style={styles.formErrorText}>{editFormError}</Text> : null}
+
+            <View style={styles.sheetActions}>
+              <Pressable onPress={() => setIsEditItemVisible(false)} style={styles.secondaryAction}>
+                <Text style={styles.secondaryActionText}>Kanselahin</Text>
+              </Pressable>
+              <Pressable
+                testID="inventory-edit-submit-button"
+                onPress={() => void handleUpdateItem()}
+                style={styles.primaryAction}
+              >
+                <Text style={styles.primaryActionText}>{isUpdatingItem ? 'Sine-save...' : 'I-save ang detalye'}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Modal animationType="slide" transparent visible={selectedItem !== null} onRequestClose={() => setSelectedItem(null)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.sheet}>
@@ -578,6 +724,16 @@ export function InventoryScreen() {
             ) : null}
 
             <View style={styles.sheetActions}>
+              <Pressable testID="inventory-edit-open-button" onPress={handleOpenEditItem} style={styles.secondaryAction}>
+                <Text style={styles.secondaryActionText}>I-edit</Text>
+              </Pressable>
+              <Pressable
+                testID="inventory-archive-button"
+                onPress={() => void handleArchiveItem()}
+                style={styles.dangerAction}
+              >
+                <Text style={styles.dangerActionText}>{isArchivingItem ? 'Ina-archive...' : 'I-archive'}</Text>
+              </Pressable>
               <Pressable onPress={() => setSelectedItem(null)} style={styles.secondaryAction}>
                 <Text style={styles.secondaryActionText}>Isara</Text>
               </Pressable>
@@ -742,23 +898,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 12,
     fontWeight: '500',
-  },
-  previewCard: {
-    backgroundColor: colors.card,
-    borderRadius: 22,
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  previewTitle: {
-    color: colors.primaryDeep,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  previewBody: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 19,
   },
   emptyCard: {
     alignItems: 'flex-start',
@@ -1037,6 +1176,20 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     fontWeight: '700',
+  },
+  dangerAction: {
+    alignItems: 'center',
+    backgroundColor: '#FEE7E7',
+    borderRadius: 16,
+    justifyContent: 'center',
+    minWidth: 112,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  dangerActionText: {
+    color: '#A12A2A',
+    fontSize: 14,
+    fontWeight: '800',
   },
   primaryAction: {
     alignItems: 'center',
