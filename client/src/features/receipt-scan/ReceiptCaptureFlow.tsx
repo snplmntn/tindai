@@ -27,7 +27,7 @@ import { colors } from '@/navigation/colors';
 type ReceiptCaptureFlowProps = {
   visible: boolean;
   onClose: () => void;
-  onSaveDraft: (draft: ReceiptImageDraft) => void;
+  onSaveDraft: (draft: ReceiptImageDraft) => Promise<void> | void;
 };
 
 export function ReceiptCaptureFlow({ visible, onClose, onSaveDraft }: ReceiptCaptureFlowProps) {
@@ -148,15 +148,19 @@ export function ReceiptCaptureFlow({ visible, onClose, onSaveDraft }: ReceiptCap
     onClose();
   }
 
-  function handleUseReceipt() {
+  async function handleUseReceipt() {
     if (!draft) {
       return;
     }
 
-    onSaveDraft(draft);
-    setDraft(null);
-    setErrorMessage(null);
-    onClose();
+    try {
+      await onSaveDraft(draft);
+      setDraft(null);
+      setErrorMessage(null);
+      onClose();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Hindi naihanda ang resibo.');
+    }
   }
 
   const hasBlockingIssues = hasBlockingReceiptIssues(draft?.qualityIssues ?? []);
