@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { colors } from '@/navigation/colors';
+
 const { mockCreateBottomTabNavigator } = vi.hoisted(() => ({
   mockCreateBottomTabNavigator: vi.fn(() => ({
     Navigator: 'mock-navigator',
@@ -48,5 +50,17 @@ describe('HomeTabs', () => {
     });
 
     expect(options.headerShown).toBe(false);
+  });
+
+  it('uses a white tab shell with green active states', () => {
+    const element = HomeTabs();
+    const options = element.props.screenOptions({
+      route: { name: 'Dashboard' },
+    });
+
+    expect(options.tabBarStyle.backgroundColor).toBe(colors.surface);
+    expect(options.tabBarStyle.borderTopColor).toBe(colors.border);
+    expect(options.tabBarActiveTintColor).toBe(colors.primaryDeep);
+    expect(options.tabBarInactiveTintColor).toBe(colors.muted);
   });
 });

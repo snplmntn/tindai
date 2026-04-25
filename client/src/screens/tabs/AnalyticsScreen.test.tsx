@@ -14,7 +14,7 @@ const mockedStore = {
   timezone: 'Asia/Manila',
   updatedAt: '2026-04-25T00:00:00.000Z',
 };
-const mockedInventoryItems = [
+let mockedInventoryItems = [
   {
     id: 'item-coke',
     storeId: 'store-1',
@@ -44,17 +44,22 @@ vi.mock('react-native-safe-area-context', () => ({
   SafeAreaView: ({ children }: { children: React.ReactNode }) => createElement('safe-area-view', null, children),
 }));
 
+vi.mock('@expo/vector-icons', () => ({
+  Ionicons: () => null,
+}));
+
 vi.mock('@/navigation/colors', () => ({
   colors: {
-    background: '#FFF8E7',
-    border: '#D9D1C4',
-    card: '#F8EFD8',
-    muted: '#6D675D',
+    background: '#FAFBF8',
+    border: '#D8E2DA',
+    card: '#EDF6EF',
+    muted: '#66706B',
     primary: '#1F7A63',
     primaryDeep: '#145746',
     secondary: '#F2C94C',
     surface: '#FFFDF5',
-    text: '#2F2F2F',
+    surfaceAlt: '#F4F8F2',
+    text: '#1F2925',
   },
 }));
 
@@ -107,6 +112,19 @@ describe('AnalyticsScreen', () => {
   });
 
   afterEach(() => {
+    mockedInventoryItems = [
+      {
+        id: 'item-coke',
+        storeId: 'store-1',
+        name: 'Coke Mismo',
+        aliases: ['coke'],
+        unit: 'pcs',
+        price: 20,
+        currentStock: 4,
+        lowStockThreshold: 5,
+        updatedAt: '2026-04-25T00:00:00.000Z',
+      },
+    ];
     consoleErrorSpy?.mockRestore();
   });
 
@@ -127,5 +145,20 @@ describe('AnalyticsScreen', () => {
     });
 
     expect(findTextNodes(tree, 'Restock Soon')).not.toHaveLength(0);
+  });
+
+  it('renders hardcoded analytics preview data when local analytics is empty', async () => {
+    mockedInventoryItems = [];
+
+    let tree!: TestRenderer.ReactTestRenderer;
+
+    await act(async () => {
+      tree = TestRenderer.create(createElement(AnalyticsScreen));
+      await Promise.resolve();
+    });
+
+    expect(findTextNodes(tree, 'P60')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Coke Mismo')).not.toHaveLength(0);
+    expect(findTextNodes(tree, '0 units')).toHaveLength(0);
   });
 });
