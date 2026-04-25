@@ -5,6 +5,7 @@ import { AuthField } from '@/components/AuthField';
 import { AuthLayout } from '@/components/AuthLayout';
 import { GoogleSignInMark } from '@/components/GoogleSignInMark';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { mobileCopy } from '@/copy/mobileCopy';
 import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/navigation/colors';
 
@@ -20,7 +21,6 @@ export function SignUpScreen() {
     authError,
     clearAuthError,
     googleSignInHint,
-    isGoogleSignInEnabled,
   } = useAuth();
   const [fullName, setFullName] = useState('');
   const [storeName, setStoreName] = useState('');
@@ -48,9 +48,9 @@ export function SignUpScreen() {
 
     if (!fullName.trim() || !storeName.trim() || !email.trim() || password.length < MIN_PASSWORD_LENGTH || confirmPassword !== password) {
       if (password.length < MIN_PASSWORD_LENGTH) {
-        setLocalError('Dapat hindi bababa sa 8 character ang password.');
+        setLocalError('Ang password ay dapat 8 characters o higit pa.');
       } else if (confirmPassword !== password) {
-        setLocalError('Hindi magkapareho ang password.');
+        setLocalError('Dapat magkapareho ang password.');
       }
       return;
     }
@@ -64,10 +64,6 @@ export function SignUpScreen() {
   };
 
   const handleGoogleSignIn = async () => {
-    if (!isGoogleSignInEnabled || isGoogleSubmitting) {
-      return;
-    }
-
     setLocalError(null);
     setIsGoogleSubmitting(true);
     try {
@@ -79,19 +75,19 @@ export function SignUpScreen() {
 
   return (
     <AuthLayout
-      badge="Backup ng account"
-      title="Gumawa ng account."
-      subtitle="Gumawa ng account para ma-save online ang tala ng tindahan mo at madali mo itong maibalik kapag nagpalit ka ng phone."
+      title="Ikonekta ang account mo."
+      subtitle="Gumawa ng account para ma-save ang tindahan mo online at maibalik ang data kapag nagpalit ka ng phone."
       submitLabel="Gumawa ng Account"
+      submitButtonStyle={styles.authButton}
       alternateLabel="May account ka na? Mag-sign in"
       onSubmit={handleEmailSignUp}
       onAlternatePress={() => void showLogin()}
-      dismissLabel="Bumalik sa app"
+      dismissLabel={mobileCopy.backToApp}
       onDismiss={() => void closeAuth()}
     >
       <View style={styles.formBlock}>
         <AuthField
-          label="Buong pangalan"
+          label="Pangalan"
           placeholder="Juan Dela Cruz"
           value={fullName}
           onChangeText={(value) => {
@@ -132,7 +128,7 @@ export function SignUpScreen() {
         />
         <AuthField
           label="Password"
-          placeholder="Hindi bababa sa 8 character"
+          placeholder="8 characters o higit pa"
           value={password}
           onChangeText={(value) => {
             setPassword(value);
@@ -162,16 +158,16 @@ export function SignUpScreen() {
 
       <View style={styles.divider}>
         <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>o</Text>
+        <Text style={styles.dividerText}>or</Text>
         <View style={styles.dividerLine} />
       </View>
 
       <PrimaryButton
-        label={isGoogleSubmitting ? 'Gumagawa ng account gamit ang Google...' : 'Gumawa ng account gamit ang Google'}
+        label={isGoogleSubmitting ? 'Nag-sign in gamit ang Google...' : 'Mag-sign in gamit ang Google'}
         onPress={handleGoogleSignIn}
         variant="ghost"
+        buttonStyle={styles.authButton}
         leadingIcon={<GoogleSignInMark />}
-        disabled={!isGoogleSignInEnabled || isGoogleSubmitting}
       />
 
       {googleSignInHint ? <Text style={styles.infoText}>{googleSignInHint}</Text> : null}
@@ -184,12 +180,16 @@ export function SignUpScreen() {
 
 const styles = StyleSheet.create({
   formBlock: {
-    gap: 12,
+    gap: 10,
+  },
+  authButton: {
+    borderRadius: 12,
+    minHeight: 52,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   dividerLine: {
     flex: 1,

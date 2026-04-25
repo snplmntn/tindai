@@ -21,7 +21,6 @@ const originalConsoleError = console.error;
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 let mockedMicrophonePermission: 'pending' | 'granted' | 'denied' = 'pending';
 let mockedStoragePermission: 'pending' | 'granted' | 'denied' = 'pending';
-let mockedIsGoogleSignInEnabled = true;
 
 vi.mock('@expo/vector-icons', () => ({
   Feather: ({ ...props }: { children?: React.ReactNode }) => createElement('mock-icon', props),
@@ -67,7 +66,6 @@ vi.mock('@/context/AuthContext', () => ({
     authError: null,
     clearAuthError: mockedClearAuthError,
     googleSignInHint: null,
-    isGoogleSignInEnabled: mockedIsGoogleSignInEnabled,
     microphonePermission: mockedMicrophonePermission,
     storagePermission: mockedStoragePermission,
     requestMicrophonePermission: mockedRequestMicrophonePermission,
@@ -77,7 +75,6 @@ vi.mock('@/context/AuthContext', () => ({
 }));
 
 import { LoginScreen } from '@/screens/auth/LoginScreen';
-import { SignUpScreen } from '@/screens/auth/SignUpScreen';
 import { AuthChoiceScreen } from './AuthChoiceScreen';
 import { OnboardingOverlay } from './OnboardingOverlay';
 import { PermissionsScreen } from './PermissionsScreen';
@@ -125,7 +122,6 @@ describe('onboarding screens', () => {
 
     mockedMicrophonePermission = 'pending';
     mockedStoragePermission = 'pending';
-    mockedIsGoogleSignInEnabled = true;
     mockedChooseGuestMode.mockClear();
     mockedShowLogin.mockClear();
     mockedShowSignUp.mockClear();
@@ -148,13 +144,14 @@ describe('onboarding screens', () => {
     const tree = await renderScreen(createElement(AuthChoiceScreen));
 
     expect(findTextNodes(tree, 'Hakbang 1 ng 4')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Imbentaryong pinapadali ng boses para sa tindahan mo.')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Madaling Simula')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Boses-una na inventory para sa tindahan mo.')).not.toHaveLength(0);
 
     await act(async () => {
-      await findPressable(tree, 'Mag-sign in o gumawa ng account').props.onPress();
+      await findPressable(tree, 'Mag-sign In o Gumawa ng Account').props.onPress();
     });
     await act(async () => {
-      await findPressable(tree, 'Subukan muna bilang guest').props.onPress();
+      await findPressable(tree, 'Simulan bilang Guest').props.onPress();
     });
 
     expect(mockedShowLogin).toHaveBeenCalledTimes(1);
@@ -164,37 +161,25 @@ describe('onboarding screens', () => {
   it('renders step 2 account connection shell around the login handlers', async () => {
     const tree = await renderScreen(createElement(LoginScreen));
 
-    expect(findTextNodes(tree, 'Hakbang 2 ng 4')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Mag-sign in sa account mo.')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Back to Dashboard')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Ikonekta ang account mo.')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'G')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Mag-sign in gamit ang Google')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Magpatuloy')).not.toHaveLength(0);
     expect(tree.root.findAll((node) => String(node.type) === 'mock-icon' && node.props.name === 'eye')).not.toHaveLength(0);
   });
 
-  it('renders Google sign-up copy on the sign-up screen', async () => {
-    const tree = await renderScreen(createElement(SignUpScreen));
-
-    expect(findTextNodes(tree, 'Gumawa ng account gamit ang Google')).not.toHaveLength(0);
-  });
-
-  it('disables Google auth button when Google sign-in is unavailable', async () => {
-    mockedIsGoogleSignInEnabled = false;
-    const tree = await renderScreen(createElement(LoginScreen));
-
-    expect(findPressable(tree, 'Mag-sign in gamit ang Google').props.disabled).toBe(true);
-  });
-
   it('renders step 3 permissions and completes through existing permission handlers', async () => {
     const tree = await renderScreen(createElement(PermissionsScreen));
 
     expect(findTextNodes(tree, 'Hakbang 3 ng 4')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Kailangan namin ng ilang pahintulot.')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Madaling Simula')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Kailangan namin ng kaunting pahintulot.')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Mikropono')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Storage')).not.toHaveLength(0);
 
     await act(async () => {
-      await findPressable(tree, 'Payagan at magpatuloy').props.onPress();
+      await findPressable(tree, 'Payagan at Magpatuloy').props.onPress();
     });
 
     expect(mockedRequestMicrophonePermission).toHaveBeenCalledTimes(1);

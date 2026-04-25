@@ -113,15 +113,15 @@ describe('buildAnalyticsViewModel', () => {
     });
 
     expect(result.overview.salesToday.value).toBe('P60');
-    expect(result.overview.salesToday.caption).toBe('Estimated revenue');
+    expect(result.overview.salesToday.caption).toBe('Tantyang halaga ng benta');
     expect(result.overview.itemsSoldToday).toMatchObject({
-      label: 'Items Sold Today',
-      value: '3 units',
+      label: 'Nabenta Ngayon',
+      value: '3 piraso',
     });
     expect(result.overview.salesThisMonth.value).toBe('P125');
     expect(result.overview.topSelling[0]).toMatchObject({
       itemName: 'Coke Mismo',
-      detail: '5 pcs sold in 30 days',
+      detail: '5 pcs na nabenta sa 30 araw',
     });
     expect(result.overview.lowStock[0]).toMatchObject({
       itemName: 'Coke Mismo',
@@ -140,9 +140,9 @@ describe('buildAnalyticsViewModel', () => {
       itemName: 'Coke Mismo',
     });
     expect(result.predictions.shoppingPresets.map((preset) => preset.label)).toEqual([
-      '7 days',
-      '14 days',
-      '1 month',
+      '7 araw',
+      '14 araw',
+      '1 buwan',
     ]);
     expect(result.predictions.shoppingListByPreset['7d'][0]).toMatchObject({
       itemName: 'Coke Mismo',
@@ -159,7 +159,7 @@ describe('buildAnalyticsViewModel', () => {
       recommendedBuyQuantity: 10,
       horizonDays: 30,
     });
-    expect(result.predictions.recommendations[0]?.body).toContain('Restock within');
+    expect(result.predictions.recommendations[0]?.body).toContain('Bumili ulit sa loob ng');
   });
 
   it('falls back to units and honest empty states when history or price coverage is weak', () => {
@@ -185,13 +185,13 @@ describe('buildAnalyticsViewModel', () => {
       now: '2026-04-25T10:00:00.000Z',
     });
 
-    expect(result.overview.salesToday.value).toBe('0 units');
-    expect(result.overview.salesToday.caption).toBe('No priced sales yet');
-    expect(result.overview.itemsSoldToday.value).toBe('0 units');
+    expect(result.overview.salesToday.value).toBe('0 piraso');
+    expect(result.overview.salesToday.caption).toBe('Wala pang presyong benta');
+    expect(result.overview.itemsSoldToday.value).toBe('0 piraso');
     expect(result.overview.utangSummary.totalBalance).toBe('P0');
     expect(result.overview.utangSummary.topCustomers).toEqual([]);
-    expect(result.insights.emptyState).toContain('Need at least 7 days');
-    expect(result.predictions.emptyState).toContain('Forecasts will appear');
+    expect(result.insights.emptyState).toContain('Magdagdag ng mga 7 araw na benta');
+    expect(result.predictions.emptyState).toContain('Lalabas ito pag may ilang araw nang benta');
     expect(result.predictions.shoppingListByPreset['7d']).toEqual([]);
     expect(result.predictions.shoppingListByPreset['14d']).toEqual([]);
     expect(result.predictions.shoppingListByPreset['30d']).toEqual([]);

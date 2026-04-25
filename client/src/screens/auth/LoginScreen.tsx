@@ -5,6 +5,7 @@ import { AuthField } from '@/components/AuthField';
 import { AuthLayout } from '@/components/AuthLayout';
 import { GoogleSignInMark } from '@/components/GoogleSignInMark';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { mobileCopy } from '@/copy/mobileCopy';
 import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/navigation/colors';
 
@@ -19,7 +20,6 @@ export function LoginScreen() {
     authError,
     clearAuthError,
     googleSignInHint,
-    isGoogleSignInEnabled,
   } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,10 +47,6 @@ export function LoginScreen() {
   };
 
   const handleGoogleSignIn = async () => {
-    if (!isGoogleSignInEnabled || isGoogleSubmitting) {
-      return;
-    }
-
     setIsGoogleSubmitting(true);
     try {
       await signInWithGoogle();
@@ -61,14 +57,14 @@ export function LoginScreen() {
 
   return (
     <AuthLayout
-      badge="Backup ng account"
-      title="Mag-sign in sa account mo."
-      subtitle="I-save ang imbentaryo mo online para may backup ka kapag nawala ang internet o nagpalit ka ng phone."
+      title="Ikonekta ang account mo."
+      subtitle="I-save ang iyong imbentaryo at i-sync sa cloud para sa ligtas na backup."
       submitLabel="Magpatuloy"
-      alternateLabel="Wala ka pang account? Gumawa ka rito."
+      submitButtonStyle={styles.authButton}
+      alternateLabel="Wala ka pang account? Gumawa dito."
       onSubmit={handleEmailSignIn}
       onAlternatePress={() => void showSignUp()}
-      dismissLabel="Bumalik sa app"
+      dismissLabel={mobileCopy.backToApp}
       onDismiss={() => void closeAuth()}
     >
       <View style={styles.formBlock}>
@@ -87,7 +83,7 @@ export function LoginScreen() {
         />
         <AuthField
           label="Password"
-          placeholder="Ilagay ang password mo"
+          placeholder="Ilagay ang password"
           value={password}
           onChangeText={(value) => {
             setPassword(value);
@@ -102,7 +98,7 @@ export function LoginScreen() {
 
       <View style={styles.divider}>
         <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>o</Text>
+        <Text style={styles.dividerText}>or</Text>
         <View style={styles.dividerLine} />
       </View>
 
@@ -110,8 +106,8 @@ export function LoginScreen() {
         label={isGoogleSubmitting ? 'Nag-sign in gamit ang Google...' : 'Mag-sign in gamit ang Google'}
         onPress={handleGoogleSignIn}
         variant="ghost"
+        buttonStyle={styles.authButton}
         leadingIcon={<GoogleSignInMark />}
-        disabled={!isGoogleSignInEnabled || isGoogleSubmitting}
       />
 
       {googleSignInHint ? <Text style={styles.infoText}>{googleSignInHint}</Text> : null}
@@ -123,12 +119,16 @@ export function LoginScreen() {
 
 const styles = StyleSheet.create({
   formBlock: {
-    gap: 12,
+    gap: 10,
+  },
+  authButton: {
+    borderRadius: 12,
+    minHeight: 52,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   dividerLine: {
     flex: 1,

@@ -101,10 +101,6 @@ export function UtangScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.shell}>
             <View style={styles.headerRow}>
-              <View style={styles.headerMenuButton}>
-                <Ionicons color={colors.primaryDeep} name="receipt-outline" size={22} />
-              </View>
-
               <Text style={styles.headerTitle}>Utang</Text>
 
               <View style={styles.avatarBadge}>
@@ -252,16 +248,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  headerMenuButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
-  },
   headerTitle: {
     color: colors.primaryDeep,
     fontSize: 28,
@@ -270,8 +256,10 @@ const styles = StyleSheet.create({
   },
   avatarBadge: {
     alignItems: 'center',
-    backgroundColor: colors.secondary,
-    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 24,
+    borderWidth: 1,
     height: 48,
     justifyContent: 'center',
     width: 48,

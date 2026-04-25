@@ -2,6 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, View } from 'react-native';
 
+import { navigationLabels } from '@/copy/mobileCopy';
 import { colors } from '@/navigation/colors';
 import { AnalyticsScreen } from '@/screens/tabs/AnalyticsScreen';
 import { DashboardScreen } from '@/screens/tabs/DashboardScreen';
@@ -73,17 +74,42 @@ export function HomeTabs() {
         },
       })}
     >
-      <Tab.Screen name="Inventory" component={InventoryScreen} />
-      <Tab.Screen name="Utang" component={UtangScreen} />
+      <Tab.Screen
+        name="Inventory"
+        component={InventoryScreen}
+        options={{
+          tabBarLabel: navigationLabels.Inventory,
+        }}
+      />
+      <Tab.Screen
+        name="Utang"
+        component={UtangScreen}
+        options={{
+          tabBarLabel: navigationLabels.Utang,
+        }}
+      />
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
         options={{
           headerShown: false,
+          tabBarLabel: navigationLabels.Dashboard,
         }}
       />
-      <Tab.Screen name="Analytics" component={AnalyticsScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen
+        name="Analytics"
+        component={AnalyticsScreen}
+        options={{
+          tabBarLabel: navigationLabels.Analytics,
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: navigationLabels.Profile,
+        }}
+      />
     </Tab.Navigator>
   );
 }

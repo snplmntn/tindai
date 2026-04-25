@@ -50,9 +50,9 @@ describe('GET /api/v1/analytics/summary', () => {
         predictionMode: 'deterministic',
       },
       overview: {
-        salesToday: { label: 'Sales Today', value: 'P80', caption: 'Revenue' },
-        salesThisMonth: { label: 'Sales This Month', value: 'P320', caption: 'Revenue' },
-        itemsSoldToday: { label: 'Items Sold Today', value: '4 units', caption: 'Units sold today' },
+        salesToday: { label: 'Benta Ngayon', value: 'P80', caption: 'Halaga ng benta' },
+        salesThisMonth: { label: 'Benta Ngayong Buwan', value: 'P320', caption: 'Halaga ng benta' },
+        itemsSoldToday: { label: 'Nabenta Ngayon', value: '4 piraso', caption: 'Nabenta ngayon' },
         topSelling: [],
         lowStock: [],
         fastMoving: [],
@@ -78,9 +78,9 @@ describe('GET /api/v1/analytics/summary', () => {
         forecast: [],
         restockSoon: [],
         shoppingPresets: [
-          { key: '7d', label: '7 days', days: 7 },
-          { key: '14d', label: '14 days', days: 14 },
-          { key: '30d', label: '1 month', days: 30 },
+          { key: '7d', label: '7 araw', days: 7 },
+          { key: '14d', label: '14 araw', days: 14 },
+          { key: '30d', label: '1 buwan', days: 30 },
         ],
         shoppingListByPreset: {
           '7d': [],
@@ -102,7 +102,7 @@ describe('GET /api/v1/analytics/summary', () => {
     expect(mockedGetAnalyticsSummaryForOwner).toHaveBeenCalledWith('user-123');
     expect(response.body.analytics.meta.storeId).toBe('store-1');
     expect(response.body.analytics.overview.salesToday.value).toBe('P80');
-    expect(response.body.analytics.overview.itemsSoldToday.value).toBe('4 units');
+    expect(response.body.analytics.overview.itemsSoldToday.value).toBe('4 piraso');
     expect(response.body.analytics.overview.utangSummary.totalBalance).toBe('P115');
   });
 

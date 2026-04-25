@@ -1,12 +1,11 @@
 import { type ReactNode, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { colors } from '@/navigation/colors';
 
 type AuthLayoutProps = {
-  badge: string;
   title: string;
   subtitle: string;
   submitLabel?: string;
@@ -15,11 +14,11 @@ type AuthLayoutProps = {
   onAlternatePress?: () => void;
   dismissLabel?: string;
   onDismiss?: () => void;
+  submitButtonStyle?: ViewStyle;
   children: ReactNode;
 };
 
 export function AuthLayout({
-  badge,
   title,
   subtitle,
   submitLabel,
@@ -28,6 +27,7 @@ export function AuthLayout({
   onAlternatePress,
   dismissLabel,
   onDismiss,
+  submitButtonStyle,
   children,
 }: AuthLayoutProps) {
   const [loading, setLoading] = useState(false);
@@ -48,18 +48,6 @@ export function AuthLayout({
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.topBar}>
-        {onDismiss ? (
-          <Pressable onPress={onDismiss} style={styles.backButton}>
-            <Text style={styles.backIcon}>‹</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.backButton} />
-        )}
-        <Text style={styles.topBarTitle}>Pagsisimula</Text>
-        <View style={styles.backButton} />
-      </View>
-
       <KeyboardAvoidingView
         style={styles.keyboardAvoid}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -70,39 +58,39 @@ export function AuthLayout({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.card}>
-            <View style={styles.progressBlock}>
-              <Text style={styles.progressLabel}>Hakbang 2 ng 4</Text>
-              <View style={styles.progressTrack}>
-                <View style={styles.progressFill} />
+          <View style={styles.content}>
+            <View style={styles.headerBlock}>
+              <View style={styles.headerRow}>
+                {dismissLabel && onDismiss ? (
+                  <Pressable onPress={onDismiss} style={styles.headerActionButton}>
+                    <Text style={styles.headerActionText}>{dismissLabel}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+
+              <View style={styles.copyBlock}>
+                <Text style={styles.title}>{title}</Text>
+                <Text style={styles.subtitle}>{subtitle}</Text>
               </View>
             </View>
 
-            <View style={styles.copyBlock}>
-              <Text style={styles.title}>{title}</Text>
-              <Text style={styles.subtitle}>{subtitle}</Text>
-            </View>
+            <View style={styles.formSection}>
+              <View style={styles.form}>{children}</View>
 
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{badge}</Text>
-            </View>
-
-            <View style={styles.form}>{children}</View>
-
-            <View style={styles.actions}>
-              {submitLabel && onSubmit ? (
-                <PrimaryButton label={loading ? 'Sandali lang...' : submitLabel} onPress={handleSubmit} />
-              ) : null}
-              {alternateLabel && onAlternatePress ? (
-                <Pressable onPress={onAlternatePress} style={styles.linkButton}>
-                  <Text style={styles.linkText}>{alternateLabel}</Text>
-                </Pressable>
-              ) : null}
-              {dismissLabel && onDismiss ? (
-                <Pressable onPress={onDismiss} style={styles.dismissButton}>
-                  <Text style={styles.dismissText}>{dismissLabel}</Text>
-                </Pressable>
-              ) : null}
+              <View style={styles.actions}>
+                {submitLabel && onSubmit ? (
+                  <PrimaryButton
+                    label={loading ? 'Sandali lang...' : submitLabel}
+                    onPress={handleSubmit}
+                    buttonStyle={submitButtonStyle}
+                  />
+                ) : null}
+                {alternateLabel && onAlternatePress ? (
+                  <Pressable onPress={onAlternatePress} style={styles.linkButton}>
+                    <Text style={styles.linkText}>{alternateLabel}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
           </View>
         </ScrollView>
@@ -114,108 +102,58 @@ export function AuthLayout({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f7faf7',
-  },
-  topBar: {
-    minHeight: 64,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eef1ee',
-    backgroundColor: colors.surface,
-    paddingHorizontal: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  topBarTitle: {
-    color: colors.primaryDeep,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: {
-    color: colors.primaryDeep,
-    fontSize: 34,
-    fontWeight: '500',
-    lineHeight: 36,
+    backgroundColor: colors.background,
   },
   keyboardAvoid: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: 24,
-    paddingVertical: 24,
+    paddingTop: 8,
+    paddingBottom: 22,
   },
-  card: {
+  content: {
     width: '100%',
-    maxWidth: 460,
+    maxWidth: 440,
     alignSelf: 'center',
-    gap: 22,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#f1f4f1',
-    backgroundColor: colors.surface,
-    padding: 24,
+    gap: 24,
   },
-  progressBlock: {
-    gap: 10,
+  headerBlock: {
+    gap: 12,
   },
-  progressLabel: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '800',
-    textTransform: 'uppercase',
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
-  progressTrack: {
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: '#e0e3e0',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    width: '50%',
-    height: '100%',
-    borderRadius: 999,
-    backgroundColor: colors.primary,
+  headerActionButton: {
+    minHeight: 30,
+    justifyContent: 'center',
   },
   copyBlock: {
-    gap: 8,
+    gap: 10,
   },
   title: {
     color: colors.text,
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '800',
-    lineHeight: 39,
+    lineHeight: 40,
   },
   subtitle: {
     color: colors.muted,
     fontSize: 16,
     lineHeight: 24,
   },
-  badge: {
-    alignSelf: 'flex-start',
-    borderRadius: 999,
-    backgroundColor: '#e8f2f0',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  badgeText: {
-    color: colors.primary,
-    fontSize: 12,
-    fontWeight: '800',
+  formSection: {
+    gap: 18,
   },
   form: {
-    gap: 16,
+    gap: 14,
   },
   actions: {
-    gap: 12,
+    gap: 10,
   },
   linkButton: {
     alignItems: 'center',
@@ -228,12 +166,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-  dismissButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 40,
-  },
-  dismissText: {
+  headerActionText: {
     color: colors.muted,
     fontSize: 13,
     fontWeight: '700',
