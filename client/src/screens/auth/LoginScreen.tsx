@@ -5,6 +5,7 @@ import { AuthField } from '@/components/AuthField';
 import { AuthLayout } from '@/components/AuthLayout';
 import { GoogleSignInMark } from '@/components/GoogleSignInMark';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { mobileCopy } from '@/copy/mobileCopy';
 import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/navigation/colors';
 
@@ -56,14 +57,14 @@ export function LoginScreen() {
 
   return (
     <AuthLayout
-      badge="Account backup"
       title="Ikonekta ang account mo."
       subtitle="I-save ang iyong imbentaryo at i-sync sa cloud para sa ligtas na backup."
       submitLabel="Magpatuloy"
+      submitButtonStyle={styles.authButton}
       alternateLabel="Wala ka pang account? Gumawa dito."
       onSubmit={handleEmailSignIn}
       onAlternatePress={() => void showSignUp()}
-      dismissLabel="Back to app"
+      dismissLabel={mobileCopy.backToApp}
       onDismiss={() => void closeAuth()}
     >
       <View style={styles.formBlock}>
@@ -82,7 +83,7 @@ export function LoginScreen() {
         />
         <AuthField
           label="Password"
-          placeholder="Enter your password"
+          placeholder="Ilagay ang password"
           value={password}
           onChangeText={(value) => {
             setPassword(value);
@@ -105,6 +106,7 @@ export function LoginScreen() {
         label={isGoogleSubmitting ? 'Nag-sign in gamit ang Google...' : 'Mag-sign in gamit ang Google'}
         onPress={handleGoogleSignIn}
         variant="ghost"
+        buttonStyle={styles.authButton}
         leadingIcon={<GoogleSignInMark />}
       />
 
@@ -117,12 +119,16 @@ export function LoginScreen() {
 
 const styles = StyleSheet.create({
   formBlock: {
-    gap: 12,
+    gap: 10,
+  },
+  authButton: {
+    borderRadius: 12,
+    minHeight: 52,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   dividerLine: {
     flex: 1,

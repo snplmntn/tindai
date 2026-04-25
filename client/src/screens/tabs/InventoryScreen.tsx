@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useLocalData } from '@/features/local-data/LocalDataContext';
 import type { LocalInventoryItem } from '@/features/local-db/types';
+import { mobileCopy } from '@/copy/mobileCopy';
 import { colors } from '@/navigation/colors';
 
 type SortMode = 'name' | 'stock_desc' | 'stock_asc';
@@ -330,11 +331,7 @@ export function InventoryScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.shell}>
             <View style={styles.headerRow}>
-              <View style={styles.headerMenuButton}>
-                <Ionicons color={colors.primaryDeep} name="menu-outline" size={24} />
-              </View>
-
-              <Text style={styles.headerTitle}>Inventory</Text>
+              <Text style={styles.headerTitle}>{mobileCopy.inventoryTitle}</Text>
 
               <View style={styles.avatarBadge}>
                 <Text style={styles.avatarBadgeText}>{getInitials(store?.name ?? 'Tindai')}</Text>
@@ -343,29 +340,17 @@ export function InventoryScreen() {
 
             <Text style={styles.headerSubtitle}>Hanapin, silipin, at ayusin agad ang paninda sa tindahan.</Text>
 
-            <View style={styles.searchRow}>
-              <View style={styles.searchField}>
-                <Ionicons color={colors.muted} name="search-outline" size={18} />
-                <TextInput
-                  testID="inventory-search-input"
-                  autoCapitalize="words"
-                  onChangeText={setSearchQuery}
-                  placeholder="Hanapin ang item o alias"
-                  placeholderTextColor={colors.muted}
-                  style={styles.searchInput}
-                  value={searchQuery}
-                />
-              </View>
-
-              <Pressable
-                testID="inventory-filter-button"
-                accessibilityRole="button"
-                onPress={() => setIsFilterVisible(true)}
-                style={styles.filterButton}
-              >
-                <Ionicons color={colors.primaryDeep} name="options-outline" size={18} />
-                <Text style={styles.filterButtonText}>Ayos</Text>
-              </Pressable>
+            <View style={styles.searchField}>
+              <Ionicons color={colors.muted} name="search-outline" size={18} />
+              <TextInput
+                testID="inventory-search-input"
+                autoCapitalize="words"
+                onChangeText={setSearchQuery}
+                placeholder="Hanapin ang item o alias"
+                placeholderTextColor={colors.muted}
+                style={styles.searchInput}
+                value={searchQuery}
+              />
             </View>
 
             {(lowStockOnly || sortMode !== 'name') && filteredItems.length > 0 ? (
@@ -787,16 +772,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  headerMenuButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
-  },
   headerTitle: {
     color: colors.primaryDeep,
     fontSize: 28,
@@ -805,8 +780,10 @@ const styles = StyleSheet.create({
   },
   avatarBadge: {
     alignItems: 'center',
-    backgroundColor: colors.secondary,
-    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 24,
+    borderWidth: 1,
     height: 48,
     justifyContent: 'center',
     width: 48,
@@ -820,10 +797,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 14,
     lineHeight: 20,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    gap: 10,
   },
   searchField: {
     alignItems: 'center',
@@ -842,23 +815,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     paddingVertical: 14,
-  },
-  filterButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 6,
-    justifyContent: 'center',
-    minWidth: 96,
-    paddingHorizontal: 14,
-  },
-  filterButtonText: {
-    color: colors.primaryDeep,
-    fontSize: 14,
-    fontWeight: '700',
   },
   activeFiltersRow: {
     flexDirection: 'row',

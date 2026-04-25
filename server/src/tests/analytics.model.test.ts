@@ -184,14 +184,15 @@ describe('analytics.model', () => {
   it('builds preset shopping lists and enriches the summary prompt with grocery-trip data', async () => {
     const supabase = createSupabaseMock();
     mockedGetSupabaseAdminClient.mockReturnValue({ from: supabase.from } as never);
-    mockedGenerateGeminiText.mockResolvedValue('Restock Coke Mismo before the weekend.');
+    mockedGenerateGeminiText.mockResolvedValue('Mag-restock ng Coke Mismo bago mag-weekend.');
 
     const result = await getAnalyticsSummaryForOwner('user-1');
 
     expect(result.overview.itemsSoldToday).toMatchObject({
-      label: 'Items Sold Today',
-      value: '3 units',
+      label: 'Nabenta Ngayon',
+      value: '3 piraso',
     });
+    expect(result.overview.salesToday.caption).toBe('Halaga ng benta');
     expect(result.overview.utangSummary).toMatchObject({
       totalBalance: 'P115',
     });
@@ -200,9 +201,9 @@ describe('analytics.model', () => {
       balance: 'P80',
     });
     expect(result.predictions.shoppingPresets.map((preset) => preset.label)).toEqual([
-      '7 days',
-      '14 days',
-      '1 month',
+      '7 araw',
+      '14 araw',
+      '1 buwan',
     ]);
     expect(result.predictions.shoppingListByPreset['7d'][0]).toMatchObject({
       itemName: 'Coke Mismo',
@@ -219,7 +220,8 @@ describe('analytics.model', () => {
       recommendedBuyQuantity: 10,
       horizonDays: 30,
     });
-    expect(result.predictions.aiSummary).toBe('Restock Coke Mismo before the weekend.');
-    expect(mockedGenerateGeminiText).toHaveBeenCalledWith(expect.stringContaining('7-day grocery trip'));
+    expect(result.predictions.aiSummary).toBe('Mag-restock ng Coke Mismo bago mag-weekend.');
+    expect(mockedGenerateGeminiText).toHaveBeenCalledWith(expect.stringContaining('Listahan ng bibilhin sa 7 araw'));
+    expect(result.predictions.recommendations[0]?.title).toBe('Simpleng Payo');
   });
 });

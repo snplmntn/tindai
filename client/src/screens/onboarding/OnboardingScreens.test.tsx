@@ -144,6 +144,7 @@ describe('onboarding screens', () => {
     const tree = await renderScreen(createElement(AuthChoiceScreen));
 
     expect(findTextNodes(tree, 'Hakbang 1 ng 4')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Madaling Simula')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Boses-una na inventory para sa tindahan mo.')).not.toHaveLength(0);
 
     await act(async () => {
@@ -160,7 +161,7 @@ describe('onboarding screens', () => {
   it('renders step 2 account connection shell around the login handlers', async () => {
     const tree = await renderScreen(createElement(LoginScreen));
 
-    expect(findTextNodes(tree, 'Hakbang 2 ng 4')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Back to Dashboard')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Ikonekta ang account mo.')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'G')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Mag-sign in gamit ang Google')).not.toHaveLength(0);
@@ -172,6 +173,7 @@ describe('onboarding screens', () => {
     const tree = await renderScreen(createElement(PermissionsScreen));
 
     expect(findTextNodes(tree, 'Hakbang 3 ng 4')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Madaling Simula')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Kailangan namin ng kaunting pahintulot.')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Mikropono')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Storage')).not.toHaveLength(0);

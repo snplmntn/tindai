@@ -8,11 +8,13 @@ export function PrimaryButton({
   onPress,
   variant = 'solid',
   leadingIcon,
+  buttonStyle,
 }: {
   label: string;
   onPress: () => void;
   variant?: 'solid' | 'ghost';
   leadingIcon?: ReactNode;
+  buttonStyle?: ViewStyle;
 }) {
   const ghost = variant === 'ghost';
 
@@ -22,6 +24,7 @@ export function PrimaryButton({
       style={({ pressed }) => [
         styles.button,
         ghost ? styles.ghost : styles.solid,
+        buttonStyle,
         pressed && styles.pressed,
       ]}
     >

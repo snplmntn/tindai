@@ -6,7 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/navigation/colors';
 
-import { ForecastSparklineChart, InsightsTrendLineChart, SalesTrendBarChart } from './AnalyticsCharts';
+import { analyticsText, getAnalyticsTabLabel, type AnalyticsTabKey } from './analyticsCopy';
+import { InsightsTrendLineChart, SalesTrendBarChart } from './AnalyticsCharts';
 import type {
   AnalyticsChartPoint,
   AnalyticsListItem,
@@ -15,8 +16,6 @@ import type {
   AnalyticsShoppingPresetKey,
   AnalyticsViewModel,
 } from './buildAnalyticsViewModel';
-
-type AnalyticsTabKey = 'Overview' | 'Insights' | 'Predictions & AI';
 
 type AnalyticsViewProps = {
   storeName: string;
@@ -50,7 +49,6 @@ export function AnalyticsView({
   error,
   emptyState,
 }: AnalyticsViewProps) {
-  const headerTitle = activeTab === 'Insights' ? 'Analytics Insights' : 'Business Insights';
   const showContentEmptyState = !showSkeleton && emptyState !== null;
 
   return (
@@ -71,11 +69,10 @@ export function AnalyticsView({
       >
         <View style={styles.shell}>
           <View style={styles.headerRow}>
-            <View style={styles.headerMenuButton}>
-              <Ionicons color={colors.primaryDeep} name="menu-outline" size={26} />
+            <View style={styles.headerCopy}>
+              <Text style={styles.headerTitle}>{analyticsText.headerTitle}</Text>
+              <Text style={styles.headerSubtitle}>{analyticsText.headerSubtitle}</Text>
             </View>
-
-            <Text style={styles.headerTitle}>{headerTitle}</Text>
 
             <View style={styles.avatarBadge}>
               <Text style={styles.avatarBadgeText}>{getInitials(storeName)}</Text>
@@ -94,7 +91,9 @@ export function AnalyticsView({
                     onPress={() => onTabChange(tab)}
                     style={styles.topTabButton}
                   >
-                    <Text style={[styles.topTabText, isActive ? styles.topTabTextActive : undefined]}>{tab}</Text>
+                    <Text style={[styles.topTabText, isActive ? styles.topTabTextActive : undefined]}>
+                      {getAnalyticsTabLabel(tab)}
+                    </Text>
                     <View style={[styles.topTabUnderline, isActive ? styles.topTabUnderlineActive : undefined]} />
                   </Pressable>
                 );
@@ -104,19 +103,15 @@ export function AnalyticsView({
 
           {error ? (
             <View style={styles.errorCard}>
-              <Text style={styles.errorTitle}>Analytics refresh paused</Text>
+              <Text style={styles.errorTitle}>{analyticsText.errorTitle}</Text>
               <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
 
           {showSkeleton ? <LoadingSkeleton activeTab={activeTab} /> : null}
           {showContentEmptyState ? <EmptyAnalyticsState emptyState={emptyState} /> : null}
-          {!showSkeleton && !showContentEmptyState && activeTab === 'Overview' ? (
-            <OverviewTab isLoading={isLoading} viewModel={viewModel} />
-          ) : null}
-          {!showSkeleton && !showContentEmptyState && activeTab === 'Insights' ? (
-            <InsightsTab isLoading={isLoading} viewModel={viewModel} />
-          ) : null}
+          {!showSkeleton && !showContentEmptyState && activeTab === 'Overview' ? <OverviewTab viewModel={viewModel} /> : null}
+          {!showSkeleton && !showContentEmptyState && activeTab === 'Insights' ? <InsightsTab viewModel={viewModel} /> : null}
           {!showSkeleton && !showContentEmptyState && activeTab === 'Predictions & AI' ? (
             <PredictionsTab isLoading={isLoading} viewModel={viewModel} />
           ) : null}
@@ -157,7 +152,7 @@ function LoadingSkeleton({ activeTab }: { activeTab: AnalyticsTabKey }) {
         </View>
       </View>
 
-      <Text style={styles.skeletonHint}>Loading analytics...</Text>
+      <Text style={styles.skeletonHint}>{analyticsText.loading}</Text>
 
       <View style={styles.metricGrid}>
         <View style={styles.skeletonMetricCard}>
@@ -189,54 +184,51 @@ function LoadingSkeleton({ activeTab }: { activeTab: AnalyticsTabKey }) {
 
 function OverviewTab({
   viewModel,
-  isLoading,
 }: {
   viewModel: AnalyticsViewProps['viewModel'];
-  isLoading: boolean;
 }) {
   const focusItem = viewModel.overview.lowStock[0] ?? viewModel.overview.topSelling[0] ?? null;
   const insightBody = focusItem
-    ? `${focusItem.itemName} stands out right now. ${focusItem.detail}`
-    : 'Your overview stays readable even while local sales history is still warming up.';
+    ? `${focusItem.itemName} ang dapat mong silipin. ${focusItem.detail}`
+    : analyticsText.summaryBannerFallback;
 
   return (
     <View style={styles.tabStack}>
       <InsightBanner
         body={insightBody}
-        label={isLoading ? 'Refreshing overview' : 'Tindai\'s Insight'}
-        title="Overview"
+        title={analyticsText.summaryBannerTitle}
       />
 
       <View style={styles.metricGrid}>
         <MetricCard
           caption={viewModel.overview.salesToday.caption}
-          label="Daily Sales"
+          label={analyticsText.salesToday}
           value={viewModel.overview.salesToday.value}
         />
         <MetricCard
           caption={viewModel.overview.itemsSoldToday.caption}
-          label="Items Sold Today"
+          label={analyticsText.itemsSoldToday}
           value={viewModel.overview.itemsSoldToday.value}
         />
       </View>
 
       <CardSurface>
-        <SectionHeader eyebrow="Last 7 Days" title="Sales Trend" />
+        <SectionHeader eyebrow={analyticsText.last7Days} title={analyticsText.salesOverTime} />
         <SalesTrendBarChart points={viewModel.insights.salesTrend} />
       </CardSurface>
 
       <CardSurface>
-        <SectionHeader actionLabel="View All" title="Top Selling Items" />
+        <SectionHeader actionLabel={analyticsText.seeAll} title={analyticsText.bestSellers} />
         <SellingList items={viewModel.overview.topSelling} />
       </CardSurface>
 
       <CardSurface>
-        <SectionHeader title="Low Stock Alerts" />
-        <SellingList emptyText="No low-stock items right now." items={viewModel.overview.lowStock} />
+        <SectionHeader title={analyticsText.runningLow} />
+        <SellingList emptyText={analyticsText.noLowStock} items={viewModel.overview.lowStock} />
       </CardSurface>
 
       <CardSurface>
-        <SectionHeader title="Open Utang" />
+        <SectionHeader title={analyticsText.utangBalance} />
         <UtangSummary
           customers={viewModel.overview.utangSummary.topCustomers}
           totalBalance={viewModel.overview.utangSummary.totalBalance}
@@ -248,64 +240,42 @@ function OverviewTab({
 
 function InsightsTab({
   viewModel,
-  isLoading,
 }: {
   viewModel: AnalyticsViewProps['viewModel'];
-  isLoading: boolean;
 }) {
   const leadItem = viewModel.insights.risingDemand[0] ?? viewModel.insights.decliningDemand[0] ?? null;
   const insightBody = leadItem
-    ? `${leadItem.itemName} is the clearest movement signal. ${leadItem.detail}`
-    : viewModel.insights.emptyState ?? 'Trend signals will sharpen as more local sales arrive.';
-  const signalCount = viewModel.insights.risingDemand.length + viewModel.insights.decliningDemand.length;
+    ? `${leadItem.itemName} ang may pagbabago ngayong linggo. ${leadItem.detail}`
+    : viewModel.insights.emptyState ?? analyticsText.watchListBannerFallback;
 
   return (
     <View style={styles.tabStack}>
       <InsightBanner
         body={insightBody}
-        label={isLoading ? 'Refreshing insights' : 'Tindai\'s Insight'}
-        title="Insights"
+        title={analyticsText.watchListBannerTitle}
       />
 
-      <View style={styles.metricGrid}>
-        <MetricCard
-          caption={viewModel.overview.salesToday.caption}
-          label="Daily Sales"
-          value={viewModel.overview.salesToday.value}
-        />
-        <MetricCard
-          caption="Demand signals in view"
-          label="Items Sold"
-          value={`${signalCount || viewModel.overview.fastMoving.length || viewModel.overview.slowMoving.length}`}
-        />
-      </View>
-
       <CardSurface>
-        <SectionHeader eyebrow="Last 7 Days" title="Sales Trend" />
-        <InsightsTrendLineChart points={viewModel.insights.salesTrend} />
-      </CardSurface>
-
-      <CardSurface>
-        <SectionHeader actionLabel="View All" title="Fast & Slow Moving Items" />
+        <SectionHeader actionLabel={analyticsText.seeAll} title={analyticsText.watchListTab} />
         <View style={styles.dualListGrid}>
           <MovementColumn
-            emptyText="No fast movers yet."
+            emptyText={analyticsText.noFastItems}
             items={viewModel.overview.fastMoving.length > 0 ? viewModel.overview.fastMoving : viewModel.insights.risingDemand}
-            title="Fast Movers"
+            title={analyticsText.sellingFast}
             tone="positive"
           />
           <MovementColumn
-            emptyText="No slow movers yet."
+            emptyText={analyticsText.noSlowItems}
             items={viewModel.overview.slowMoving.length > 0 ? viewModel.overview.slowMoving : viewModel.insights.decliningDemand}
-            title="Slow Movers"
+            title={analyticsText.sellingSlow}
             tone="warning"
           />
         </View>
       </CardSurface>
 
       <CardSurface>
-        <SectionHeader title="Trend Detection" />
-        <TrendDetectionList emptyText={viewModel.insights.emptyState ?? 'No trend shifts detected yet.'} points={viewModel.insights.demandTrend} />
+        <SectionHeader title={analyticsText.changesThisWeek} />
+        <TrendDetectionList emptyText={viewModel.insights.emptyState ?? analyticsText.noChanges} points={viewModel.insights.demandTrend} />
       </CardSurface>
     </View>
   );
@@ -327,26 +297,21 @@ function PredictionsTab({
   const shoppingItems = activePreset ? viewModel.predictions.shoppingListByPreset[activePreset.key] ?? [] : [];
   const summaryTone =
     viewModel.predictions.modelStatus === 'gemini_enriched'
-      ? 'AI-enriched forecast'
+      ? analyticsText.buyListAiTone
       : isLoading
-        ? 'Refreshing local forecast'
-        : 'Local forecast';
+        ? analyticsText.buyListRefreshingTone
+        : analyticsText.buyListLocalTone;
 
   return (
     <View style={styles.tabStack}>
       <ForecastHero
-        body={
-          leadItem
-            ? leadItem.detail
-            : viewModel.predictions.emptyState ?? 'Forecast cards will appear after a few days of local sales activity.'
-        }
+        body={leadItem ? null : viewModel.predictions.emptyState ?? analyticsText.buyListFallback}
         summaryTone={summaryTone}
-        title={leadItem ? leadItem.itemName : 'Forecasts are warming up'}
-        trendPoints={viewModel.insights.salesTrend}
+        title={leadItem ? leadItem.itemName : analyticsText.buyListTitle}
       />
 
       <CardSurface>
-        <SectionHeader title="Next Grocery Trip" />
+        <SectionHeader title={analyticsText.nextBuyList} />
         <ShoppingPresetRail
           onSelect={setSelectedPreset}
           presets={viewModel.predictions.shoppingPresets}
@@ -356,19 +321,19 @@ function PredictionsTab({
           emptyText={
             viewModel.predictions.emptyState
               ? viewModel.predictions.emptyState
-              : `You're stocked for the next ${activePreset?.days ?? 7} days based on recent sales.`
+              : analyticsText.enoughStock(activePreset?.days ?? 7)
           }
           items={shoppingItems}
         />
       </CardSurface>
 
       <CardSurface>
-        <SectionHeader title="Stock Prediction" />
+        <SectionHeader title={analyticsText.mayRunOutSoon} />
         <PredictionList items={predictionItems} />
       </CardSurface>
 
       <CardSurface>
-        <SectionHeader title="AI Performance Summary" />
+        <SectionHeader title={analyticsText.simpleAdvice} />
         <RecommendationList recommendations={viewModel.predictions.recommendations} />
       </CardSurface>
     </View>
@@ -376,11 +341,9 @@ function PredictionsTab({
 }
 
 function InsightBanner({
-  label,
   title,
   body,
 }: {
-  label: string;
   title: string;
   body: string;
 }) {
@@ -391,7 +354,6 @@ function InsightBanner({
       </View>
 
       <View style={styles.insightContent}>
-        <Text style={styles.insightBannerLabel}>{label}</Text>
         <Text style={styles.insightBannerTitle}>{title}</Text>
         <Text style={styles.insightBannerBody}>{body}</Text>
       </View>
@@ -403,28 +365,25 @@ function ForecastHero({
   title,
   body,
   summaryTone,
-  trendPoints,
 }: {
   title: string;
-  body: string;
+  body: string | null;
   summaryTone: string;
-  trendPoints: AnalyticsChartPoint[];
 }) {
   return (
     <View style={styles.forecastHero}>
-      <View style={styles.forecastHeroText}>
+      <View style={styles.forecastHeaderRow}>
         <View style={styles.forecastIconTile}>
           <Ionicons color={colors.primaryDeep} name="bulb-outline" size={22} />
         </View>
-        <Text style={styles.forecastLabel}>Demand Forecasting</Text>
-        <Text style={styles.forecastValue}>{title}</Text>
-        <Text style={styles.forecastBody}>{body}</Text>
-        <View style={styles.forecastPill}>
-          <Text style={styles.forecastPillText}>{summaryTone}</Text>
-        </View>
+        <Text style={styles.forecastLabel}>{analyticsText.buyListLabel}</Text>
       </View>
 
-      <ForecastSparklineChart points={trendPoints} />
+      <Text style={styles.forecastValue}>{title}</Text>
+      {body ? <Text style={styles.forecastBody}>{body}</Text> : null}
+      <View style={styles.forecastPill}>
+        <Text style={styles.forecastPillText}>{summaryTone}</Text>
+      </View>
     </View>
   );
 }
@@ -472,7 +431,7 @@ function SectionHeader({
 
 function SellingList({
   items,
-  emptyText = 'No local activity yet.',
+  emptyText = 'Wala pang galaw dito.',
 }: {
   items: AnalyticsListItem[];
   emptyText?: string;
@@ -501,7 +460,7 @@ function SellingListInner({
             <Text style={styles.rowSubtitle}>{item.detail}</Text>
           </View>
           <View style={styles.sellingMeta}>
-            <Text style={styles.rankMeta}>{`TOP ${index + 1}`}</Text>
+            <Text style={styles.rankMeta}>{`#${index + 1}`}</Text>
           </View>
         </View>
       ))}
@@ -519,10 +478,10 @@ function UtangSummary({
   return (
     <View style={styles.recommendationStack}>
       <View style={styles.recommendationCard}>
-        <Text style={styles.recommendationLead}>Outstanding total</Text>
+        <Text style={styles.recommendationLead}>Kabuuang hindi pa bayad</Text>
         <Text style={styles.recommendationTitle}>{totalBalance}</Text>
         <Text style={styles.recommendationBody}>
-          {customers.length > 0 ? 'Customers with open balances' : 'No open utang balance right now.'}
+          {customers.length > 0 ? 'Mga may hindi pa bayad na utang' : 'Wala pang hindi bayad na utang ngayon.'}
         </Text>
       </View>
 
@@ -532,7 +491,7 @@ function UtangSummary({
             <ProductAvatar itemName={customer.customerName} tone="warning" />
             <View style={styles.sellingMain}>
               <Text style={styles.rowTitle}>{customer.customerName}</Text>
-              <Text style={styles.rowSubtitle}>Open balance</Text>
+              <Text style={styles.rowSubtitle}>Hindi pa bayad</Text>
             </View>
             <View style={styles.sellingMeta}>
               <Text style={styles.rankMeta}>{customer.balance}</Text>
@@ -590,7 +549,7 @@ function TrendDetectionList({
 
   return (
     <View style={styles.trendList}>
-      <Text style={styles.trendLead}>Rising and falling product signals</Text>
+      <Text style={styles.trendLead}>Mga item na nagbago ngayong linggo</Text>
       {points.map((point) => (
         <View key={`${point.label}-${point.displayValue}`} style={styles.trendRow}>
           <View style={styles.trendBullet} />
@@ -605,7 +564,7 @@ function TrendDetectionList({
 
 function PredictionList({ items }: { items: AnalyticsListItem[] }) {
   if (items.length === 0) {
-    return <Text style={styles.emptyText}>No stock predictions yet.</Text>;
+    return <Text style={styles.emptyText}>{analyticsText.noPredictions}</Text>;
   }
 
   return (
@@ -618,7 +577,7 @@ function PredictionList({ items }: { items: AnalyticsListItem[] }) {
             <Text style={styles.rowSubtitle}>{item.detail}</Text>
           </View>
           <Pressable accessibilityRole="button" onPress={noop} style={styles.restockButton}>
-            <Text style={styles.restockButtonText}>Suggest Restock</Text>
+            <Text style={styles.restockButtonText}>Bumili Ulit</Text>
           </Pressable>
         </View>
       ))}
@@ -675,7 +634,7 @@ function ShoppingList({
           <ProductAvatar itemName={item.itemName} tone="warning" />
           <View style={styles.shoppingMain}>
             <Text style={styles.rowTitle}>{item.itemName}</Text>
-            <Text style={styles.shoppingQuantity}>{`Buy ${item.recommendedBuyQuantity} ${item.unit}`}</Text>
+            <Text style={styles.shoppingQuantity}>{analyticsText.buyAgain(item.recommendedBuyQuantity, item.unit)}</Text>
             <Text style={styles.rowSubtitle}>{item.reason}</Text>
           </View>
         </View>
@@ -690,14 +649,14 @@ function RecommendationList({
   recommendations: AnalyticsViewModel['predictions']['recommendations'];
 }) {
   if (recommendations.length === 0) {
-    return <Text style={styles.emptyText}>No recommendation summary yet.</Text>;
+    return <Text style={styles.emptyText}>{analyticsText.noAdvice}</Text>;
   }
 
   return (
     <View style={styles.recommendationStack}>
       {recommendations.map((recommendation, index) => (
         <View key={`${recommendation.title}-${recommendation.body}`} style={styles.recommendationCard}>
-          {index === 0 ? <Text style={styles.recommendationLead}>Primary guidance</Text> : null}
+          {index === 0 ? <Text style={styles.recommendationLead}>Unang payo</Text> : null}
           <Text style={styles.recommendationTitle}>{recommendation.title}</Text>
           <Text style={styles.recommendationBody}>{recommendation.body}</Text>
         </View>
@@ -776,21 +735,24 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 8,
   },
-  headerMenuButton: {
-    width: 34,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
   headerTitle: {
-    flex: 1,
     color: colors.primaryDeep,
     fontSize: 23,
     fontWeight: '700',
   },
+  headerCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  headerSubtitle: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 16,
+  },
   avatarBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
@@ -799,7 +761,7 @@ const styles = StyleSheet.create({
   },
   avatarBadgeText: {
     color: colors.primaryDeep,
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '800',
   },
   topTabRail: {
@@ -922,11 +884,6 @@ const styles = StyleSheet.create({
   insightContent: {
     flex: 1,
     gap: 4,
-  },
-  insightBannerLabel: {
-    color: '#F4F8F2',
-    fontSize: 12,
-    fontWeight: '700',
   },
   insightBannerTitle: {
     color: '#FFFFFF',
@@ -1166,45 +1123,46 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   forecastHero: {
-    flexDirection: 'row',
-    gap: 14,
+    gap: 12,
     borderRadius: 24,
     backgroundColor: colors.primary,
     padding: 18,
-    alignItems: 'stretch',
+    minHeight: 210,
     shadowColor: colors.primaryDeep,
     shadowOpacity: 0.1,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 8 },
     elevation: 3,
   },
-  forecastHeroText: {
-    flex: 1,
-    gap: 8,
+  forecastHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   forecastIconTile: {
-    width: 50,
-    height: 50,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     backgroundColor: 'rgba(255, 248, 231, 0.92)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   forecastLabel: {
-    color: '#FFFFFF',
-    fontSize: 17,
+    color: '#F4F8F2',
+    fontSize: 14,
     fontWeight: '700',
+    letterSpacing: 0.2,
   },
   forecastValue: {
     color: '#FFFFFF',
-    fontSize: 25,
+    fontSize: 42,
     fontWeight: '800',
-    lineHeight: 30,
+    lineHeight: 46,
   },
   forecastBody: {
     color: '#F4F8F2',
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 15,
+    lineHeight: 22,
   },
   forecastPill: {
     alignSelf: 'flex-start',

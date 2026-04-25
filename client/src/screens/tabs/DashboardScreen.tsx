@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { mobileCopy } from "@/copy/mobileCopy";
 import { detectLanguageStyle } from "@/features/assistant/assistantLanguageDetection";
 import type { CommandSource } from "@/features/commands/localCommandService";
 import { useAuth } from "@/context/AuthContext";
@@ -74,6 +75,15 @@ const useSpeechRecognitionEvent =
   speechRecognitionRuntime?.useSpeechRecognitionEvent ??
   ((_eventName: string, _listener: (event: any) => void) => undefined);
 
+function getStoreInitial(storeName: string | undefined) {
+  const trimmedName = storeName?.trim() ?? "";
+  if (!trimmedName) {
+    return "T";
+  }
+
+  return trimmedName[0]?.toUpperCase() ?? "T";
+}
+
 export function DashboardScreen() {
   const {
     authMode,
@@ -89,10 +99,7 @@ export function DashboardScreen() {
     customers,
     assistantInteractions,
     pendingTransactions,
-    isLoading,
     error,
-    syncNotice,
-    refresh,
     submitLocalCommand,
     confirmLocalCommand,
     applyManualAdjustment,
@@ -420,7 +427,7 @@ export function DashboardScreen() {
   const startListening = useCallback(async () => {
     if (!hasSpeechRecognitionNative) {
       setCommandMessage(
-        "Voice input needs a development build. You can type your command instead.",
+        "Hindi pa puwede ang voice input dito. I-type muna ang utos mo.",
       );
       return;
     }
@@ -581,51 +588,31 @@ export function DashboardScreen() {
 
   return (
     <SafeAreaView edges={["top"]} style={styles.screen}>
-      <View style={styles.topBar}>
-        <View style={styles.topBarLeft}>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => void refresh()}
-            style={styles.iconButton}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#1f7a63" size="small" />
-            ) : (
-              <Ionicons color="#1f7a63" name="refresh-outline" size={22} />
-            )}
-          </TouchableOpacity>
-          <Text numberOfLines={1} style={styles.storeName}>
-            {store?.name ?? "Tindai Store"}
-          </Text>
-        </View>
-        <View style={styles.statusPill}>
-          <Text style={styles.statusText}>
-            {appState?.mode === "authenticated"
-              ? "May account"
-              : "Walang account"}
-          </Text>
-        </View>
-        {syncNotice ? <View style={styles.offlineDot} /> : null}
-      </View>
-
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>Tindahan</Text>
+          <View style={styles.avatarBadge}>
+            <Text style={styles.avatarBadgeText}>
+              {getStoreInitial(store?.name)}
+            </Text>
+          </View>
+        </View>
+
         {showGuestBanner ? (
           <View style={styles.bannerCard}>
             <View style={styles.bannerBody}>
-              <Text style={styles.bannerTitle}>Ang data ay local lang.</Text>
-              <Text style={styles.bannerText}>
-                Mag-sign in para mag-sync sa cloud.
-              </Text>
+              <Text style={styles.bannerTitle}>{mobileCopy.dashboardGuestTitle}</Text>
+              <Text style={styles.bannerText}>{mobileCopy.dashboardGuestBody}</Text>
             </View>
             <View style={styles.bannerActions}>
               <Pressable
                 onPress={() => void showLogin()}
                 style={styles.bannerPrimaryAction}
               >
-                <Text style={styles.bannerPrimaryLabel}>Sign In</Text>
+                <Text style={styles.bannerPrimaryLabel}>{mobileCopy.dashboardGuestAction}</Text>
               </Pressable>
               <Pressable
                 onPress={() => setGuestBannerDismissed(true)}
@@ -1154,53 +1141,39 @@ export function DashboardScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#fdfbf7",
-  },
-  topBar: {
-    height: 64,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e7e5e4",
-    backgroundColor: "#fdfbf7",
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  topBarLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flexShrink: 1,
-  },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  storeName: {
-    color: "#1f7a63",
-    fontSize: 18,
-    fontWeight: "700",
-    flexShrink: 1,
-  },
-  statusPill: {
-    borderRadius: 999,
-    backgroundColor: "#e3f8f0",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  statusText: {
-    color: "#1f7a63",
-    fontSize: 12,
-    fontWeight: "800",
+    backgroundColor: "#ffffff",
   },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 24,
+    paddingTop: 10,
     paddingBottom: 120,
     gap: 14,
+  },
+  headerRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  headerTitle: {
+    color: "#145746",
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+  },
+  avatarBadge: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderColor: "rgba(31, 122, 99, 0.14)",
+    borderRadius: 24,
+    borderWidth: 1,
+    height: 48,
+    justifyContent: "center",
+    width: 48,
+  },
+  avatarBadgeText: {
+    color: "#145746",
+    fontSize: 15,
+    fontWeight: "800",
   },
   bannerCard: {
     borderRadius: 14,
@@ -1279,12 +1252,6 @@ const styles = StyleSheet.create({
     color: "#00604c",
     fontSize: 12,
     fontWeight: "700",
-  },
-  offlineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: "#b28200",
   },
   voiceSection: {
     alignItems: "center",

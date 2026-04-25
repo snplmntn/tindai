@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { mobileCopy } from '@/copy/mobileCopy';
 import { useAuth } from '@/context/AuthContext';
 import { colors } from '@/navigation/colors';
 
@@ -96,7 +97,7 @@ export function PermissionsScreen() {
     <SafeAreaView style={styles.screen}>
       <View style={styles.topBar}>
         <View style={styles.topBarSpacer} />
-        <Text style={styles.topBarTitle}>Setup Progress</Text>
+        <Text style={styles.topBarTitle}>{mobileCopy.onboardingTopBarTitle}</Text>
         <View style={styles.topBarSpacer} />
       </View>
 

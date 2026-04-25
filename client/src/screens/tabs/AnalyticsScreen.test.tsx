@@ -194,25 +194,25 @@ function buildRemoteSummary(): RemoteAnalyticsSummary {
     },
     overview: {
       salesToday: {
-        label: 'Sales Today',
+        label: 'Benta Ngayon',
         value: 'P999',
-        caption: 'Revenue',
+        caption: 'Halaga ng benta',
       },
       salesThisMonth: {
-        label: 'Sales This Month',
+        label: 'Benta Ngayong Buwan',
         value: 'P5600',
-        caption: 'Revenue',
+        caption: 'Halaga ng benta',
       },
       itemsSoldToday: {
-        label: 'Items Sold Today',
-        value: '8 units',
-        caption: 'Units sold today',
+        label: 'Nabenta Ngayon',
+        value: '8 piraso',
+        caption: 'Nabenta ngayon',
       },
       topSelling: [
         {
           itemId: 'item-remote-1',
           itemName: 'Remote Sardines',
-          detail: '15 cans sold in 30 days',
+          detail: '15 cans na nabenta sa 30 araw',
         },
       ],
       lowStock: [],
@@ -239,9 +239,9 @@ function buildRemoteSummary(): RemoteAnalyticsSummary {
       forecast: [],
       restockSoon: [],
       shoppingPresets: [
-        { key: '7d', label: '7 days', days: 7 },
-        { key: '14d', label: '14 days', days: 14 },
-        { key: '30d', label: '1 month', days: 30 },
+        { key: '7d', label: '7 araw', days: 7 },
+        { key: '14d', label: '14 araw', days: 14 },
+        { key: '30d', label: '1 buwan', days: 30 },
       ],
       shoppingListByPreset: {
         '7d': [
@@ -254,7 +254,7 @@ function buildRemoteSummary(): RemoteAnalyticsSummary {
             horizonDays: 7,
             projectedUnitsNeeded: 12,
             recommendedBuyQuantity: 9,
-            reason: '3 cans on hand · need about 12 cans for the next 7 days',
+            reason: '3 cans na lang · kailangan ng mga 12 sa susunod na 7 araw',
           },
         ],
         '14d': [
@@ -267,20 +267,20 @@ function buildRemoteSummary(): RemoteAnalyticsSummary {
             horizonDays: 14,
             projectedUnitsNeeded: 24,
             recommendedBuyQuantity: 21,
-            reason: '3 cans on hand · need about 24 cans for the next 14 days',
+            reason: '3 cans na lang · kailangan ng mga 24 sa susunod na 14 araw',
           },
         ],
         '30d': [],
       },
       recommendations: [
         {
-          title: 'AI Summary',
-          body: 'Remote AI says Coke may run out within 3 days.',
+          title: 'Simpleng Payo',
+          body: 'Sabi ng AI, baka maubos ang Coke sa loob ng 3 araw.',
         },
       ],
       emptyState: null,
       modelStatus: 'gemini_enriched',
-      aiSummary: 'Remote AI says Coke may run out within 3 days.',
+      aiSummary: 'Sabi ng AI, baka maubos ang Coke sa loob ng 3 araw.',
     },
   };
 }
@@ -343,38 +343,40 @@ describe('AnalyticsScreen', () => {
   it('defaults to overview and switches tabs without extra action buttons', async () => {
     const tree = await renderAnalyticsScreen();
 
-    expect(findTextNodes(tree, 'Business Insights')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Overview')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Sales Trend')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Top Selling Items')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Low Stock Alerts')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Items Sold Today')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Open Utang')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Predictions & AI')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Stock Prediction')).toHaveLength(0);
+    expect(findTextNodes(tree, 'Ganap sa Tindahan')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Buod')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Takbo ng Benta')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Pinakamabenta')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Malapit Maubos')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Nabenta Ngayon')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Kabuuang Utang')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Bibilhin')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Maaaring Maubos')).toHaveLength(0);
     expect(findPressables(tree)).toHaveLength(3);
 
     await act(async () => {
-      findPressable(tree, 'Insights').props.onPress();
+      findPressable(tree, 'Bantayan').props.onPress();
     });
 
-    expect(findTextNodes(tree, 'Analytics Insights')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Fast & Slow Moving Items')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Trend Detection')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Benta Ngayon')).toHaveLength(0);
+    expect(findTextNodes(tree, 'Takbo ng Benta')).toHaveLength(0);
+    expect(findTextNodes(tree, 'Mabilis Mabenta')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Mabagal Mabenta')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Nagbago Ngayong Linggo')).not.toHaveLength(0);
 
     await act(async () => {
-      findPressable(tree, 'Predictions & AI').props.onPress();
+      findPressable(tree, 'Bibilhin').props.onPress();
     });
 
-    expect(findTextNodes(tree, 'Next Grocery Trip')).not.toHaveLength(0);
-    expect(findTextNodes(tree, '7 days')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Stock Prediction')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'AI Performance Summary')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'No stock predictions yet.')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Suggest Restock')).toHaveLength(0);
+    expect(findTextNodes(tree, 'Listahan ng Bibilhin')).not.toHaveLength(0);
+    expect(findTextNodes(tree, '7 araw')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Maaaring Maubos')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Simpleng Payo')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Wala pang posibleng maubos agad.')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Buy Again')).toHaveLength(0);
 
     await act(async () => {
-      findPressable(tree, '14 days').props.onPress();
+      findPressable(tree, '14 araw').props.onPress();
     });
   });
 
@@ -383,8 +385,8 @@ describe('AnalyticsScreen', () => {
 
     const tree = await renderAnalyticsScreen();
 
-    expect(findTextNodes(tree, 'Wala pang mababasang galaw')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Add your first item')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Wala pang maipapakita')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Magdagdag ng unang paninda')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'P60')).toHaveLength(0);
     expect(findTextNodes(tree, 'Coke Mismo')).toHaveLength(0);
     expect(mockedFetchAnalyticsSummary).not.toHaveBeenCalled();
@@ -396,7 +398,7 @@ describe('AnalyticsScreen', () => {
     const tree = await renderAnalyticsScreen();
 
     await act(async () => {
-      findPressable(tree, 'Add your first item').props.onPress();
+      findPressable(tree, 'Magdagdag ng unang paninda').props.onPress();
     });
 
     expect(mockedNavigate).toHaveBeenCalledWith('Inventory', {
@@ -412,17 +414,51 @@ describe('AnalyticsScreen', () => {
 
     expect(mockedFetchAnalyticsSummary).toHaveBeenCalledWith('token-1');
     expect(findTextNodes(tree, 'P999')).not.toHaveLength(0);
-    expect(findTextNodes(tree, '8 units')).not.toHaveLength(0);
+    expect(findTextNodes(tree, '8 piraso')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Remote Sardines')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'P180')).not.toHaveLength(0);
 
     await act(async () => {
-      findPressable(tree, 'Predictions & AI').props.onPress();
+      findPressable(tree, 'Bibilhin').props.onPress();
     });
 
-    expect(findTextNodes(tree, 'AI-enriched forecast')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Remote AI says Coke may run out within 3 days.')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Buy 9 cans')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Batay sa AI at benta')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Sabi ng AI, baka maubos ang Coke sa loob ng 3 araw.')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Bumili ng 9 cans')).not.toHaveLength(0);
+  });
+
+  it('keeps buy-tab hero short when the same stock details appear in lower sections', async () => {
+    mockedLoadAnalyticsSalesRows.mockResolvedValue([
+      {
+        itemId: 'item-coke',
+        itemName: 'Coke Mismo',
+        unit: 'pcs',
+        quantityDelta: -5,
+        unitPrice: 20,
+        lineTotal: 100,
+        occurredAt: '2026-04-25T08:00:00.000Z',
+        isUtang: false,
+      },
+      {
+        itemId: 'item-coke',
+        itemName: 'Coke Mismo',
+        unit: 'pcs',
+        quantityDelta: -4,
+        unitPrice: 20,
+        lineTotal: 80,
+        occurredAt: '2026-04-24T08:00:00.000Z',
+        isUtang: false,
+      },
+    ]);
+
+    const tree = await renderAnalyticsScreen();
+
+    await act(async () => {
+      findPressable(tree, 'Bibilhin').props.onPress();
+    });
+
+    expect(findTextNodes(tree, 'Coke Mismo')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'bawat araw')).toHaveLength(1);
   });
 
   it('keeps the full analytics model local when pending transactions exist', async () => {
@@ -449,11 +485,11 @@ describe('AnalyticsScreen', () => {
     expect(findTextNodes(tree, 'Remote Sardines')).toHaveLength(0);
 
     await act(async () => {
-      findPressable(tree, 'Predictions & AI').props.onPress();
+      findPressable(tree, 'Bibilhin').props.onPress();
     });
 
-    expect(findTextNodes(tree, 'Remote AI says Coke may run out within 3 days.')).toHaveLength(0);
-    expect(findTextNodes(tree, 'Local forecast')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Sabi ng AI, baka maubos ang Coke sa loob ng 3 araw.')).toHaveLength(0);
+    expect(findTextNodes(tree, 'Batay sa tala sa phone')).not.toHaveLength(0);
   });
 
   it('shows skeleton while analytics are still loading', async () => {
@@ -463,7 +499,7 @@ describe('AnalyticsScreen', () => {
 
     const tree = await renderAnalyticsScreen();
 
-    expect(findTextNodes(tree, 'Loading analytics...')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Kinukuha ang galaw ng tindahan...')).not.toHaveLength(0);
   });
 
   it('supports pull-to-refresh to rerun analytics loading', async () => {

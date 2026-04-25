@@ -36,6 +36,10 @@ vi.mock('react-native-safe-area-context', () => ({
   SafeAreaView: ({ children, ...props }: { children: React.ReactNode }) => createElement('safe-area-view', props, children),
 }));
 
+vi.mock('expo-status-bar', () => ({
+  StatusBar: ({ ...props }: { children?: React.ReactNode }) => createElement('mock-status-bar', props),
+}));
+
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
     isAuthenticated: mockedIsAuthenticated,
@@ -97,6 +101,23 @@ function findTextInputByValue(tree: TestRenderer.ReactTestRenderer, value: strin
 
 function findImages(tree: TestRenderer.ReactTestRenderer) {
   return tree.root.findAll((node) => String(node.type) === 'mock-image');
+}
+
+function findStatusBar(tree: TestRenderer.ReactTestRenderer) {
+  return tree.root.find((node) => String(node.type) === 'mock-status-bar');
+}
+
+function findViewsByStyleProp(
+  tree: TestRenderer.ReactTestRenderer,
+  predicate: (style: Record<string, unknown>) => boolean,
+) {
+  return tree.root.findAll((node) => {
+    if (String(node.type) !== 'mock-view' || !node.props.style || typeof node.props.style !== 'object') {
+      return false;
+    }
+
+    return predicate(node.props.style as Record<string, unknown>);
+  });
 }
 
 async function renderProfileScreen() {
@@ -173,27 +194,36 @@ describe('ProfileScreen', () => {
 
   it('shows authenticated profile details in read mode with edit action', async () => {
     const tree = await renderProfileScreen();
+    const statusBar = findStatusBar(tree);
 
-    expect(findTextNodes(tree, 'Profile')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Lokal ang data mo')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Account')).toHaveLength(0);
     expect(findTextNodes(tree, 'Ana Mercado')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'ana@example.com')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Mercado Store')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'AM')).not.toHaveLength(0);
-    expect(findPressable(tree, 'Edit profile')).toBeDefined();
+    expect(findPressable(tree, 'Ayusin ang detalye')).toBeDefined();
+    expect(statusBar.props.style).toBe('light');
+    expect(statusBar.props.backgroundColor).toBe('#1F7A63');
+  });
+
+  it('keeps the details card below the hero and clips the rounded card shape', async () => {
+    const tree = await renderProfileScreen();
+
+    expect(findViewsByStyleProp(tree, (style) => style.marginTop === -22)).toHaveLength(0);
+    expect(findViewsByStyleProp(tree, (style) => style.borderRadius === 24 && style.overflow === 'hidden')).not.toHaveLength(0);
   });
 
   it('enters edit mode with current values prefilled', async () => {
     const tree = await renderProfileScreen();
 
     await act(async () => {
-      findPressable(tree, 'Edit profile').props.onPress();
+      findPressable(tree, 'Ayusin ang detalye').props.onPress();
     });
 
     expect(findTextInputByValue(tree, 'Ana Mercado')).toBeDefined();
     expect(findTextInputByValue(tree, 'ana@example.com')).toBeDefined();
     expect(findTextInputByValue(tree, 'Mercado Store')).toBeDefined();
-    expect(findPressable(tree, 'Save')).toBeDefined();
+    expect(findPressable(tree, 'I-save')).toBeDefined();
   });
 
   it('saves profile and store changes then exits edit mode', async () => {
@@ -215,7 +245,7 @@ describe('ProfileScreen', () => {
     });
 
     await act(async () => {
-      findPressable(tree, 'Edit profile').props.onPress();
+      findPressable(tree, 'Ayusin ang detalye').props.onPress();
     });
 
     await act(async () => {
@@ -224,7 +254,7 @@ describe('ProfileScreen', () => {
     });
 
     await act(async () => {
-      await findPressable(tree, 'Save').props.onPress();
+      await findPressable(tree, 'I-save').props.onPress();
     });
 
     expect(mockedUpdateMyProfile).toHaveBeenCalledWith('session-token', {
@@ -233,8 +263,8 @@ describe('ProfileScreen', () => {
     });
     expect(mockedUpdateMyStoreName).toHaveBeenCalledWith('session-token', 'Ana Store');
     expect(mockedRefresh).toHaveBeenCalledTimes(1);
-    expect(findTextNodes(tree, 'Save')).toHaveLength(0);
-    expect(findPressable(tree, 'Edit profile')).toBeDefined();
+    expect(findTextNodes(tree, 'I-save')).toHaveLength(0);
+    expect(findPressable(tree, 'Ayusin ang detalye')).toBeDefined();
     expect(findImages(tree)).toHaveLength(1);
   });
 
@@ -249,11 +279,11 @@ describe('ProfileScreen', () => {
     const tree = await renderProfileScreen();
 
     await act(async () => {
-      findPressable(tree, 'Edit profile').props.onPress();
+      findPressable(tree, 'Ayusin ang detalye').props.onPress();
     });
 
     await act(async () => {
-      await findPressable(tree, 'Remove avatar').props.onPress();
+      await findPressable(tree, 'Alisin ang litrato').props.onPress();
     });
 
     expect(mockedClearMyProfileAvatar).toHaveBeenCalledWith('session-token');
@@ -267,15 +297,15 @@ describe('ProfileScreen', () => {
     const tree = await renderProfileScreen();
 
     await act(async () => {
-      findPressable(tree, 'Edit profile').props.onPress();
+      findPressable(tree, 'Ayusin ang detalye').props.onPress();
     });
 
     await act(async () => {
-      await findPressable(tree, 'Save').props.onPress();
+      await findPressable(tree, 'I-save').props.onPress();
     });
 
     expect(findTextNodes(tree, 'Store update failed.')).not.toHaveLength(0);
-    expect(findPressable(tree, 'Save')).toBeDefined();
+    expect(findPressable(tree, 'I-save')).toBeDefined();
   });
 
   it('renders auth actions when signed out', async () => {
@@ -284,9 +314,11 @@ describe('ProfileScreen', () => {
 
     const tree = await renderProfileScreen();
 
-    expect(findTextNodes(tree, 'Gumawa ng Account')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Mag-log In')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Gumawa ng account')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Mag-log in')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Walang email')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Edit profile')).toHaveLength(0);
+    expect(findTextNodes(tree, 'Wala pang pangalan ng tindahan')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'My Store')).toHaveLength(0);
+    expect(findTextNodes(tree, 'Ayusin ang detalye')).toHaveLength(0);
   });
 });
