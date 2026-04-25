@@ -1,4 +1,7 @@
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+
 import { useAuth } from '@/context/AuthContext';
+import { colors } from '@/navigation/colors';
 import { HomeTabs } from '@/screens/HomeTabs';
 import { LoginScreen } from '@/screens/auth/LoginScreen';
 import { SignUpScreen } from '@/screens/auth/SignUpScreen';
@@ -7,7 +10,15 @@ import { OnboardingDashboardScreen } from '@/screens/onboarding/OnboardingDashbo
 import { OnboardingInventoryScreen } from '@/screens/onboarding/OnboardingInventoryScreen';
 
 export function RootNavigator() {
-  const { activeRoute } = useAuth();
+  const { activeRoute, isAuthLoading } = useAuth();
+
+  if (isAuthLoading) {
+    return (
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator color={colors.primaryDeep} size="large" />
+      </View>
+    );
+  }
 
   if (activeRoute.kind === 'onboarding') {
     if (activeRoute.step === 1) {
@@ -27,3 +38,13 @@ export function RootNavigator() {
 
   return <HomeTabs />;
 }
+
+const styles = StyleSheet.create({
+  loadingScreen: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+});
+
