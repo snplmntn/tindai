@@ -10,7 +10,6 @@ export default function Home() {
             <Image src="/logo.png" alt="Tindai" width={28} height={28} className="h-7 w-auto object-contain" priority />
             Tindai
           </Link>
-          <button className="rounded-lg bg-emerald-700 px-4 py-2 text-xs font-semibold text-white">Get App</button>
         </header>
 
         <section className="grid min-h-[calc(100vh-72px)] items-center gap-10 py-6 md:grid-cols-2 md:py-10">
