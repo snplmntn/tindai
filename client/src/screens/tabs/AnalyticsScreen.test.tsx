@@ -33,6 +33,15 @@ let mockedInventoryItems = [
   },
 ];
 
+let mockedCustomers = [
+  {
+    id: 'customer-1',
+    storeId: 'store-1',
+    name: 'Mang Juan',
+    utangBalance: 80,
+  },
+];
+
 let mockedPendingTransactions: Array<{ id: string; syncStatus: string }> = [];
 let mockedIsAuthenticated = false;
 const mockedNavigate = vi.fn();
@@ -107,6 +116,7 @@ vi.mock('@/features/local-data/LocalDataContext', () => ({
   useLocalData: () => ({
     store: mockedStore,
     inventoryItems: mockedInventoryItems,
+    customers: mockedCustomers,
     pendingTransactions: mockedPendingTransactions,
     isLoading: false,
     error: null,
@@ -193,6 +203,11 @@ function buildRemoteSummary(): RemoteAnalyticsSummary {
         value: 'P5600',
         caption: 'Revenue',
       },
+      itemsSoldToday: {
+        label: 'Items Sold Today',
+        value: '8 units',
+        caption: 'Units sold today',
+      },
       topSelling: [
         {
           itemId: 'item-remote-1',
@@ -203,6 +218,15 @@ function buildRemoteSummary(): RemoteAnalyticsSummary {
       lowStock: [],
       fastMoving: [],
       slowMoving: [],
+      utangSummary: {
+        totalBalance: 'P180',
+        topCustomers: [
+          {
+            customerName: 'Mang Juan',
+            balance: 'P180',
+          },
+        ],
+      },
     },
     insights: {
       salesTrend: [],
@@ -289,6 +313,14 @@ describe('AnalyticsScreen', () => {
       },
     ];
     mockedPendingTransactions = [];
+    mockedCustomers = [
+      {
+        id: 'customer-1',
+        storeId: 'store-1',
+        name: 'Mang Juan',
+        utangBalance: 80,
+      },
+    ];
     mockedIsAuthenticated = false;
     mockedNavigate.mockReset();
     mockedLoadAnalyticsSalesRows.mockReset();
@@ -315,6 +347,9 @@ describe('AnalyticsScreen', () => {
     expect(findTextNodes(tree, 'Overview')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Sales Trend')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Top Selling Items')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Low Stock Alerts')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Items Sold Today')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Open Utang')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Predictions & AI')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Stock Prediction')).toHaveLength(0);
     expect(findPressables(tree)).toHaveLength(3);
@@ -377,7 +412,9 @@ describe('AnalyticsScreen', () => {
 
     expect(mockedFetchAnalyticsSummary).toHaveBeenCalledWith('token-1');
     expect(findTextNodes(tree, 'P999')).not.toHaveLength(0);
+    expect(findTextNodes(tree, '8 units')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Remote Sardines')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'P180')).not.toHaveLength(0);
 
     await act(async () => {
       findPressable(tree, 'Predictions & AI').props.onPress();
@@ -388,7 +425,7 @@ describe('AnalyticsScreen', () => {
     expect(findTextNodes(tree, 'Buy 9 cans')).not.toHaveLength(0);
   });
 
-  it('keeps Overview and Insights local when pending transactions exist but still uses backend Predictions', async () => {
+  it('keeps the full analytics model local when pending transactions exist', async () => {
     mockedIsAuthenticated = true;
     mockedPendingTransactions = [{ id: 'txn-pending-1', syncStatus: 'pending' }];
     mockedFetchAnalyticsSummary.mockResolvedValue(buildRemoteSummary());
@@ -407,14 +444,16 @@ describe('AnalyticsScreen', () => {
 
     const tree = await renderAnalyticsScreen();
 
-    expect(findTextNodes(tree, 'P40')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Coke Mismo')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'P999')).toHaveLength(0);
+    expect(findTextNodes(tree, 'Remote Sardines')).toHaveLength(0);
 
     await act(async () => {
       findPressable(tree, 'Predictions & AI').props.onPress();
     });
 
-    expect(findTextNodes(tree, 'Remote AI says Coke may run out within 3 days.')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Remote AI says Coke may run out within 3 days.')).toHaveLength(0);
+    expect(findTextNodes(tree, 'Local forecast')).not.toHaveLength(0);
   });
 
   it('shows skeleton while analytics are still loading', async () => {

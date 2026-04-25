@@ -9,6 +9,16 @@ type AnalyticsMetric = {
   caption: string;
 };
 
+type AnalyticsUtangCustomer = {
+  customerName: string;
+  balance: string;
+};
+
+type AnalyticsUtangSummary = {
+  totalBalance: string;
+  topCustomers: AnalyticsUtangCustomer[];
+};
+
 type AnalyticsListItem = {
   itemId: string;
   itemName: string;
@@ -58,10 +68,12 @@ export type AnalyticsSummary = {
   overview: {
     salesToday: AnalyticsMetric;
     salesThisMonth: AnalyticsMetric;
+    itemsSoldToday: AnalyticsMetric;
     topSelling: AnalyticsListItem[];
     lowStock: AnalyticsListItem[];
     fastMoving: AnalyticsListItem[];
     slowMoving: AnalyticsListItem[];
+    utangSummary: AnalyticsUtangSummary;
   };
   insights: {
     salesTrend: AnalyticsChartPoint[];
@@ -102,6 +114,11 @@ type MovementRow = {
   quantity_delta: number | string;
   movement_type: 'sale' | 'utang_sale' | 'restock' | 'adjustment' | 'opening_stock' | 'correction';
   occurred_at: string;
+};
+
+type CustomerUtangRow = {
+  display_name: string;
+  utang_balance: number | string;
 };
 
 type EnrichedMovement = {
@@ -470,6 +487,18 @@ function buildSalesMetric(params: {
   };
 }
 
+function buildUtangSummary(rows: CustomerUtangRow[], currencyCode: string): AnalyticsUtangSummary {
+  const totalBalance = rows.reduce((total, row) => total + toNumber(row.utang_balance), 0);
+
+  return {
+    totalBalance: formatCurrency(totalBalance, currencyCode),
+    topCustomers: rows.slice(0, 3).map((row) => ({
+      customerName: row.display_name,
+      balance: formatCurrency(toNumber(row.utang_balance), currencyCode),
+    })),
+  };
+}
+
 function buildPredictionPrompt(params: {
   storeName: string;
   forecast: AnalyticsListItem[];
@@ -522,7 +551,7 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
   const summaryWindowStart = getDayKey(new Date(nowDate.getTime() - 120 * DAY_IN_MS), timezone);
 
   const supabase = getSupabaseAdminClient();
-  const [inventoryResult, summaryResult, movementResult] = await Promise.all([
+  const [inventoryResult, summaryResult, movementResult, utangResult] = await Promise.all([
     supabase
       .from('v_inventory_dashboard')
       .select('id, name, unit, current_stock, low_stock_threshold')
@@ -543,6 +572,14 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
       .in('movement_type', ['sale', 'utang_sale'])
       .gte('occurred_at', movementWindowStart)
       .returns<MovementRow[]>(),
+    supabase
+      .from('customers')
+      .select('display_name, utang_balance')
+      .eq('store_id', store.id)
+      .gt('utang_balance', 0)
+      .order('utang_balance', { ascending: false })
+      .limit(5)
+      .returns<CustomerUtangRow[]>(),
   ]);
 
   if (inventoryResult.error) {
@@ -555,6 +592,10 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
 
   if (movementResult.error) {
     throw new Error('Unable to load movement analytics.');
+  }
+
+  if (utangResult.error) {
+    throw new Error('Unable to load utang analytics.');
   }
 
   const inventoryItems = (inventoryResult.data ?? []).map((item) => ({
@@ -616,6 +657,11 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
       grossSales: salesThisMonthGross,
       unitsSold: salesThisMonthUnits,
     }),
+    itemsSoldToday: {
+      label: 'Items Sold Today',
+      value: `${formatCount(salesTodayUnits)} units`,
+      caption: 'Units sold today',
+    },
     topSelling: aggregateProductRows(last30Rows)
       .slice(0, 3)
       .map((item) => ({
@@ -642,6 +688,7 @@ export async function getAnalyticsSummaryForOwner(ownerId: string): Promise<Anal
         tone: 'positive' as const,
       })),
     slowMoving: buildSlowMovingItems(inventoryItems, last30Rows),
+    utangSummary: buildUtangSummary(utangResult.data ?? [], store.currencyCode),
   };
 
   const demandDeltas = buildDemandDeltas(inventoryItems, recent7Rows, previous7Rows);

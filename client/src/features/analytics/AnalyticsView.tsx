@@ -214,9 +214,9 @@ function OverviewTab({
           value={viewModel.overview.salesToday.value}
         />
         <MetricCard
-          caption={viewModel.overview.salesThisMonth.caption}
-          label="Month Sales"
-          value={viewModel.overview.salesThisMonth.value}
+          caption={viewModel.overview.itemsSoldToday.caption}
+          label="Items Sold Today"
+          value={viewModel.overview.itemsSoldToday.value}
         />
       </View>
 
@@ -228,6 +228,19 @@ function OverviewTab({
       <CardSurface>
         <SectionHeader actionLabel="View All" title="Top Selling Items" />
         <SellingList items={viewModel.overview.topSelling} />
+      </CardSurface>
+
+      <CardSurface>
+        <SectionHeader title="Low Stock Alerts" />
+        <SellingList emptyText="No low-stock items right now." items={viewModel.overview.lowStock} />
+      </CardSurface>
+
+      <CardSurface>
+        <SectionHeader title="Open Utang" />
+        <UtangSummary
+          customers={viewModel.overview.utangSummary.topCustomers}
+          totalBalance={viewModel.overview.utangSummary.totalBalance}
+        />
       </CardSurface>
     </View>
   );
@@ -457,9 +470,25 @@ function SectionHeader({
 }
 
 
-function SellingList({ items }: { items: AnalyticsListItem[] }) {
+function SellingList({
+  items,
+  emptyText = 'No local activity yet.',
+}: {
+  items: AnalyticsListItem[];
+  emptyText?: string;
+}) {
+  return <SellingListInner emptyText={emptyText} items={items} />;
+}
+
+function SellingListInner({
+  items,
+  emptyText,
+}: {
+  items: AnalyticsListItem[];
+  emptyText: string;
+}) {
   if (items.length === 0) {
-    return <Text style={styles.emptyText}>No local activity yet.</Text>;
+    return <Text style={styles.emptyText}>{emptyText}</Text>;
   }
 
   return (
@@ -476,6 +505,41 @@ function SellingList({ items }: { items: AnalyticsListItem[] }) {
           </View>
         </View>
       ))}
+    </View>
+  );
+}
+
+function UtangSummary({
+  totalBalance,
+  customers,
+}: {
+  totalBalance: string;
+  customers: Array<{ customerName: string; balance: string }>;
+}) {
+  return (
+    <View style={styles.recommendationStack}>
+      <View style={styles.recommendationCard}>
+        <Text style={styles.recommendationLead}>Outstanding total</Text>
+        <Text style={styles.recommendationTitle}>{totalBalance}</Text>
+        <Text style={styles.recommendationBody}>
+          {customers.length > 0 ? 'Customers with open balances' : 'No open utang balance right now.'}
+        </Text>
+      </View>
+
+      {customers.length > 0 ? (
+        customers.map((customer) => (
+          <View key={`${customer.customerName}-${customer.balance}`} style={styles.sellingRow}>
+            <ProductAvatar itemName={customer.customerName} tone="warning" />
+            <View style={styles.sellingMain}>
+              <Text style={styles.rowTitle}>{customer.customerName}</Text>
+              <Text style={styles.rowSubtitle}>Open balance</Text>
+            </View>
+            <View style={styles.sellingMeta}>
+              <Text style={styles.rankMeta}>{customer.balance}</Text>
+            </View>
+          </View>
+        ))
+      ) : null}
     </View>
   );
 }

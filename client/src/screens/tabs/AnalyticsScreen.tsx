@@ -18,7 +18,7 @@ type AnalyticsTabKey = 'Overview' | 'Insights' | 'Predictions & AI';
 export function AnalyticsScreen() {
   const navigation = useNavigation<any>();
   const { isAuthenticated } = useAuth();
-  const { store, inventoryItems, pendingTransactions } = useLocalData();
+  const { store, inventoryItems, customers, pendingTransactions } = useLocalData();
   const [activeTab, setActiveTab] = useState<AnalyticsTabKey>('Overview');
   const [salesRows, setSalesRows] = useState<AnalyticsSalesRow[]>([]);
   const [remoteSummary, setRemoteSummary] = useState<RemoteAnalyticsSummary | null>(null);
@@ -117,10 +117,11 @@ export function AnalyticsScreen() {
         currencyCode: store?.currencyCode ?? 'PHP',
         timezone: store?.timezone ?? 'Asia/Manila',
         inventoryItems,
+        customers,
         salesRows,
       });
     },
-    [inventoryItems, salesRows, store?.currencyCode, store?.timezone],
+    [customers, inventoryItems, salesRows, store?.currencyCode, store?.timezone],
   );
 
   const viewModel = useMemo<AnalyticsViewModel>(() => {
@@ -129,11 +130,7 @@ export function AnalyticsScreen() {
     }
 
     if (hasPendingTransactions) {
-      return {
-        overview: localViewModel.overview,
-        insights: localViewModel.insights,
-        predictions: remoteSummary.predictions,
-      };
+      return localViewModel;
     }
 
     return {

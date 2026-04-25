@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { LocalInventoryItem } from '@/features/local-db/types';
+import type { LocalCustomer, LocalInventoryItem } from '@/features/local-db/types';
 
 import { buildAnalyticsViewModel, type AnalyticsSalesRow } from './buildAnalyticsViewModel';
 
@@ -86,18 +86,38 @@ const salesRows: AnalyticsSalesRow[] = [
   },
 ];
 
+const customers: LocalCustomer[] = [
+  {
+    id: 'customer-juan',
+    storeId: 'store-1',
+    name: 'Mang Juan',
+    utangBalance: 80,
+  },
+  {
+    id: 'customer-maria',
+    storeId: 'store-1',
+    name: 'Aling Maria',
+    utangBalance: 35,
+  },
+];
+
 describe('buildAnalyticsViewModel', () => {
   it('builds overview, insights, and prediction content from local sales rows', () => {
     const result = buildAnalyticsViewModel({
       currencyCode: 'PHP',
       timezone: 'Asia/Manila',
       inventoryItems,
+      customers,
       salesRows,
       now: '2026-04-25T10:00:00.000Z',
     });
 
     expect(result.overview.salesToday.value).toBe('P60');
     expect(result.overview.salesToday.caption).toBe('Estimated revenue');
+    expect(result.overview.itemsSoldToday).toMatchObject({
+      label: 'Items Sold Today',
+      value: '3 units',
+    });
     expect(result.overview.salesThisMonth.value).toBe('P125');
     expect(result.overview.topSelling[0]).toMatchObject({
       itemName: 'Coke Mismo',
@@ -105,6 +125,13 @@ describe('buildAnalyticsViewModel', () => {
     });
     expect(result.overview.lowStock[0]).toMatchObject({
       itemName: 'Coke Mismo',
+    });
+    expect(result.overview.utangSummary).toMatchObject({
+      totalBalance: 'P115',
+    });
+    expect(result.overview.utangSummary.topCustomers[0]).toMatchObject({
+      customerName: 'Mang Juan',
+      balance: 'P80',
     });
     expect(result.insights.risingDemand[0]).toMatchObject({
       itemName: 'Coke Mismo',
@@ -153,12 +180,16 @@ describe('buildAnalyticsViewModel', () => {
           updatedAt: '2026-04-25T00:00:00.000Z',
         },
       ],
+      customers: [],
       salesRows: [],
       now: '2026-04-25T10:00:00.000Z',
     });
 
     expect(result.overview.salesToday.value).toBe('0 units');
     expect(result.overview.salesToday.caption).toBe('No priced sales yet');
+    expect(result.overview.itemsSoldToday.value).toBe('0 units');
+    expect(result.overview.utangSummary.totalBalance).toBe('P0');
+    expect(result.overview.utangSummary.topCustomers).toEqual([]);
     expect(result.insights.emptyState).toContain('Need at least 7 days');
     expect(result.predictions.emptyState).toContain('Forecasts will appear');
     expect(result.predictions.shoppingListByPreset['7d']).toEqual([]);

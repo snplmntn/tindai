@@ -1,4 +1,4 @@
-import type { LocalInventoryItem } from '@/features/local-db/types';
+import type { LocalCustomer, LocalInventoryItem } from '@/features/local-db/types';
 
 export type AnalyticsSalesRow = {
   itemId: string;
@@ -15,6 +15,16 @@ type AnalyticsMetric = {
   label: string;
   value: string;
   caption: string;
+};
+
+type AnalyticsUtangCustomer = {
+  customerName: string;
+  balance: string;
+};
+
+type AnalyticsUtangSummary = {
+  totalBalance: string;
+  topCustomers: AnalyticsUtangCustomer[];
 };
 
 export type AnalyticsListItem = {
@@ -59,10 +69,12 @@ export type AnalyticsViewModel = {
   overview: {
     salesToday: AnalyticsMetric;
     salesThisMonth: AnalyticsMetric;
+    itemsSoldToday: AnalyticsMetric;
     topSelling: AnalyticsListItem[];
     lowStock: AnalyticsListItem[];
     fastMoving: AnalyticsListItem[];
     slowMoving: AnalyticsListItem[];
+    utangSummary: AnalyticsUtangSummary;
   };
   insights: {
     salesTrend: AnalyticsChartPoint[];
@@ -87,6 +99,7 @@ type BuildAnalyticsViewModelInput = {
   currencyCode: string;
   timezone: string;
   inventoryItems: LocalInventoryItem[];
+  customers: LocalCustomer[];
   salesRows: AnalyticsSalesRow[];
   now?: string;
 };
@@ -135,6 +148,7 @@ export function buildAnalyticsViewModel({
   currencyCode,
   timezone,
   inventoryItems,
+  customers,
   salesRows,
   now = new Date().toISOString(),
 }: BuildAnalyticsViewModelInput): AnalyticsViewModel {
@@ -176,6 +190,11 @@ export function buildAnalyticsViewModel({
       rows: salesThisMonthRows,
       hasIncompletePricing,
     }),
+    itemsSoldToday: {
+      label: 'Items Sold Today',
+      value: `${formatCount(salesTodayRows.reduce((total, row) => total + row.unitsSold, 0))} units`,
+      caption: 'Units sold today',
+    },
     topSelling: aggregateProductRows(last30Rows)
       .slice(0, 3)
       .map((product) => ({
@@ -202,6 +221,7 @@ export function buildAnalyticsViewModel({
         tone: 'positive' as const,
       })),
     slowMoving: buildSlowMovingItems(inventoryItems, last30Rows),
+    utangSummary: buildUtangSummary(customers, currencyCode),
   };
 
   const demandDeltas = buildDemandDeltas(inventoryItems, recent7Rows, previous7Rows);
@@ -601,6 +621,22 @@ function buildRecommendations({
         : 'Add prices and keep logging sales locally to unlock stronger demand guidance.',
     },
   ];
+}
+
+function buildUtangSummary(customers: LocalCustomer[], currencyCode: string): AnalyticsUtangSummary {
+  const openCustomers = customers
+    .filter((customer) => customer.utangBalance > 0)
+    .sort((left, right) => right.utangBalance - left.utangBalance);
+
+  const totalBalance = openCustomers.reduce((total, customer) => total + customer.utangBalance, 0);
+
+  return {
+    totalBalance: formatCurrency(totalBalance, currencyCode),
+    topCustomers: openCustomers.slice(0, 3).map((customer) => ({
+      customerName: customer.name,
+      balance: formatCurrency(customer.utangBalance, currencyCode),
+    })),
+  };
 }
 
 function getDayKey(date: Date, timezone: string) {

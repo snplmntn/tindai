@@ -52,10 +52,20 @@ describe('GET /api/v1/analytics/summary', () => {
       overview: {
         salesToday: { label: 'Sales Today', value: 'P80', caption: 'Revenue' },
         salesThisMonth: { label: 'Sales This Month', value: 'P320', caption: 'Revenue' },
+        itemsSoldToday: { label: 'Items Sold Today', value: '4 units', caption: 'Units sold today' },
         topSelling: [],
         lowStock: [],
         fastMoving: [],
         slowMoving: [],
+        utangSummary: {
+          totalBalance: 'P115',
+          topCustomers: [
+            {
+              customerName: 'Mang Juan',
+              balance: 'P80',
+            },
+          ],
+        },
       },
       insights: {
         salesTrend: [],
@@ -92,6 +102,8 @@ describe('GET /api/v1/analytics/summary', () => {
     expect(mockedGetAnalyticsSummaryForOwner).toHaveBeenCalledWith('user-123');
     expect(response.body.analytics.meta.storeId).toBe('store-1');
     expect(response.body.analytics.overview.salesToday.value).toBe('P80');
+    expect(response.body.analytics.overview.itemsSoldToday.value).toBe('4 units');
+    expect(response.body.analytics.overview.utangSummary.totalBalance).toBe('P115');
   });
 
   it('returns 401 when bearer token is missing', async () => {
