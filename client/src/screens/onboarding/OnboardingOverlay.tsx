@@ -9,8 +9,8 @@ type OnboardingOverlayProps = {
 
 const howItWorks = [
   'Pindutin ang malaking mic button sa ibaba ng screen.',
-  'Sabihin kung ano ang naibenta o naidagdag na stock nang natural.',
-  'Kusa nang ma-uupdate ang iyong inventory at benta.',
+  'Sabihin nang natural kung ano ang nabenta o nadagdag na paninda.',
+  'Awtomatikong maa-update ang imbentaryo at tala ng benta mo.',
 ];
 
 export function OnboardingOverlay({ onDismiss }: OnboardingOverlayProps) {
@@ -32,7 +32,7 @@ export function OnboardingOverlay({ onDismiss }: OnboardingOverlayProps) {
             <Ionicons name="mic" size={44} color={colors.primary} />
           </View>
           <Text style={styles.title}>Handa ka na!</Text>
-          <Text style={styles.body}>Maaari mo nang simulan ang pag-inventory gamit ang iyong boses.</Text>
+          <Text style={styles.body}>Pwede mo nang simulan ang pagtatala ng paninda gamit ang boses mo.</Text>
         </View>
 
         <View style={styles.steps}>
@@ -52,7 +52,7 @@ export function OnboardingOverlay({ onDismiss }: OnboardingOverlayProps) {
         </View>
 
         <Pressable style={styles.primaryButton} onPress={onDismiss}>
-          <Text style={styles.primaryLabel}>Simulan na ang Tindahan</Text>
+          <Text style={styles.primaryLabel}>Simulan na ang paggamit</Text>
           <Ionicons name="arrow-forward" size={18} color={colors.surface} />
         </Pressable>
       </View>

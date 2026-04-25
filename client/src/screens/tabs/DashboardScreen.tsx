@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -17,6 +17,11 @@ import { detectLanguageStyle } from "@/features/assistant/assistantLanguageDetec
 import type { CommandSource } from "@/features/commands/localCommandService";
 import { useAuth } from "@/context/AuthContext";
 import { useLocalData } from "@/features/local-data/LocalDataContext";
+import {
+  buildAnalyticsViewModel,
+  type AnalyticsSalesRow,
+} from "@/features/analytics/buildAnalyticsViewModel";
+import { loadAnalyticsSalesRows } from "@/features/analytics/analyticsRepository";
 import type { ParserResult } from "@/features/parser/offlineParser";
 import {
   getLanguageCode,
@@ -136,6 +141,9 @@ export function DashboardScreen() {
   const [itemPrice, setItemPrice] = useState("");
   const [itemFormError, setItemFormError] = useState<string | null>(null);
   const [isSavingItem, setIsSavingItem] = useState(false);
+  const [analyticsSalesRows, setAnalyticsSalesRows] = useState<
+    AnalyticsSalesRow[]
+  >([]);
   const hasSpeechRecognitionNative = speechRecognitionRuntime !== null;
   const isGuestMode = authMode === "guest" || appState?.mode === "guest";
   const isMicDisabled = microphonePermission === "denied";
@@ -154,6 +162,54 @@ export function DashboardScreen() {
         0,
       ),
     [inventoryItems],
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const hydrateSalesRows = async () => {
+      if (!store) {
+        if (isMounted) {
+          setAnalyticsSalesRows([]);
+        }
+        return;
+      }
+
+      try {
+        const rows = await loadAnalyticsSalesRows(store.id);
+        if (isMounted) {
+          setAnalyticsSalesRows(rows);
+        }
+      } catch {
+        if (isMounted) {
+          setAnalyticsSalesRows([]);
+        }
+      }
+    };
+
+    void hydrateSalesRows();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [store?.id]);
+
+  const dashboardOverview = useMemo(
+    () =>
+      buildAnalyticsViewModel({
+        currencyCode: store?.currencyCode ?? "PHP",
+        timezone: store?.timezone ?? "Asia/Manila",
+        inventoryItems,
+        customers,
+        salesRows: analyticsSalesRows,
+      }).overview,
+    [
+      analyticsSalesRows,
+      customers,
+      inventoryItems,
+      store?.currencyCode,
+      store?.timezone,
+    ],
   );
 
   const selectedFallbackItem = useMemo(
@@ -223,10 +279,8 @@ export function DashboardScreen() {
         if (result.status === "applied") {
           setCommandText("");
           setPendingParserResult(null);
-          setPendingCustomerName("");
-          setCommandMessage(
-            "Naitala na. Hihintayin lang ang internet para maipadala.",
-          );
+          setPendingCustomerName('');
+          setCommandMessage('Naitala na. Ipapasa ito kapag may internet na.');
           return;
         }
 
@@ -244,24 +298,20 @@ export function DashboardScreen() {
             answerText: answer.answerText,
             spokenText: answer.spokenText,
           });
-          setCommandMessage("Nasagot na ang tanong mo.");
+          setCommandMessage('May sagot na ang tanong mo.');
           return;
         }
 
         if (result.status === "needs_confirmation") {
           setPendingParserResult(result.parserResult);
-          setPendingCustomerName(
-            result.parserResult.credit.customer_name ?? "",
-          );
-          setCommandMessage("Pakikumpirma muna bago itala.");
+          setPendingCustomerName(result.parserResult.credit.customer_name ?? '');
+          setCommandMessage('Pakikumpirma muna bago i-save.');
           return;
         }
 
         setPendingParserResult(null);
-        setPendingCustomerName("");
-        setCommandMessage(
-          "Hindi malinaw ang utos. Pakiulit o ayusin ang sulat.",
-        );
+        setPendingCustomerName('');
+        setCommandMessage('Hindi malinaw ang sinabi mo. Pakiulit o ayusin ang pag-type.');
         openFallback();
       } catch (caughtError) {
         setCommandMessage(
@@ -279,7 +329,7 @@ export function DashboardScreen() {
 
   const handleSpeakAssistantAnswer = useCallback(async () => {
     if (!assistantAnswer?.spokenText) {
-      setCommandMessage("Wala pang babasahing sagot.");
+      setCommandMessage('Wala pang sagot na puwedeng basahin.');
       return;
     }
 
@@ -294,7 +344,7 @@ export function DashboardScreen() {
     }
 
     if (result.fallbackUsed) {
-      setCommandMessage("Binasa muna sa English para tuloy ang sagot.");
+      setCommandMessage('Binasa muna sa English para tuloy-tuloy ang sagot.');
     }
   }, [assistantAnswer]);
 
@@ -320,11 +370,9 @@ export function DashboardScreen() {
     try {
       await confirmLocalCommand(pendingParserResult, pendingCustomerName);
       setPendingParserResult(null);
-      setPendingCustomerName("");
-      setCommandText("");
-      setCommandMessage(
-        "Naitala na. Hihintayin lang ang internet para maipadala.",
-      );
+      setPendingCustomerName('');
+      setCommandText('');
+      setCommandMessage('Naitala na. Ipapasa ito kapag may internet na.');
     } catch (caughtError) {
       setCommandMessage(
         caughtError instanceof Error
@@ -349,9 +397,7 @@ export function DashboardScreen() {
 
       try {
         await applyManualAdjustment(itemId, direction);
-        setCommandMessage(
-          "Nabago na ang bilang. Hihintayin lang ang internet para maipadala.",
-        );
+        setCommandMessage('Nabago na ang bilang. Ipapasa ito kapag may internet na.');
       } catch (caughtError) {
         setCommandMessage(
           caughtError instanceof Error
@@ -377,17 +423,17 @@ export function DashboardScreen() {
     }
 
     if (!Number.isInteger(quantity) || quantity < 0) {
-      setItemFormError("Ang quantity ay dapat zero o mas mataas.");
+      setItemFormError('Ang dami ay dapat zero o mas mataas.');
       return;
     }
 
     if (Number.isNaN(cost) || cost < 0) {
-      setItemFormError("Ang cost price ay dapat zero o mas mataas.");
+      setItemFormError('Ang puhunan ay dapat zero o mas mataas.');
       return;
     }
 
     if (Number.isNaN(price) || price < 0) {
-      setItemFormError("Ang selling price ay dapat zero o mas mataas.");
+      setItemFormError('Ang presyo ng benta ay dapat zero o mas mataas.');
       return;
     }
 
@@ -419,18 +465,14 @@ export function DashboardScreen() {
 
   const startListening = useCallback(async () => {
     if (!hasSpeechRecognitionNative) {
-      setCommandMessage(
-        "Voice input needs a development build. You can type your command instead.",
-      );
+      setCommandMessage('Hindi pa available ang voice input dito. Puwede mong i-type ang utos mo.');
       return;
     }
 
     if (microphonePermission === "denied") {
       const nextStatus = await requestMicrophonePermission();
-      if (nextStatus === "denied") {
-        setCommandMessage(
-          "Kailangan ng microphone access para sa voice input. I-tap ang mic button para i-enable sa Settings.",
-        );
+      if (nextStatus === 'denied') {
+        setCommandMessage('Kailangan ng access sa mikropono. I-tap ang mic button para payagan ito sa Settings.');
         await openDeviceSettings();
         return;
       }
@@ -615,17 +657,15 @@ export function DashboardScreen() {
         {showGuestBanner ? (
           <View style={styles.bannerCard}>
             <View style={styles.bannerBody}>
-              <Text style={styles.bannerTitle}>Ang data ay local lang.</Text>
-              <Text style={styles.bannerText}>
-                Mag-sign in para mag-sync sa cloud.
-              </Text>
+              <Text style={styles.bannerTitle}>Sa phone mo lang naka-save ang tala mo.</Text>
+              <Text style={styles.bannerText}>Mag-sign in para magkaroon ng online backup ang tindahan mo.</Text>
             </View>
             <View style={styles.bannerActions}>
               <Pressable
                 onPress={() => void showLogin()}
                 style={styles.bannerPrimaryAction}
               >
-                <Text style={styles.bannerPrimaryLabel}>Sign In</Text>
+                <Text style={styles.bannerPrimaryLabel}>Mag-sign in</Text>
               </Pressable>
               <Pressable
                 onPress={() => setGuestBannerDismissed(true)}
@@ -640,12 +680,8 @@ export function DashboardScreen() {
         {showMicBanner ? (
           <View style={styles.warningBanner}>
             <View style={styles.bannerBody}>
-              <Text style={styles.bannerTitle}>
-                Kailangan ng microphone access para sa voice input.
-              </Text>
-              <Text style={styles.bannerText}>
-                I-tap ang mic button para i-enable sa Settings.
-              </Text>
+              <Text style={styles.bannerTitle}>Kailangan ng access sa mikropono para gumana ang voice input.</Text>
+              <Text style={styles.bannerText}>I-tap ang mic button para i-enable sa Settings.</Text>
             </View>
             <Pressable
               onPress={() => setMicBannerDismissed(true)}
@@ -683,7 +719,7 @@ export function DashboardScreen() {
           <Text style={styles.voiceLabel}>
             {isListening ? "NAKIKINIG..." : "BOSIS"}
           </Text>
-          <Text style={styles.voiceTitle}>Tap para magsalita ng utos</Text>
+          <Text style={styles.voiceTitle}>Pindutin para magtala ng benta</Text>
           <Pressable
             onPress={() => setIsAddItemVisible(true)}
             style={styles.addItemButton}
@@ -729,7 +765,7 @@ export function DashboardScreen() {
 
         {isSubmittingQuestion ? (
           <View style={styles.assistantCard}>
-            <Text style={styles.assistantTitle}>Sumasagot si Tinday...</Text>
+            <Text style={styles.assistantTitle}>Sumasagot si Tindai</Text>
             <ActivityIndicator color="#00604c" size="small" />
           </View>
         ) : null}
@@ -827,6 +863,33 @@ export function DashboardScreen() {
           </View>
         ) : null}
 
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Benta ngayong araw</Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryValue}>
+              {dashboardOverview.salesToday.value}
+            </Text>
+            <Text style={styles.summaryLabel}>Benta ngayon</Text>
+          </View>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryValue}>
+              {dashboardOverview.itemsSoldToday.value}
+            </Text>
+            <Text style={styles.summaryLabel}>Nabentang piraso</Text>
+          </View>
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryValue}>
+              {dashboardOverview.salesThisMonth.value}
+            </Text>
+            <Text style={styles.summaryLabel}>Benta ngayong buwan</Text>
+          </View>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Kalagayan ng paninda</Text>
+        </View>
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryValue}>{inventoryItems.length}</Text>
@@ -837,9 +900,7 @@ export function DashboardScreen() {
             <Text style={styles.summaryLabel}>Malapit maubos</Text>
           </View>
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryValue}>
-              P{inventoryValue.toFixed(0)}
-            </Text>
+            <Text style={styles.summaryValue}>P{inventoryValue.toFixed(0)}</Text>
             <Text style={styles.summaryLabel}>Halaga ng paninda</Text>
           </View>
         </View>
@@ -859,49 +920,54 @@ export function DashboardScreen() {
             </Pressable>
           </View>
         ) : (
-          <View style={styles.activityCard}>
-            {inventoryItems.slice(0, 8).map((item, index) => (
-              <View
-                key={item.id}
-                style={[
-                  styles.activityItem,
-                  index < Math.min(inventoryItems.length, 8) - 1
-                    ? styles.activityDivider
-                    : undefined,
-                ]}
-              >
-                <View style={styles.activityBody}>
-                  <Text style={styles.activityLabel}>{item.name}</Text>
-                  <Text style={styles.activityTime}>
-                    {item.currentStock} {item.unit}{" "}
-                    {item.currentStock <= item.lowStockThreshold
-                      ? "- Malapit maubos"
-                      : ""}
-                  </Text>
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Mga huling tala</Text>
+            </View>
+            <View style={styles.activityCard}>
+              {inventoryItems.slice(0, 8).map((item, index) => (
+                <View
+                  key={item.id}
+                  style={[
+                    styles.activityItem,
+                    index < Math.min(inventoryItems.length, 8) - 1
+                      ? styles.activityDivider
+                      : undefined,
+                  ]}
+                >
+                  <View style={styles.activityBody}>
+                    <Text style={styles.activityLabel}>{item.name}</Text>
+                    <Text style={styles.activityTime}>
+                      {item.currentStock} {item.unit}{" "}
+                      {item.currentStock <= item.lowStockThreshold
+                        ? "- Malapit maubos"
+                        : ""}
+                    </Text>
+                  </View>
+                  <View style={styles.adjustWrap}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => void handleManualAdjust(item.id, -1)}
+                      style={styles.adjustButton}
+                    >
+                      <Ionicons color="#ffffff" name="remove" size={16} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => void handleManualAdjust(item.id, 1)}
+                      style={styles.adjustButton}
+                    >
+                      {manualAdjustingItemId === item.id ? (
+                        <ActivityIndicator color="#ffffff" size="small" />
+                      ) : (
+                        <Ionicons color="#ffffff" name="add" size={16} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <View style={styles.adjustWrap}>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => void handleManualAdjust(item.id, -1)}
-                    style={styles.adjustButton}
-                  >
-                    <Ionicons color="#ffffff" name="remove" size={16} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => void handleManualAdjust(item.id, 1)}
-                    style={styles.adjustButton}
-                  >
-                    {manualAdjustingItemId === item.id ? (
-                      <ActivityIndicator color="#ffffff" size="small" />
-                    ) : (
-                      <Ionicons color="#ffffff" name="add" size={16} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          </>
         )}
 
         {assistantInteractions.length > 0 ? (
@@ -1474,6 +1540,15 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: "row",
     gap: 10,
+  },
+  sectionHeader: {
+    marginTop: 4,
+    marginBottom: -4,
+  },
+  sectionTitle: {
+    color: "#181d1b",
+    fontSize: 16,
+    fontWeight: "800",
   },
   summaryCard: {
     flex: 1,

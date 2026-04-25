@@ -50,7 +50,7 @@ export function AnalyticsView({
   error,
   emptyState,
 }: AnalyticsViewProps) {
-  const headerTitle = activeTab === 'Insights' ? 'Analytics Insights' : 'Business Insights';
+  const headerTitle = activeTab === 'Insights' ? 'Mga Insight' : 'Galaw ng Tindahan';
   const showContentEmptyState = !showSkeleton && emptyState !== null;
 
   return (
@@ -104,7 +104,7 @@ export function AnalyticsView({
 
           {error ? (
             <View style={styles.errorCard}>
-              <Text style={styles.errorTitle}>Analytics refresh paused</Text>
+              <Text style={styles.errorTitle}>May problema sa pag-refresh</Text>
               <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
@@ -157,7 +157,7 @@ function LoadingSkeleton({ activeTab }: { activeTab: AnalyticsTabKey }) {
         </View>
       </View>
 
-      <Text style={styles.skeletonHint}>Loading analytics...</Text>
+      <Text style={styles.skeletonHint}>Kinukuha ang datos...</Text>
 
       <View style={styles.metricGrid}>
         <View style={styles.skeletonMetricCard}>
@@ -196,47 +196,47 @@ function OverviewTab({
 }) {
   const focusItem = viewModel.overview.lowStock[0] ?? viewModel.overview.topSelling[0] ?? null;
   const insightBody = focusItem
-    ? `${focusItem.itemName} stands out right now. ${focusItem.detail}`
-    : 'Your overview stays readable even while local sales history is still warming up.';
+    ? `${focusItem.itemName} ang kapansin-pansin ngayon. ${focusItem.detail}`
+    : 'Magkakaroon ng mas malinaw na buod kapag may naitala nang benta.';
 
   return (
     <View style={styles.tabStack}>
       <InsightBanner
         body={insightBody}
-        label={isLoading ? 'Refreshing overview' : 'Tindai\'s Insight'}
-        title="Overview"
+        label={isLoading ? 'Ina-update ang buod' : 'Payo ni Tindai'}
+        title="Buod"
       />
 
       <View style={styles.metricGrid}>
         <MetricCard
           caption={viewModel.overview.salesToday.caption}
-          label="Daily Sales"
+          label="Benta ngayong araw"
           value={viewModel.overview.salesToday.value}
         />
         <MetricCard
           caption={viewModel.overview.itemsSoldToday.caption}
-          label="Items Sold Today"
+          label="Bilang ng naibenta"
           value={viewModel.overview.itemsSoldToday.value}
         />
       </View>
 
       <CardSurface>
-        <SectionHeader eyebrow="Last 7 Days" title="Sales Trend" />
+        <SectionHeader eyebrow="Huling 7 araw" title="Takbo ng benta" />
         <SalesTrendBarChart points={viewModel.insights.salesTrend} />
       </CardSurface>
 
       <CardSurface>
-        <SectionHeader actionLabel="View All" title="Top Selling Items" />
+        <SectionHeader actionLabel="Tingnan lahat" title="Pinakamabentang item" />
         <SellingList items={viewModel.overview.topSelling} />
       </CardSurface>
 
       <CardSurface>
-        <SectionHeader title="Low Stock Alerts" />
-        <SellingList emptyText="No low-stock items right now." items={viewModel.overview.lowStock} />
+        <SectionHeader title="Paubos na" />
+        <SellingList emptyText="Wala pang paubos na item ngayon." items={viewModel.overview.lowStock} />
       </CardSurface>
 
       <CardSurface>
-        <SectionHeader title="Open Utang" />
+        <SectionHeader title="May utang pa" />
         <UtangSummary
           customers={viewModel.overview.utangSummary.topCustomers}
           totalBalance={viewModel.overview.utangSummary.totalBalance}
@@ -255,47 +255,47 @@ function InsightsTab({
 }) {
   const leadItem = viewModel.insights.risingDemand[0] ?? viewModel.insights.decliningDemand[0] ?? null;
   const insightBody = leadItem
-    ? `${leadItem.itemName} is the clearest movement signal. ${leadItem.detail}`
-    : viewModel.insights.emptyState ?? 'Trend signals will sharpen as more local sales arrive.';
+    ? `${leadItem.itemName} ang may pinakamalinaw na galaw ngayon. ${leadItem.detail}`
+    : viewModel.insights.emptyState ?? 'Mas lilinaw ang galaw ng paninda kapag dumami na ang naitalang benta.';
   const signalCount = viewModel.insights.risingDemand.length + viewModel.insights.decliningDemand.length;
 
   return (
     <View style={styles.tabStack}>
       <InsightBanner
         body={insightBody}
-        label={isLoading ? 'Refreshing insights' : 'Tindai\'s Insight'}
-        title="Insights"
+        label={isLoading ? 'Ina-update ang mga insight' : 'Payo ni Tindai'}
+        title="Mga Insight"
       />
 
       <View style={styles.metricGrid}>
         <MetricCard
           caption={viewModel.overview.salesToday.caption}
-          label="Daily Sales"
+          label="Benta ngayong araw"
           value={viewModel.overview.salesToday.value}
         />
         <MetricCard
-          caption="Demand signals in view"
-          label="Items Sold"
+          caption="Mga item na may malinaw na galaw"
+          label="Mga naibenta"
           value={`${signalCount || viewModel.overview.fastMoving.length || viewModel.overview.slowMoving.length}`}
         />
       </View>
 
       <CardSurface>
-        <SectionHeader eyebrow="Last 7 Days" title="Sales Trend" />
+        <SectionHeader eyebrow="Huling 7 araw" title="Takbo ng benta" />
         <InsightsTrendLineChart points={viewModel.insights.salesTrend} />
       </CardSurface>
 
       <CardSurface>
-        <SectionHeader actionLabel="View All" title="Fast & Slow Moving Items" />
+        <SectionHeader actionLabel="Tingnan lahat" title="Mabilis at mabagal gumalaw" />
         <View style={styles.dualListGrid}>
           <MovementColumn
-            emptyText="No fast movers yet."
+            emptyText="Wala pang mabilis maubos."
             items={viewModel.overview.fastMoving.length > 0 ? viewModel.overview.fastMoving : viewModel.insights.risingDemand}
             title="Fast Movers"
             tone="positive"
           />
           <MovementColumn
-            emptyText="No slow movers yet."
+            emptyText="Wala pang mabagal gumalaw."
             items={viewModel.overview.slowMoving.length > 0 ? viewModel.overview.slowMoving : viewModel.insights.decliningDemand}
             title="Slow Movers"
             tone="warning"
@@ -304,8 +304,8 @@ function InsightsTab({
       </CardSurface>
 
       <CardSurface>
-        <SectionHeader title="Trend Detection" />
-        <TrendDetectionList emptyText={viewModel.insights.emptyState ?? 'No trend shifts detected yet.'} points={viewModel.insights.demandTrend} />
+        <SectionHeader title="Pagbabago ng galaw" />
+        <TrendDetectionList emptyText={viewModel.insights.emptyState ?? 'Wala pang nakikitang pagbabago sa galaw ng benta.'} points={viewModel.insights.demandTrend} />
       </CardSurface>
     </View>
   );
@@ -330,7 +330,7 @@ function PredictionsTab({
       ? 'AI-enriched forecast'
       : isLoading
         ? 'Refreshing local forecast'
-        : 'Local forecast';
+        : 'Lokal na forecast';
 
   return (
     <View style={styles.tabStack}>
@@ -346,7 +346,7 @@ function PredictionsTab({
       />
 
       <CardSurface>
-        <SectionHeader title="Next Grocery Trip" />
+        <SectionHeader title="Susunod na bili" />
         <ShoppingPresetRail
           onSelect={setSelectedPreset}
           presets={viewModel.predictions.shoppingPresets}
@@ -363,12 +363,12 @@ function PredictionsTab({
       </CardSurface>
 
       <CardSurface>
-        <SectionHeader title="Stock Prediction" />
+        <SectionHeader title="Taya sa stock" />
         <PredictionList items={predictionItems} />
       </CardSurface>
 
       <CardSurface>
-        <SectionHeader title="AI Performance Summary" />
+        <SectionHeader title="Buod ng mungkahi" />
         <RecommendationList recommendations={viewModel.predictions.recommendations} />
       </CardSurface>
     </View>
@@ -472,7 +472,7 @@ function SectionHeader({
 
 function SellingList({
   items,
-  emptyText = 'No local activity yet.',
+  emptyText = 'Wala pang naitalang galaw dito.',
 }: {
   items: AnalyticsListItem[];
   emptyText?: string;
@@ -605,7 +605,7 @@ function TrendDetectionList({
 
 function PredictionList({ items }: { items: AnalyticsListItem[] }) {
   if (items.length === 0) {
-    return <Text style={styles.emptyText}>No stock predictions yet.</Text>;
+    return <Text style={styles.emptyText}>Wala pang taya para sa stock.</Text>;
   }
 
   return (

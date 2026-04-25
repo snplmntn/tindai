@@ -20,6 +20,7 @@ export function SignUpScreen() {
     authError,
     clearAuthError,
     googleSignInHint,
+    isGoogleSignInEnabled,
   } = useAuth();
   const [fullName, setFullName] = useState('');
   const [storeName, setStoreName] = useState('');
@@ -47,9 +48,9 @@ export function SignUpScreen() {
 
     if (!fullName.trim() || !storeName.trim() || !email.trim() || password.length < MIN_PASSWORD_LENGTH || confirmPassword !== password) {
       if (password.length < MIN_PASSWORD_LENGTH) {
-        setLocalError('Password must be at least 8 characters.');
+        setLocalError('Dapat hindi bababa sa 8 character ang password.');
       } else if (confirmPassword !== password) {
-        setLocalError('Password and confirm password must match.');
+        setLocalError('Hindi magkapareho ang password.');
       }
       return;
     }
@@ -63,6 +64,10 @@ export function SignUpScreen() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!isGoogleSignInEnabled || isGoogleSubmitting) {
+      return;
+    }
+
     setLocalError(null);
     setIsGoogleSubmitting(true);
     try {
@@ -74,19 +79,19 @@ export function SignUpScreen() {
 
   return (
     <AuthLayout
-      badge="Account backup"
-      title="Ikonekta ang account mo."
-      subtitle="Gumawa ng account para ma-save ang tindahan mo online at maibalik ang data kapag nagpalit ka ng phone."
+      badge="Backup ng account"
+      title="Gumawa ng account."
+      subtitle="Gumawa ng account para ma-save online ang tala ng tindahan mo at madali mo itong maibalik kapag nagpalit ka ng phone."
       submitLabel="Gumawa ng Account"
       alternateLabel="May account ka na? Mag-sign in"
       onSubmit={handleEmailSignUp}
       onAlternatePress={() => void showLogin()}
-      dismissLabel="Back to app"
+      dismissLabel="Bumalik sa app"
       onDismiss={() => void closeAuth()}
     >
       <View style={styles.formBlock}>
         <AuthField
-          label="Full name"
+          label="Buong pangalan"
           placeholder="Juan Dela Cruz"
           value={fullName}
           onChangeText={(value) => {
@@ -100,7 +105,7 @@ export function SignUpScreen() {
           hasError={fieldErrors.fullName}
         />
         <AuthField
-          label="Store name"
+          label="Pangalan ng tindahan"
           placeholder="Nena Sari-Sari Store"
           value={storeName}
           onChangeText={(value) => {
@@ -127,7 +132,7 @@ export function SignUpScreen() {
         />
         <AuthField
           label="Password"
-          placeholder="At least 8 characters"
+          placeholder="Hindi bababa sa 8 character"
           value={password}
           onChangeText={(value) => {
             setPassword(value);
@@ -140,8 +145,8 @@ export function SignUpScreen() {
           hasError={fieldErrors.password}
         />
         <AuthField
-          label="Confirm password"
-          placeholder="Re-enter your password"
+          label="Ulitin ang password"
+          placeholder="I-type ulit ang password"
           value={confirmPassword}
           onChangeText={(value) => {
             setConfirmPassword(value);
@@ -157,15 +162,16 @@ export function SignUpScreen() {
 
       <View style={styles.divider}>
         <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or</Text>
+        <Text style={styles.dividerText}>o</Text>
         <View style={styles.dividerLine} />
       </View>
 
       <PrimaryButton
-        label={isGoogleSubmitting ? 'Nag-sign in gamit ang Google...' : 'Mag-sign in gamit ang Google'}
+        label={isGoogleSubmitting ? 'Gumagawa ng account gamit ang Google...' : 'Gumawa ng account gamit ang Google'}
         onPress={handleGoogleSignIn}
         variant="ghost"
         leadingIcon={<GoogleSignInMark />}
+        disabled={!isGoogleSignInEnabled || isGoogleSubmitting}
       />
 
       {googleSignInHint ? <Text style={styles.infoText}>{googleSignInHint}</Text> : null}

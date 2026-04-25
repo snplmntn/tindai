@@ -1,5 +1,7 @@
 import 'react-native-gesture-handler';
 
+import { Feather, FontAwesome, Ionicons } from '@expo/vector-icons';
+import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -9,6 +11,15 @@ import { LocalDataProvider } from '@/features/local-data/LocalDataContext';
 import { RootNavigator } from '@/navigation/RootNavigator';
 
 export default function App() {
+  const [fontsLoaded, fontError] = useFonts({
+    ...Ionicons.font,
+    ...Feather.font,
+    ...FontAwesome.font,
+  });
+
+  void fontsLoaded;
+  void fontError;
+
   return (
     <SafeAreaProvider>
       <NavigationContainer>

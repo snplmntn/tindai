@@ -157,8 +157,8 @@ export function AnalyticsScreen() {
         showEmptyState
           ? {
               title: 'Wala pang mababasang galaw',
-              body: 'Magdagdag muna ng unang item para magsimulang lumabas dito ang benta, stock, at mga payo.',
-              actionLabel: 'Add your first item',
+              body: 'Magdagdag muna ng unang item para magsimulang lumabas dito ang benta, natitirang stock, at mga payo.',
+              actionLabel: 'Magdagdag ng unang item',
               onAction: handleAddFirstItem,
             }
           : null

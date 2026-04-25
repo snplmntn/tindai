@@ -8,20 +8,24 @@ export function PrimaryButton({
   onPress,
   variant = 'solid',
   leadingIcon,
+  disabled = false,
 }: {
   label: string;
   onPress: () => void;
   variant?: 'solid' | 'ghost';
   leadingIcon?: ReactNode;
+  disabled?: boolean;
 }) {
   const ghost = variant === 'ghost';
 
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       style={({ pressed }) => [
         styles.button,
         ghost ? styles.ghost : styles.solid,
+        disabled && styles.disabled,
         pressed && styles.pressed,
       ]}
     >
@@ -54,6 +58,9 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.94,
     transform: [{ scale: 0.985 }],
+  },
+  disabled: {
+    opacity: 0.55,
   },
   content: {
     flexDirection: 'row',

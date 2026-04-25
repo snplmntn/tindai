@@ -1,1249 +1,687 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-
 import { Ionicons } from '@expo/vector-icons';
-import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { supabase } from '@/config/supabase';
+import { ClientTabLayout } from '@/components/ClientTabLayout';
+import { ReceiptCaptureFlow } from '@/features/receipt-scan/ReceiptCaptureFlow';
+import { ReceiptReviewPanel } from '@/features/receipt-scan/ReceiptReviewPanel';
+import {
+  cleanupReceiptImageDraft,
+  formatReceiptFileSize,
+  type ReceiptImageDraft,
+} from '@/features/receipt-scan/receiptCapture';
+import {
+  confirmReceiptOnBackend,
+  matchReceiptOnBackend,
+  parseReceiptOnBackend,
+  sendReceiptOcrToBackend,
+} from '@/features/receipt-scan/receiptApi';
+import {
+  assessReceiptOcrText,
+  extractReceiptText,
+  type ReceiptProcessingState,
+} from '@/features/receipt-scan/receiptOcr';
+import {
+  createReceiptReviewSession,
+  getReceiptReviewSummary,
+  type ReceiptReviewItemDraft,
+  type ReceiptReviewSession,
+} from '@/features/receipt-scan/receiptReview';
 import { useLocalData } from '@/features/local-data/LocalDataContext';
-import type { LocalInventoryItem } from '@/features/local-db/types';
 import { colors } from '@/navigation/colors';
 
-type SortMode = 'name' | 'stock_desc' | 'stock_asc';
-
-function getInitials(value: string) {
-  const parts = value
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2);
-
-  if (parts.length === 0) {
-    return 'TD';
-  }
-
-  return parts.map((part) => part[0]?.toUpperCase() ?? '').join('');
-}
-
 function formatPendingLine(createdAt: string, source: string, intent: string | null) {
-  const created = new Date(createdAt);
-  const hour = String(created.getHours()).padStart(2, '0');
-  const minute = String(created.getMinutes()).padStart(2, '0');
+  const time = new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const kind = intent === 'restock' ? 'dagdag' : intent === 'utang' ? 'utang' : 'bawas';
   const from = source === 'voice' ? 'boses' : source === 'manual' ? 'pindot' : 'sulat';
 
-  return `${hour}:${minute} • ${kind} • ${from}`;
+  return `${time} - ${kind} - ${from}`;
 }
 
-function formatMoney(value: number | null | undefined) {
-  const amount = typeof value === 'number' ? value : 0;
-  return `P${amount.toFixed(2)}`;
-}
-
-function formatUpdatedAt(value: string) {
-  const date = new Date(value);
-  const month = date.toLocaleString('en-PH', { month: 'short' });
-  const day = String(date.getDate()).padStart(2, '0');
-  const hour = String(date.getHours()).padStart(2, '0');
-  const minute = String(date.getMinutes()).padStart(2, '0');
-
-  return `${month} ${day}, ${hour}:${minute}`;
-}
-
-function normalizeSearchText(value: string) {
-  return value.trim().toLowerCase();
-}
-
-function matchesSearch(item: LocalInventoryItem, query: string) {
-  if (!query) {
-    return true;
+function parseReceiptPositiveNumber(value: string) {
+  const normalized = value.replace(/,/g, '').trim();
+  if (!normalized) {
+    return null;
   }
 
-  const haystack = [item.name, ...item.aliases].map((value) => value.toLowerCase());
-  return haystack.some((value) => value.includes(query));
-}
-
-function isLowStock(item: LocalInventoryItem) {
-  return item.currentStock <= item.lowStockThreshold;
-}
-
-function compareItems(a: LocalInventoryItem, b: LocalInventoryItem, sortMode: SortMode) {
-  if (sortMode === 'stock_desc') {
-    if (b.currentStock !== a.currentStock) {
-      return b.currentStock - a.currentStock;
-    }
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
   }
 
-  if (sortMode === 'stock_asc') {
-    if (a.currentStock !== b.currentStock) {
-      return a.currentStock - b.currentStock;
-    }
-  }
-
-  return a.name.localeCompare(b.name);
+  return parsed;
 }
 
-function getItemMetaLine(item: LocalInventoryItem) {
-  const secondaryLabel =
-    item.aliases.find((alias) => alias.trim().toLowerCase() !== item.name.trim().toLowerCase()) ?? 'paninda';
+function buildReceiptConfirmPayload(review: ReceiptReviewSession) {
+  return {
+    items: review.items.map((item) => {
+      if (item.resolution === 'SKIP') {
+        return {
+          receiptItemId: item.receiptItemId,
+          action: 'SKIP' as const,
+          rawName: item.rawName,
+          displayName: item.displayName,
+        };
+      }
 
-  return `${item.unit.toUpperCase()} • ${secondaryLabel}`;
+      const quantity = parseReceiptPositiveNumber(item.quantityText);
+      if (quantity === null) {
+        throw new Error(`Ayusin muna ang dami para sa ${item.displayName || item.rawName}.`);
+      }
+
+      const explicitUnitCost = parseReceiptPositiveNumber(item.unitPriceText);
+      const lineTotal = parseReceiptPositiveNumber(item.lineTotalText);
+      const derivedUnitCost =
+        explicitUnitCost ?? (lineTotal !== null && quantity > 0 ? Number((lineTotal / quantity).toFixed(2)) : null);
+
+      if (item.resolution === 'MATCH_EXISTING') {
+        if (!item.selectedProductId) {
+          throw new Error(`Pumili muna ng paninda para sa ${item.displayName || item.rawName}.`);
+        }
+
+        return {
+          receiptItemId: item.receiptItemId,
+          action: 'MATCH_EXISTING' as const,
+          productId: item.selectedProductId,
+          quantity,
+          unitCost: derivedUnitCost,
+          rawName: item.rawName,
+          displayName: item.displayName,
+          matchedAlias: item.matchedAlias,
+        };
+      }
+
+      const createProductName = item.newProductName.trim() || item.displayName.trim() || item.rawName.trim();
+      if (!createProductName) {
+        throw new Error(`Pangalanan muna ang bagong paninda para sa ${item.rawName}.`);
+      }
+
+      return {
+        receiptItemId: item.receiptItemId,
+        action: 'CREATE_PRODUCT' as const,
+        createProductName,
+        quantity,
+        unitCost: derivedUnitCost,
+        rawName: item.rawName,
+        displayName: item.displayName,
+        matchedAlias: item.matchedAlias,
+      };
+    }),
+  };
 }
 
 export function InventoryScreen() {
-  const navigation = useNavigation<any>();
-  const route = useRoute();
-  const isFocused = useIsFocused();
-  const {
-    appState,
-    store,
-    inventoryItems,
-    pendingTransactions,
-    applyManualAdjustment,
-    createLocalInventoryItem,
-    updateInventoryItemMetadata,
-    archiveLocalInventoryItem,
-  } = useLocalData();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortMode, setSortMode] = useState<SortMode>('name');
-  const [lowStockOnly, setLowStockOnly] = useState(false);
-  const [isFilterVisible, setIsFilterVisible] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<LocalInventoryItem | null>(null);
-  const [manualAdjustingItemId, setManualAdjustingItemId] = useState<string | null>(null);
-  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
-  const [isAddItemVisible, setIsAddItemVisible] = useState(false);
-  const [itemName, setItemName] = useState('');
-  const [itemQuantity, setItemQuantity] = useState('0');
-  const [itemCost, setItemCost] = useState('');
-  const [itemPrice, setItemPrice] = useState('');
-  const [itemFormError, setItemFormError] = useState<string | null>(null);
-  const [isSavingItem, setIsSavingItem] = useState(false);
-  const [isEditItemVisible, setIsEditItemVisible] = useState(false);
-  const [editItemName, setEditItemName] = useState('');
-  const [editItemCost, setEditItemCost] = useState('');
-  const [editItemPrice, setEditItemPrice] = useState('');
-  const [editItemThreshold, setEditItemThreshold] = useState('');
-  const [editFormError, setEditFormError] = useState<string | null>(null);
-  const [isUpdatingItem, setIsUpdatingItem] = useState(false);
-  const [isArchivingItem, setIsArchivingItem] = useState(false);
-  const searchValue = normalizeSearchText(searchQuery);
-  const showPendingPanel = appState?.mode === 'authenticated' && pendingTransactions.length > 0;
-  const effectiveInventoryItems = inventoryItems;
-  const isEmptyInventory = effectiveInventoryItems.length === 0;
-  const hasActiveSearch = searchValue.length > 0;
-  const hasActiveFilters = hasActiveSearch || lowStockOnly || sortMode !== 'name';
-
-  const filteredItems = useMemo(() => {
-    return effectiveInventoryItems
-      .filter((item) => matchesSearch(item, searchValue))
-      .filter((item) => (lowStockOnly ? isLowStock(item) : true))
-      .sort((a, b) => compareItems(a, b, sortMode));
-  }, [effectiveInventoryItems, lowStockOnly, searchValue, sortMode]);
-
-  const handleManualAdjust = useCallback(
-    async (itemId: string, direction: -1 | 1) => {
-      setManualAdjustingItemId(itemId);
-      setFeedbackMessage(null);
-
-      try {
-        await applyManualAdjustment(itemId, direction);
-        setFeedbackMessage('Nabago na ang bilang ng item.');
-      } catch (caughtError) {
-        setFeedbackMessage(caughtError instanceof Error ? caughtError.message : 'Hindi nabago ang bilang. Subukan ulit.');
-      } finally {
-        setManualAdjustingItemId(null);
-      }
-    },
-    [applyManualAdjustment],
+  const { appState, inventoryItems, pendingTransactions, refresh } = useLocalData();
+  const [isReceiptFlowVisible, setIsReceiptFlowVisible] = useState(false);
+  const [savedReceiptDraft, setSavedReceiptDraft] = useState<ReceiptImageDraft | null>(null);
+  const [receiptProcessingState, setReceiptProcessingState] = useState<ReceiptProcessingState>({ status: 'idle' });
+  const [receiptReview, setReceiptReview] = useState<ReceiptReviewSession | null>(null);
+  const showPending = appState?.mode === 'authenticated';
+  const showPendingPanel = showPending && pendingTransactions.length > 0;
+  const reviewSummary = useMemo(
+    () => (receiptReview ? getReceiptReviewSummary(receiptReview.items) : null),
+    [receiptReview],
   );
 
-  const handleOpenAddItem = useCallback(() => {
-    setItemFormError(null);
-    setItemName('');
-    setItemQuantity('0');
-    setItemCost('');
-    setItemPrice('');
-    setIsAddItemVisible(true);
-  }, []);
+  function updateReviewItem(receiptItemId: string, updater: (item: ReceiptReviewItemDraft) => ReceiptReviewItemDraft) {
+    setReceiptReview((current) => {
+      if (!current) {
+        return current;
+      }
 
-  useEffect(() => {
-    const requestId =
-      typeof route.params === 'object' && route.params !== null && 'openAddItemRequestId' in route.params
-        ? route.params.openAddItemRequestId
-        : undefined;
-
-    if (!isFocused || typeof requestId !== 'string' || requestId.length === 0) {
-      return;
-    }
-
-    handleOpenAddItem();
-    navigation.setParams({
-      openAddItemRequestId: undefined,
+      return {
+        ...current,
+        items: current.items.map((item) => (item.receiptItemId === receiptItemId ? updater(item) : item)),
+      };
     });
-  }, [handleOpenAddItem, isFocused, navigation, route.params]);
+  }
 
-  const handleOpenEditItem = useCallback(() => {
-    if (!selectedItem) {
+  function setMatchPickerOpen(receiptItemId: string, open: boolean) {
+    updateReviewItem(receiptItemId, (item) => ({
+      ...item,
+      isMatchPickerOpen: open,
+      isCreateProductOpen: open ? false : item.isCreateProductOpen,
+      matchSearchText: open ? item.matchSearchText || item.displayName || item.rawName : item.matchSearchText,
+      resolution: item.resolution === 'SKIP' && open ? 'UNRESOLVED' : item.resolution,
+    }));
+  }
+
+  function setCreateProductOpen(receiptItemId: string, open: boolean) {
+    updateReviewItem(receiptItemId, (item) => ({
+      ...item,
+      isCreateProductOpen: open,
+      isMatchPickerOpen: open ? false : item.isMatchPickerOpen,
+      resolution: open ? 'UNRESOLVED' : item.resolution,
+    }));
+  }
+
+  async function handleConfirmReceiptReview() {
+    if (!receiptReview) {
       return;
     }
-
-    setEditFormError(null);
-    setEditItemName(selectedItem.name);
-    setEditItemCost(selectedItem.cost === null ? '' : String(selectedItem.cost));
-    setEditItemPrice(String(selectedItem.price));
-    setEditItemThreshold(String(selectedItem.lowStockThreshold));
-    setIsEditItemVisible(true);
-  }, [selectedItem]);
-
-  const handleAddItem = useCallback(async () => {
-    const trimmedName = itemName.trim();
-    const quantity = Number(itemQuantity);
-    const cost = Number(itemCost);
-    const price = Number(itemPrice);
-
-    if (!trimmedName) {
-      setItemFormError('Ilagay ang pangalan ng item.');
-      return;
-    }
-
-    if (!Number.isInteger(quantity) || quantity < 0) {
-      setItemFormError('Ang quantity ay dapat zero o mas mataas.');
-      return;
-    }
-
-    if (Number.isNaN(cost) || cost < 0) {
-      setItemFormError('Ang cost price ay dapat zero o mas mataas.');
-      return;
-    }
-
-    if (Number.isNaN(price) || price < 0) {
-      setItemFormError('Ang selling price ay dapat zero o mas mataas.');
-      return;
-    }
-
-    setItemFormError(null);
-    setIsSavingItem(true);
 
     try {
-      await createLocalInventoryItem({
-        name: trimmedName,
-        quantity,
-        cost,
-        price,
+      const lastExtraction =
+        receiptProcessingState.status === 'succeeded'
+          ? receiptProcessingState.extraction
+          : receiptProcessingState.status === 'weak_text'
+            ? receiptProcessingState.extraction
+            : {
+                provider: 'ml_kit' as const,
+                rawText: '',
+                ocrBlocks: [],
+                imageMeta: { width: 0, height: 0, fileSize: 0 },
+              };
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (!accessToken) {
+        throw new Error('Mag-sign in muna bago isave ang resibo.');
+      }
+
+      const payload = buildReceiptConfirmPayload(receiptReview);
+      setReceiptProcessingState({
+        status: 'confirming_receipt',
+        receiptId: receiptReview.receiptId,
       });
-      setItemName('');
-      setItemQuantity('0');
-      setItemCost('');
-      setItemPrice('');
-      setIsAddItemVisible(false);
-      setFeedbackMessage('Naidagdag na ang item.');
-    } catch (caughtError) {
-      setItemFormError(caughtError instanceof Error ? caughtError.message : 'Hindi naidagdag ang item.');
-    } finally {
-      setIsSavingItem(false);
-    }
-  }, [createLocalInventoryItem, itemCost, itemName, itemPrice, itemQuantity]);
 
-  const handleUpdateItem = useCallback(async () => {
-    if (!selectedItem) {
-      return;
-    }
-
-    const trimmedName = editItemName.trim();
-    const cost = Number(editItemCost);
-    const price = Number(editItemPrice);
-    const lowStockThreshold = Number(editItemThreshold);
-
-    if (!trimmedName) {
-      setEditFormError('Ilagay ang pangalan ng item.');
-      return;
-    }
-
-    if (Number.isNaN(cost) || cost < 0) {
-      setEditFormError('Ang cost price ay dapat zero o mas mataas.');
-      return;
-    }
-
-    if (Number.isNaN(price) || price < 0) {
-      setEditFormError('Ang selling price ay dapat zero o mas mataas.');
-      return;
-    }
-
-    if (Number.isNaN(lowStockThreshold) || lowStockThreshold < 0) {
-      setEditFormError('Ang low stock alert ay dapat zero o mas mataas.');
-      return;
-    }
-
-    setEditFormError(null);
-    setIsUpdatingItem(true);
-
-    try {
-      await updateInventoryItemMetadata({
-        itemId: selectedItem.id,
-        name: trimmedName,
-        cost,
-        price,
-        lowStockThreshold,
+      const result = await confirmReceiptOnBackend({
+        accessToken,
+        receiptId: receiptReview.receiptId,
+        idempotencyKey: `receipt-confirm-${receiptReview.receiptId}`,
+        payload,
       });
-      setIsEditItemVisible(false);
-      setSelectedItem(null);
-      setFeedbackMessage('Na-update na ang detalye ng item.');
-    } catch (caughtError) {
-      setEditFormError(caughtError instanceof Error ? caughtError.message : 'Hindi na-update ang item.');
-    } finally {
-      setIsUpdatingItem(false);
+
+      await refresh();
+      setReceiptReview(null);
+      setSavedReceiptDraft(null);
+      setReceiptProcessingState({
+        status: 'succeeded',
+        receiptId: receiptReview.receiptId,
+        extraction: lastExtraction,
+        reviewStatus: 'ready_for_parse',
+        message: `Naisave ang resibo. Nadagdag ang ${result.appliedItems} item, nilaktawan ang ${result.skippedItems}, at may ${result.aliasesSaved} bagong tawag na natandaan.`,
+      });
+    } catch (error) {
+      setReceiptProcessingState({
+        status: 'failed',
+        receiptId: receiptReview.receiptId,
+        message: error instanceof Error ? error.message : 'Hindi pa naisave ang resibo.',
+      });
     }
-  }, [editItemCost, editItemName, editItemPrice, editItemThreshold, selectedItem, updateInventoryItemMetadata]);
+  }
 
-  const handleArchiveItem = useCallback(async () => {
-    if (!selectedItem) {
-      return;
-    }
-
-    setIsArchivingItem(true);
-    setFeedbackMessage(null);
-
+  async function handleSaveReceiptDraft(draft: ReceiptImageDraft) {
     try {
-      await archiveLocalInventoryItem(selectedItem.id);
-      setIsEditItemVisible(false);
-      setSelectedItem(null);
-      setFeedbackMessage('Na-archive na ang item.');
-    } catch (caughtError) {
-      setFeedbackMessage(caughtError instanceof Error ? caughtError.message : 'Hindi na-archive ang item.');
-    } finally {
-      setIsArchivingItem(false);
+      if (savedReceiptDraft) {
+        void cleanupReceiptImageDraft(savedReceiptDraft);
+      }
+
+      setSavedReceiptDraft(draft);
+      setReceiptReview(null);
+      setReceiptProcessingState({
+        status: 'running_ocr',
+        receiptId: draft.id,
+      });
+
+      const extraction = await extractReceiptText(draft);
+      const assessment = assessReceiptOcrText(extraction.rawText);
+      if (assessment.status === 'weak') {
+        setReceiptProcessingState({
+          status: 'weak_text',
+          receiptId: draft.id,
+          extraction,
+          message: assessment.message ?? 'Kaunti pa lang ang nabasa mula sa resibo.',
+        });
+        setIsReceiptFlowVisible(false);
+        return;
+      }
+
+      setReceiptProcessingState({
+        status: 'uploading_ocr',
+        receiptId: draft.id,
+      });
+
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (!accessToken) {
+        setReceiptProcessingState({
+          status: 'failed',
+          receiptId: draft.id,
+          message: 'Mag-sign in muna bago iproseso ang laman ng resibo.',
+        });
+        setIsReceiptFlowVisible(false);
+        return;
+      }
+
+      const response = await sendReceiptOcrToBackend({
+        accessToken,
+        receiptId: draft.id,
+        payload: {
+          rawText: extraction.rawText,
+          ocrBlocks: extraction.ocrBlocks,
+          imageMeta: extraction.imageMeta,
+          provider: extraction.provider,
+        },
+      });
+
+      if (response.ocrQuality === 'weak') {
+        setReceiptProcessingState({
+          status: 'weak_text',
+          receiptId: draft.id,
+          extraction,
+          message: 'Kaunti pa lang ang nabasang detalye. Pwede kang kumuha ulit ng mas malinaw na resibo.',
+        });
+      } else {
+        setReceiptProcessingState({
+          status: 'parsing_receipt',
+          receiptId: draft.id,
+        });
+
+        const parsedReceipt = await parseReceiptOnBackend({
+          accessToken,
+          receiptId: draft.id,
+          payload: {
+            rawText: extraction.rawText,
+          },
+        });
+
+        if (parsedReceipt.items.length === 0) {
+          setReceiptProcessingState({
+            status: 'weak_text',
+            receiptId: draft.id,
+            extraction,
+            message: 'Hindi namin makita ang malinaw na listahan ng item sa resibo. Subukan ulit ang mas malinaw na kuha o mas malapit na litrato.',
+          });
+          setIsReceiptFlowVisible(false);
+          return;
+        }
+
+        setReceiptProcessingState({
+          status: 'matching_items',
+          receiptId: draft.id,
+        });
+
+        const matchedReceipt = await matchReceiptOnBackend({
+          accessToken,
+          receiptId: draft.id,
+          payload: {
+            items: parsedReceipt.items,
+          },
+        });
+
+        setReceiptReview(
+          createReceiptReviewSession({
+            receiptId: draft.id,
+            merchantName: parsedReceipt.merchantName,
+            receiptDate: parsedReceipt.receiptDate,
+            subtotalAmount: parsedReceipt.subtotalAmount,
+            taxAmount: parsedReceipt.taxAmount,
+            totalAmount: parsedReceipt.totalAmount,
+            items: matchedReceipt.items,
+          }),
+        );
+
+        setReceiptProcessingState({
+          status: 'succeeded',
+          receiptId: draft.id,
+          extraction,
+          reviewStatus: 'ready_for_parse',
+          message:
+            parsedReceipt.nameEnrichmentStatus === 'gemini_fallback'
+              ? 'Nabuo ang listahan ng item gamit ang internet. Paki-check muna bago ito ituloy.'
+              : parsedReceipt.nameEnrichmentStatus === 'gemini_enriched'
+                ? 'May ilang pangalan ng item na nilinaw dahil may internet. I-check muna bago ito ituloy.'
+                : 'Ayusin muna ang mga item bago ito ituloy.',
+        });
+      }
+
+      setIsReceiptFlowVisible(false);
+    } catch (error) {
+      setReceiptProcessingState({
+        status: 'failed',
+        receiptId: draft.id,
+        message: error instanceof Error ? error.message : 'Hindi natuloy ang pagbasa ng resibo.',
+      });
+      setIsReceiptFlowVisible(false);
+      console.error('[receipt] flow failed', error);
     }
-  }, [archiveLocalInventoryItem, selectedItem]);
+  }
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <View style={styles.screen}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.shell}>
-            <View style={styles.headerRow}>
-              <View style={styles.headerMenuButton}>
-                <Ionicons color={colors.primaryDeep} name="menu-outline" size={24} />
-              </View>
-
-              <Text style={styles.headerTitle}>Inventory</Text>
-
-              <View style={styles.avatarBadge}>
-                <Text style={styles.avatarBadgeText}>{getInitials(store?.name ?? 'Tindai')}</Text>
-              </View>
-            </View>
-
-            <Text style={styles.headerSubtitle}>Hanapin, silipin, at ayusin agad ang paninda sa tindahan.</Text>
-
-            <View style={styles.searchRow}>
-              <View style={styles.searchField}>
-                <Ionicons color={colors.muted} name="search-outline" size={18} />
-                <TextInput
-                  testID="inventory-search-input"
-                  autoCapitalize="words"
-                  onChangeText={setSearchQuery}
-                  placeholder="Hanapin ang item o alias"
-                  placeholderTextColor={colors.muted}
-                  style={styles.searchInput}
-                  value={searchQuery}
-                />
-              </View>
-
-              <Pressable
-                testID="inventory-filter-button"
-                accessibilityRole="button"
-                onPress={() => setIsFilterVisible(true)}
-                style={styles.filterButton}
-              >
-                <Ionicons color={colors.primaryDeep} name="options-outline" size={18} />
-                <Text style={styles.filterButtonText}>Ayos</Text>
-              </Pressable>
-            </View>
-
-            {(lowStockOnly || sortMode !== 'name') && filteredItems.length > 0 ? (
-              <View style={styles.activeFiltersRow}>
-                <View style={styles.filterChip}>
-                  <Text style={styles.filterChipText}>
-                    {sortMode === 'name'
-                      ? 'A-Z'
-                      : sortMode === 'stock_desc'
-                        ? 'Stock high to low'
-                        : 'Stock low to high'}
-                  </Text>
-                </View>
-                {lowStockOnly ? (
-                  <View style={styles.filterChip}>
-                    <Text style={styles.filterChipText}>Low stock only</Text>
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-
-            {feedbackMessage ? (
-              <View style={styles.feedbackCard}>
-                <Text style={styles.feedbackText}>{feedbackMessage}</Text>
-              </View>
-            ) : null}
-
-            {showPendingPanel ? (
-              <View style={styles.pendingCard}>
-                <Text style={styles.pendingTitle}>May naghihintay pa maipadala</Text>
-                {pendingTransactions.slice(0, 3).map((transaction, index) => (
-                  <View
-                    key={transaction.id}
-                    style={[
-                      styles.pendingRow,
-                      index < Math.min(pendingTransactions.length, 3) - 1 ? styles.pendingRowDivider : undefined,
-                    ]}
-                  >
-                    <Text style={styles.pendingText}>{transaction.rawText}</Text>
-                    <Text style={styles.pendingMeta}>
-                      {formatPendingLine(transaction.createdAt, transaction.source, transaction.intent)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-
-            {filteredItems.length === 0 ? (
-              <View
-                style={styles.emptyCard}
-                testID={isEmptyInventory && !hasActiveFilters ? 'inventory-empty-state' : 'inventory-no-results-state'}
-              >
-                <View style={styles.emptyIconWrap}>
-                  <Ionicons
-                    color={colors.primaryDeep}
-                    name={isEmptyInventory && !hasActiveFilters ? 'cube-outline' : 'search-outline'}
-                    size={24}
-                  />
-                </View>
-                <Text style={styles.emptyTitle}>{isEmptyInventory && !hasActiveFilters ? 'Wala pang item' : 'Walang tumugma'}</Text>
-                <Text style={styles.emptyBody}>
-                  {isEmptyInventory && !hasActiveFilters
-                    ? 'Magdagdag ng unang paninda para lumabas ang listahan dito.'
-                    : 'Subukan ang ibang hanap o alisin ang low stock filter.'}
-                </Text>
-                {!isEmptyInventory || hasActiveFilters ? (
-                  <Pressable
-                    onPress={() => {
-                      setSearchQuery('');
-                      setLowStockOnly(false);
-                      setSortMode('name');
-                    }}
-                    style={styles.emptyAction}
-                  >
-                    <Text style={styles.emptyActionText}>I-reset ang hanap</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : (
-              <View style={styles.itemList}>
-                {filteredItems.map((item) => (
-                  <View key={item.id} style={styles.itemCard} testID={`item-card-${item.id}`}>
-                    <Pressable
-                      testID={`inventory-open-item-${item.id}`}
-                      onPress={() => setSelectedItem(item)}
-                      style={styles.itemBody}
-                    >
-                      <View style={styles.itemAvatar}>
-                        <Text style={styles.itemAvatarText}>{getInitials(item.name)}</Text>
-                      </View>
-
-                      <View style={styles.itemCopy}>
-                        <View style={styles.itemTitleRow}>
-                          <Text style={styles.itemName} testID={`item-name-${item.id}`}>
-                            {item.name}
-                          </Text>
-                          <Text style={styles.itemPrice}>{formatMoney(item.price)}</Text>
-                        </View>
-
-                        <Text style={styles.itemMeta}>{getItemMetaLine(item)}</Text>
-
-                        <View style={styles.itemStockRow}>
-                          <Text style={styles.itemStock}>{item.currentStock} in stock</Text>
-                          {isLowStock(item) ? (
-                            <View style={styles.lowStockBadge}>
-                              <Text style={styles.lowStockBadgeText}>Low stock</Text>
-                            </View>
-                          ) : null}
-                        </View>
-                      </View>
-                    </Pressable>
-
-                    <View style={styles.adjustRow}>
-                      <Pressable
-                        testID={`inventory-adjust-minus-${item.id}`}
-                        accessibilityRole="button"
-                        onPress={() => void handleManualAdjust(item.id, -1)}
-                        style={styles.adjustButton}
-                      >
-                        <Ionicons color="#FFFFFF" name="remove" size={16} />
-                      </Pressable>
-                      <Pressable
-                        testID={`inventory-adjust-plus-${item.id}`}
-                        accessibilityRole="button"
-                        onPress={() => void handleManualAdjust(item.id, 1)}
-                        style={styles.adjustButton}
-                      >
-                        {manualAdjustingItemId === item.id ? (
-                          <ActivityIndicator color="#FFFFFF" size="small" />
-                        ) : (
-                          <Ionicons color="#FFFFFF" name="add" size={16} />
-                        )}
-                      </Pressable>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        </ScrollView>
-
-        <Pressable
-          testID="inventory-add-open-button"
-          accessibilityRole="button"
-          onPress={handleOpenAddItem}
-          style={styles.fab}
-        >
-          <Ionicons color="#FFFFFF" name="add" size={22} />
-        </Pressable>
-      </View>
-
-      <Modal animationType="slide" transparent visible={isFilterVisible} onRequestClose={() => setIsFilterVisible(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Ayusin ang listahan</Text>
-
-            <Text style={styles.sheetLabel}>Sort</Text>
-            <View style={styles.optionStack}>
-              {[
-                { key: 'name' as const, label: 'A-Z', testID: 'inventory-sort-name' },
-                { key: 'stock_desc' as const, label: 'Stock high to low', testID: 'inventory-sort-stock-desc' },
-                { key: 'stock_asc' as const, label: 'Stock low to high', testID: 'inventory-sort-stock-asc' },
-              ].map((option) => {
-                const isActive = sortMode === option.key;
-
-                return (
-                  <Pressable
-                    key={option.key}
-                    testID={option.testID}
-                    accessibilityRole="button"
-                    onPress={() => setSortMode(option.key)}
-                    style={[styles.optionButton, isActive ? styles.optionButtonActive : undefined]}
-                  >
-                    <Text style={[styles.optionText, isActive ? styles.optionTextActive : undefined]}>{option.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <Text style={styles.sheetLabel}>Filter</Text>
-            <Pressable
-              testID="inventory-low-stock-toggle"
-              accessibilityRole="button"
-              onPress={() => setLowStockOnly((current) => !current)}
-              style={[styles.toggleRow, lowStockOnly ? styles.toggleRowActive : undefined]}
-            >
-              <View>
-                <Text style={styles.toggleTitle}>Low stock only</Text>
-                <Text style={styles.toggleBody}>Ipakita lang ang kailangan bantayan.</Text>
-              </View>
-              <View style={[styles.togglePill, lowStockOnly ? styles.togglePillActive : undefined]}>
-                <View style={[styles.toggleKnob, lowStockOnly ? styles.toggleKnobActive : undefined]} />
-              </View>
-            </Pressable>
-
-            <View style={styles.sheetActions}>
-              <Pressable onPress={() => setIsFilterVisible(false)} style={styles.secondaryAction}>
-                <Text style={styles.secondaryActionText}>Isara</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal animationType="slide" transparent visible={isAddItemVisible} onRequestClose={() => setIsAddItemVisible(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Magdagdag ng item</Text>
-
-            <Text style={styles.sheetLabel}>Pangalan ng item</Text>
-            <TextInput
-              testID="inventory-add-name-input"
-              autoCapitalize="words"
-              onChangeText={setItemName}
-              placeholder="Hal. Bear Brand"
-              placeholderTextColor={colors.muted}
-              style={styles.formInput}
-              value={itemName}
-            />
-
-            <Text style={styles.sheetLabel}>Quantity</Text>
-            <TextInput
-              testID="inventory-add-quantity-input"
-              keyboardType="number-pad"
-              onChangeText={setItemQuantity}
-              placeholder="0"
-              placeholderTextColor={colors.muted}
-              style={styles.formInput}
-              value={itemQuantity}
-            />
-
-            <Text style={styles.sheetLabel}>Cost price</Text>
-            <TextInput
-              testID="inventory-add-cost-input"
-              keyboardType="decimal-pad"
-              onChangeText={setItemCost}
-              placeholder="0"
-              placeholderTextColor={colors.muted}
-              style={styles.formInput}
-              value={itemCost}
-            />
-
-            <Text style={styles.sheetLabel}>Selling price</Text>
-            <TextInput
-              testID="inventory-add-price-input"
-              keyboardType="decimal-pad"
-              onChangeText={setItemPrice}
-              placeholder="0"
-              placeholderTextColor={colors.muted}
-              style={styles.formInput}
-              value={itemPrice}
-            />
-
-            {itemFormError ? <Text style={styles.formErrorText}>{itemFormError}</Text> : null}
-
-            <View style={styles.sheetActions}>
-              <Pressable onPress={() => setIsAddItemVisible(false)} style={styles.secondaryAction}>
-                <Text style={styles.secondaryActionText}>Kanselahin</Text>
-              </Pressable>
-              <Pressable
-                testID="inventory-add-submit-button"
-                onPress={() => void handleAddItem()}
-                style={styles.primaryAction}
-              >
-                <Text style={styles.primaryActionText}>{isSavingItem ? 'Nagse-save...' : 'I-save ang item'}</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        animationType="slide"
-        transparent
-        visible={isEditItemVisible}
-        onRequestClose={() => setIsEditItemVisible(false)}
+    <>
+      <ClientTabLayout
+        label="Paninda"
+        title="Hanapin, silipin, at ayusin agad ang paninda mo."
+        subtitle="Makikita mo rito ang bilang, mga paubos na, at mga naghihintay maipadala."
+        highlights={[
+          `${inventoryItems.length} produktong naka-lista`,
+          showPending
+            ? pendingTransactions.length > 0
+              ? `${pendingTransactions.length} tala ang naghihintay ng internet`
+              : 'Lahat ng tala ay naipadala na'
+            : 'Mag-sign in para magkaroon ng online backup ang mga tala mo',
+          'Puwede ka ring maghanda ng litrato ng resibo bago ito iproseso',
+        ]}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Ayusin ang detalye</Text>
-
-            <Text style={styles.sheetLabel}>Pangalan ng item</Text>
-            <TextInput
-              testID="inventory-edit-name-input"
-              autoCapitalize="words"
-              onChangeText={setEditItemName}
-              placeholder="Hal. Bear Brand"
-              placeholderTextColor={colors.muted}
-              style={styles.formInput}
-              value={editItemName}
-            />
-
-            <Text style={styles.sheetLabel}>Cost price</Text>
-            <TextInput
-              testID="inventory-edit-cost-input"
-              keyboardType="decimal-pad"
-              onChangeText={setEditItemCost}
-              placeholder="0"
-              placeholderTextColor={colors.muted}
-              style={styles.formInput}
-              value={editItemCost}
-            />
-
-            <Text style={styles.sheetLabel}>Selling price</Text>
-            <TextInput
-              testID="inventory-edit-price-input"
-              keyboardType="decimal-pad"
-              onChangeText={setEditItemPrice}
-              placeholder="0"
-              placeholderTextColor={colors.muted}
-              style={styles.formInput}
-              value={editItemPrice}
-            />
-
-            <Text style={styles.sheetLabel}>Low stock alert</Text>
-            <TextInput
-              testID="inventory-edit-threshold-input"
-              keyboardType="number-pad"
-              onChangeText={setEditItemThreshold}
-              placeholder="0"
-              placeholderTextColor={colors.muted}
-              style={styles.formInput}
-              value={editItemThreshold}
-            />
-
-            {editFormError ? <Text style={styles.formErrorText}>{editFormError}</Text> : null}
-
-            <View style={styles.sheetActions}>
-              <Pressable onPress={() => setIsEditItemVisible(false)} style={styles.secondaryAction}>
-                <Text style={styles.secondaryActionText}>Kanselahin</Text>
-              </Pressable>
-              <Pressable
-                testID="inventory-edit-submit-button"
-                onPress={() => void handleUpdateItem()}
-                style={styles.primaryAction}
-              >
-                <Text style={styles.primaryActionText}>{isUpdatingItem ? 'Sine-save...' : 'I-save ang detalye'}</Text>
-              </Pressable>
+        <View style={styles.receiptCard}>
+          <View style={styles.receiptHeader}>
+            <View style={styles.receiptIconWrap}>
+              <Ionicons color={colors.primaryDeep} name="receipt-outline" size={20} />
+            </View>
+            <View style={styles.receiptHeaderBody}>
+              <Text style={styles.receiptTitle}>Ihanda ang resibo ng restock</Text>
+              <Text style={styles.receiptBody}>
+                Kumuha o pumili ng malinaw na litrato ng resibo. Isi-save muna ito sa phone bago ang susunod na hakbang.
+              </Text>
             </View>
           </View>
+
+          <Pressable onPress={() => setIsReceiptFlowVisible(true)} style={styles.receiptButton}>
+            <Ionicons color="#ffffff" name="camera-outline" size={18} />
+            <Text style={styles.receiptButtonLabel}>
+              {savedReceiptDraft ? 'Palitan ang resibo' : 'Kuhanan ang resibo'}
+            </Text>
+          </Pressable>
+
+          {savedReceiptDraft ? (
+            <View style={styles.savedReceiptCard}>
+              <Text style={styles.savedReceiptTitle}>Huling larawang naihanda</Text>
+              <Text style={styles.savedReceiptMeta}>
+                {savedReceiptDraft.source === 'camera' ? 'Kinuha sa camera' : 'Galing sa gallery'}
+              </Text>
+              <Text style={styles.savedReceiptMeta}>
+                {savedReceiptDraft.width} x {savedReceiptDraft.height} - {formatReceiptFileSize(savedReceiptDraft.fileSize)}
+              </Text>
+              <Text style={styles.savedReceiptMeta}>
+                {savedReceiptDraft.qualityIssues.length > 0
+                  ? `${savedReceiptDraft.qualityIssues.length} paalala bago iproseso`
+                  : 'Mukhang malinaw ang kuha'}
+              </Text>
+            </View>
+          ) : null}
+
+          {receiptProcessingState.status === 'running_ocr' ||
+          receiptProcessingState.status === 'uploading_ocr' ||
+          receiptProcessingState.status === 'parsing_receipt' ||
+          receiptProcessingState.status === 'matching_items' ||
+          receiptProcessingState.status === 'confirming_receipt' ? (
+            <View style={styles.processingCard}>
+              <Text style={styles.processingTitle}>
+                {receiptProcessingState.status === 'running_ocr'
+                  ? 'Binabasa ang resibo'
+                  : receiptProcessingState.status === 'uploading_ocr'
+                    ? 'Ipinapadala ang nabasang laman'
+                    : receiptProcessingState.status === 'parsing_receipt'
+                      ? 'Hinahanap ang mga item'
+                      : receiptProcessingState.status === 'matching_items'
+                        ? 'Inuugnay sa listahan ng paninda'
+                        : 'Sine-save ang resibo'}
+              </Text>
+              <Text style={styles.processingBody}>Sandali lang habang inihahanda ang susunod na hakbang.</Text>
+            </View>
+          ) : null}
+
+          {receiptProcessingState.status === 'succeeded' ? (
+            <View style={styles.processingSuccessCard}>
+              <Text style={styles.processingSuccessTitle}>Handa na ang unang basa ng resibo</Text>
+              <Text style={styles.processingBody}>
+                {receiptProcessingState.message ?? 'Naihanda na ang detalye ng resibo.'}
+              </Text>
+            </View>
+          ) : null}
+
+          {receiptProcessingState.status === 'weak_text' ? (
+            <View style={styles.processingWarningCard}>
+              <Text style={styles.processingWarningTitle}>Kulangan ang nabasang detalye</Text>
+              <Text style={styles.processingBody}>{receiptProcessingState.message}</Text>
+            </View>
+          ) : null}
+
+          {receiptProcessingState.status === 'failed' ? (
+            <View style={styles.processingErrorCard}>
+              <Text style={styles.processingErrorTitle}>Hindi natuloy ang pagbasa ng resibo</Text>
+              <Text style={styles.processingBody}>{receiptProcessingState.message}</Text>
+            </View>
+          ) : null}
         </View>
-      </Modal>
 
-      <Modal animationType="slide" transparent visible={selectedItem !== null} onRequestClose={() => setSelectedItem(null)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>{selectedItem?.name ?? 'Detalye ng item'}</Text>
+        {receiptReview ? (
+          <ReceiptReviewPanel
+            review={receiptReview}
+            inventoryItems={inventoryItems}
+            onUpdateItem={updateReviewItem}
+            onToggleMatchPicker={setMatchPickerOpen}
+            onToggleCreateProduct={setCreateProductOpen}
+          />
+        ) : null}
 
-            {selectedItem ? (
-              <View style={styles.detailStack}>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Aliases</Text>
-                  <Text style={styles.detailValue}>{selectedItem.aliases.join(', ') || 'Wala pa'}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Stock</Text>
-                  <Text style={styles.detailValue}>
-                    {selectedItem.currentStock} {selectedItem.unit}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Price</Text>
-                  <Text style={styles.detailValue}>{formatMoney(selectedItem.price)}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Cost</Text>
-                  <Text style={styles.detailValue}>
-                    {selectedItem.cost === null ? 'Wala pa' : formatMoney(selectedItem.cost)}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Na-update</Text>
-                  <Text style={styles.detailValue}>{formatUpdatedAt(selectedItem.updatedAt)}</Text>
+        {reviewSummary && reviewSummary.unresolvedCount === 0 ? (
+          <View style={styles.reviewReadyCard}>
+            <Text style={styles.reviewReadyTitle}>Handa na ang listahan ng item</Text>
+            <Text style={styles.processingBody}>
+              Napili na ang gagawing paninda, bagong item, o mga hindi isasama. Puwede mo nang isave ang napiling listahan.
+            </Text>
+            <Pressable
+              testID="receipt-confirm-button"
+              onPress={() => {
+                void handleConfirmReceiptReview();
+              }}
+              style={styles.receiptButton}
+            >
+              <Ionicons color="#ffffff" name="checkmark-circle-outline" size={18} />
+              <Text style={styles.receiptButtonLabel}>I-save ang resibo</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {showPendingPanel ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Naghihintay maipadala</Text>
+            {pendingTransactions.slice(0, 5).map((transaction, index) => (
+              <View
+                key={transaction.id}
+                style={[styles.row, index < Math.min(pendingTransactions.length, 5) - 1 ? styles.rowDivider : undefined]}
+              >
+                <View style={styles.rowBody}>
+                  <Text style={styles.rowTitle}>{transaction.rawText}</Text>
+                  <Text style={styles.rowMeta}>{formatPendingLine(transaction.createdAt, transaction.source, transaction.intent)}</Text>
+                  {transaction.primaryItemName && typeof transaction.primaryQuantityDelta === 'number' ? (
+                    <Text style={styles.rowMeta}>
+                      {transaction.primaryItemName} {transaction.primaryQuantityDelta > 0 ? '+' : ''}
+                      {transaction.primaryQuantityDelta}
+                    </Text>
+                  ) : null}
                 </View>
               </View>
-            ) : null}
-
-            <View style={styles.sheetActions}>
-              <Pressable testID="inventory-edit-open-button" onPress={handleOpenEditItem} style={styles.secondaryAction}>
-                <Text style={styles.secondaryActionText}>I-edit</Text>
-              </Pressable>
-              <Pressable
-                testID="inventory-archive-button"
-                onPress={() => void handleArchiveItem()}
-                style={styles.dangerAction}
-              >
-                <Text style={styles.dangerActionText}>{isArchivingItem ? 'Ina-archive...' : 'I-archive'}</Text>
-              </Pressable>
-              <Pressable onPress={() => setSelectedItem(null)} style={styles.secondaryAction}>
-                <Text style={styles.secondaryActionText}>Isara</Text>
-              </Pressable>
-            </View>
+            ))}
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        ) : null}
+      </ClientTabLayout>
+
+      <ReceiptCaptureFlow
+        visible={isReceiptFlowVisible}
+        onClose={() => setIsReceiptFlowVisible(false)}
+        onSaveDraft={handleSaveReceiptDraft}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 120,
-  },
-  shell: {
-    gap: 16,
-  },
-  headerRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  headerMenuButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
+  receiptCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
     borderWidth: 1,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
+    borderColor: '#d6ebe1',
+    padding: 16,
+    gap: 14,
   },
-  headerTitle: {
-    color: colors.primaryDeep,
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: 0.2,
+  receiptHeader: {
+    flexDirection: 'row',
+    gap: 12,
   },
-  avatarBadge: {
+  receiptIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#edf7f1',
     alignItems: 'center',
-    backgroundColor: colors.secondary,
-    borderRadius: 16,
-    height: 48,
     justifyContent: 'center',
-    width: 48,
   },
-  avatarBadgeText: {
-    color: colors.primaryDeep,
-    fontSize: 15,
+  receiptHeaderBody: {
+    flex: 1,
+    gap: 4,
+  },
+  receiptTitle: {
+    color: '#181d1b',
+    fontSize: 16,
     fontWeight: '800',
   },
-  headerSubtitle: {
-    color: colors.muted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  searchField: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    flex: 1,
-    flexDirection: 'row',
-    gap: 8,
-    minHeight: 54,
-    paddingHorizontal: 14,
-  },
-  searchInput: {
-    color: colors.text,
-    flex: 1,
-    fontSize: 15,
-    paddingVertical: 14,
-  },
-  filterButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 6,
-    justifyContent: 'center',
-    minWidth: 96,
-    paddingHorizontal: 14,
-  },
-  filterButtonText: {
-    color: colors.primaryDeep,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  activeFiltersRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  filterChip: {
-    backgroundColor: colors.card,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  filterChipText: {
-    color: colors.primaryDeep,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  feedbackCard: {
-    backgroundColor: colors.card,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  feedbackText: {
-    color: colors.primaryDeep,
+  receiptBody: {
+    color: '#4d5a53',
     fontSize: 13,
+    lineHeight: 19,
     fontWeight: '600',
   },
-  pendingCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 22,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+  receiptButton: {
+    minHeight: 48,
+    borderRadius: 14,
+    backgroundColor: '#145746',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
-  pendingTitle: {
-    color: colors.text,
-    fontSize: 15,
+  receiptButtonLabel: {
+    color: '#ffffff',
+    fontSize: 14,
     fontWeight: '800',
-    marginBottom: 10,
   },
-  pendingRow: {
+  savedReceiptCard: {
+    borderRadius: 16,
+    backgroundColor: '#f4faf6',
+    borderWidth: 1,
+    borderColor: '#d6ebe1',
+    padding: 14,
+    gap: 3,
+  },
+  savedReceiptTitle: {
+    color: '#145746',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  savedReceiptMeta: {
+    color: '#4d5a53',
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  processingCard: {
+    borderRadius: 16,
+    backgroundColor: '#f2f7ff',
+    borderWidth: 1,
+    borderColor: '#c8daf8',
+    padding: 14,
     gap: 4,
+  },
+  processingTitle: {
+    color: '#164277',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  processingBody: {
+    color: '#4d5a53',
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  processingSuccessCard: {
+    borderRadius: 16,
+    backgroundColor: '#eef9f2',
+    borderWidth: 1,
+    borderColor: '#cfe6d7',
+    padding: 14,
+    gap: 4,
+  },
+  processingSuccessTitle: {
+    color: '#145746',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  processingWarningCard: {
+    borderRadius: 16,
+    backgroundColor: '#fff6e6',
+    borderWidth: 1,
+    borderColor: '#f0d9a9',
+    padding: 14,
+    gap: 4,
+  },
+  processingWarningTitle: {
+    color: '#6c4d00',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  processingErrorCard: {
+    borderRadius: 16,
+    backgroundColor: '#ffebe8',
+    borderWidth: 1,
+    borderColor: '#f4c7c0',
+    padding: 14,
+    gap: 4,
+  },
+  processingErrorTitle: {
+    color: '#9b1c12',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  reviewReadyCard: {
+    borderRadius: 16,
+    backgroundColor: '#eef9f2',
+    borderWidth: 1,
+    borderColor: '#cfe6d7',
+    padding: 14,
+    gap: 4,
+  },
+  reviewReadyTitle: {
+    color: '#145746',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#ecebea',
+    overflow: 'hidden',
+  },
+  cardTitle: {
+    color: '#181d1b',
+    fontSize: 16,
+    fontWeight: '800',
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+  row: {
+    paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  pendingRowDivider: {
-    borderBottomColor: colors.border,
+  rowDivider: {
     borderBottomWidth: 1,
+    borderBottomColor: '#f2f1f0',
   },
-  pendingText: {
-    color: colors.text,
+  rowBody: {
+    gap: 3,
+  },
+  rowTitle: {
+    color: '#181d1b',
     fontSize: 13,
     fontWeight: '700',
   },
-  pendingMeta: {
-    color: colors.muted,
+  rowMeta: {
+    color: '#4d5a53',
     fontSize: 12,
     fontWeight: '500',
-  },
-  emptyCard: {
-    alignItems: 'flex-start',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 26,
-    borderWidth: 1,
-    gap: 10,
-    padding: 18,
-  },
-  emptyIconWrap: {
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    height: 42,
-    justifyContent: 'center',
-    width: 42,
-  },
-  emptyTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  emptyBody: {
-    color: colors.muted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  emptyAction: {
-    backgroundColor: colors.primaryDeep,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  emptyActionText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  itemList: {
-    gap: 12,
-  },
-  itemCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 26,
-    borderWidth: 1,
-    padding: 14,
-  },
-  itemBody: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  itemAvatar: {
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderRadius: 18,
-    height: 52,
-    justifyContent: 'center',
-    width: 52,
-  },
-  itemAvatarText: {
-    color: colors.primaryDeep,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  itemCopy: {
-    flex: 1,
-    gap: 6,
-  },
-  itemTitleRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between',
-  },
-  itemName: {
-    color: colors.text,
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  itemPrice: {
-    color: colors.primaryDeep,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  itemMeta: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  itemStockRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  itemStock: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  lowStockBadge: {
-    backgroundColor: colors.secondary,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  lowStockBadgeText: {
-    color: colors.primaryDeep,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  adjustRow: {
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'flex-end',
-    marginTop: 14,
-  },
-  adjustButton: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 14,
-    height: 38,
-    justifyContent: 'center',
-    width: 38,
-  },
-  fab: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 28,
-    bottom: 28,
-    height: 56,
-    justifyContent: 'center',
-    position: 'absolute',
-    right: 18,
-    shadowColor: colors.primaryDeep,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    width: 56,
-  },
-  modalBackdrop: {
-    backgroundColor: 'rgba(19, 42, 34, 0.28)',
-    flex: 1,
-    justifyContent: 'flex-end',
-    padding: 12,
-  },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderRadius: 28,
-    padding: 18,
-  },
-  sheetTitle: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 14,
-  },
-  sheetLabel: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-    marginBottom: 8,
-    marginTop: 8,
-    textTransform: 'uppercase',
-  },
-  optionStack: {
-    gap: 10,
-  },
-  optionButton: {
-    backgroundColor: colors.surfaceAlt,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  optionButtonActive: {
-    backgroundColor: colors.card,
-    borderColor: colors.primary,
-  },
-  optionText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  optionTextActive: {
-    color: colors.primaryDeep,
-    fontWeight: '800',
-  },
-  toggleRow: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceAlt,
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-  },
-  toggleRowActive: {
-    backgroundColor: colors.card,
-    borderColor: colors.primary,
-  },
-  toggleTitle: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  toggleBody: {
-    color: colors.muted,
-    fontSize: 12,
-    marginTop: 4,
-  },
-  togglePill: {
-    backgroundColor: 'rgba(31, 122, 99, 0.16)',
-    borderRadius: 999,
-    height: 26,
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    width: 46,
-  },
-  togglePillActive: {
-    backgroundColor: colors.primary,
-  },
-  toggleKnob: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 9,
-    height: 18,
-    width: 18,
-  },
-  toggleKnobActive: {
-    alignSelf: 'flex-end',
-  },
-  formInput: {
-    backgroundColor: colors.surfaceAlt,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: 15,
-    marginBottom: 2,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-  },
-  formErrorText: {
-    color: '#9B1C12',
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 10,
-  },
-  sheetActions: {
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'flex-end',
-    marginTop: 18,
-  },
-  secondaryAction: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceAlt,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minWidth: 96,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  secondaryActionText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  dangerAction: {
-    alignItems: 'center',
-    backgroundColor: '#FEE7E7',
-    borderRadius: 16,
-    justifyContent: 'center',
-    minWidth: 112,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  dangerActionText: {
-    color: '#A12A2A',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  primaryAction: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryDeep,
-    borderRadius: 16,
-    justifyContent: 'center',
-    minWidth: 120,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  primaryActionText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  detailStack: {
-    gap: 12,
-  },
-  detailRow: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 18,
-    padding: 14,
-  },
-  detailLabel: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-  },
-  detailValue: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 21,
   },
 });
