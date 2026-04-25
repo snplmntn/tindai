@@ -16,18 +16,39 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Allow Tindai to use speech recognition for voice commands.",
+        "NSMicrophoneUsageDescription": "Allow Tindai to use the microphone for voice commands."
+      }
     },
     "android": {
-      "package": "com.example.tindai"
+      "package": "com.example.tindai",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro"
     },
     "plugins": [
+      "expo-dev-client",
       "expo-asset",
       "expo-sqlite",
-      "@react-native-google-signin/google-signin"
-    ]
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Tindai to use the microphone for voice commands.",
+          "speechRecognitionPermission": "Allow Tindai to use speech recognition for voice commands."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2dc9c32b-59ae-4e9a-b3a5-96d090a5cbad"
+      }
+    },
+    "owner": "snplmntn"
   }
 }

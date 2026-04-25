@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Pressable,
   Modal,
-  NativeModules,
   ScrollView,
   StyleSheet,
   Text,
@@ -39,17 +38,14 @@ type SpeechRecognitionModuleRuntime = {
 };
 
 const speechRecognitionRuntime: SpeechRecognitionModuleRuntime | null = (() => {
-  const hasNativeSpeechModule = Boolean(
-    (NativeModules as Record<string, unknown> | undefined)?.ExpoSpeechRecognition ??
-      (NativeModules as Record<string, unknown> | undefined)?.ExpoSpeechRecognitionModule,
-  );
-
-  if (!hasNativeSpeechModule) {
-    return null;
-  }
-
   try {
-    return require('expo-speech-recognition') as SpeechRecognitionModuleRuntime;
+    const runtime = require('expo-speech-recognition') as SpeechRecognitionModuleRuntime;
+
+    if (!runtime?.ExpoSpeechRecognitionModule?.start || !runtime?.ExpoSpeechRecognitionModule?.requestPermissionsAsync) {
+      return null;
+    }
+
+    return runtime;
   } catch {
     return null;
   }
