@@ -112,6 +112,26 @@ describe('buildAnalyticsViewModel', () => {
     expect(result.predictions.restockSoon[0]).toMatchObject({
       itemName: 'Coke Mismo',
     });
+    expect(result.predictions.shoppingPresets.map((preset) => preset.label)).toEqual([
+      '7 days',
+      '14 days',
+      '1 month',
+    ]);
+    expect(result.predictions.shoppingListByPreset['7d'][0]).toMatchObject({
+      itemName: 'Coke Mismo',
+      recommendedBuyQuantity: 1,
+      horizonDays: 7,
+    });
+    expect(result.predictions.shoppingListByPreset['14d'][0]).toMatchObject({
+      itemName: 'Coke Mismo',
+      recommendedBuyQuantity: 6,
+      horizonDays: 14,
+    });
+    expect(result.predictions.shoppingListByPreset['30d'][1]).toMatchObject({
+      itemName: 'Bigas',
+      recommendedBuyQuantity: 10,
+      horizonDays: 30,
+    });
     expect(result.predictions.recommendations[0]?.body).toContain('Restock within');
   });
 
@@ -141,5 +161,8 @@ describe('buildAnalyticsViewModel', () => {
     expect(result.overview.salesToday.caption).toBe('No priced sales yet');
     expect(result.insights.emptyState).toContain('Need at least 7 days');
     expect(result.predictions.emptyState).toContain('Forecasts will appear');
+    expect(result.predictions.shoppingListByPreset['7d']).toEqual([]);
+    expect(result.predictions.shoppingListByPreset['14d']).toEqual([]);
+    expect(result.predictions.shoppingListByPreset['30d']).toEqual([]);
   });
 });

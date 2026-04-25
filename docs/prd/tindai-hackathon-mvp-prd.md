@@ -344,6 +344,7 @@ P0 analytics:
 - Items sold today.
 - Estimated sales count or revenue based on each inventory item's configured price.
 - Low-stock list.
+- Prediction-driven grocery-trip list with quantity guidance for 7 days, 14 days, and 1 month.
 
 Acceptance criteria:
 

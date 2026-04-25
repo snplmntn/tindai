@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -7,7 +7,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/navigation/colors';
 
 import { ForecastSparklineChart, InsightsTrendLineChart, SalesTrendBarChart } from './AnalyticsCharts';
-import type { AnalyticsChartPoint, AnalyticsListItem, AnalyticsViewModel } from './buildAnalyticsViewModel';
+import type {
+  AnalyticsChartPoint,
+  AnalyticsListItem,
+  AnalyticsShoppingListItem,
+  AnalyticsShoppingPreset,
+  AnalyticsShoppingPresetKey,
+  AnalyticsViewModel,
+} from './buildAnalyticsViewModel';
 
 type AnalyticsTabKey = 'Overview' | 'Insights' | 'Predictions & AI';
 
@@ -262,8 +269,13 @@ function PredictionsTab({
   viewModel: AnalyticsViewProps['viewModel'];
   isLoading: boolean;
 }) {
+  const [selectedPreset, setSelectedPreset] = useState<AnalyticsShoppingPresetKey>('7d');
   const leadItem = viewModel.predictions.restockSoon[0] ?? viewModel.predictions.forecast[0] ?? null;
   const predictionItems = mergePredictionItems(viewModel.predictions.forecast, viewModel.predictions.restockSoon);
+  const activePreset =
+    viewModel.predictions.shoppingPresets.find((preset) => preset.key === selectedPreset) ??
+    viewModel.predictions.shoppingPresets[0];
+  const shoppingItems = activePreset ? viewModel.predictions.shoppingListByPreset[activePreset.key] ?? [] : [];
   const summaryTone =
     viewModel.predictions.modelStatus === 'gemini_enriched'
       ? 'AI-enriched forecast'
@@ -283,6 +295,23 @@ function PredictionsTab({
         title={leadItem ? leadItem.itemName : 'Forecasts are warming up'}
         trendPoints={viewModel.insights.salesTrend}
       />
+
+      <CardSurface>
+        <SectionHeader title="Next Grocery Trip" />
+        <ShoppingPresetRail
+          onSelect={setSelectedPreset}
+          presets={viewModel.predictions.shoppingPresets}
+          selectedPreset={activePreset?.key ?? '7d'}
+        />
+        <ShoppingList
+          emptyText={
+            viewModel.predictions.emptyState
+              ? viewModel.predictions.emptyState
+              : `You're stocked for the next ${activePreset?.days ?? 7} days based on recent sales.`
+          }
+          items={shoppingItems}
+        />
+      </CardSurface>
 
       <CardSurface>
         <SectionHeader title="Stock Prediction" />
@@ -491,6 +520,64 @@ function PredictionList({ items }: { items: AnalyticsListItem[] }) {
           <Pressable accessibilityRole="button" onPress={noop} style={styles.restockButton}>
             <Text style={styles.restockButtonText}>Suggest Restock</Text>
           </Pressable>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function ShoppingPresetRail({
+  presets,
+  selectedPreset,
+  onSelect,
+}: {
+  presets: AnalyticsShoppingPreset[];
+  selectedPreset: AnalyticsShoppingPresetKey;
+  onSelect: (preset: AnalyticsShoppingPresetKey) => void;
+}) {
+  return (
+    <View style={styles.shoppingPresetRail}>
+      {presets.map((preset) => {
+        const isActive = preset.key === selectedPreset;
+
+        return (
+          <Pressable
+            key={preset.key}
+            accessibilityRole="button"
+            onPress={() => onSelect(preset.key)}
+            style={[styles.shoppingPresetChip, isActive ? styles.shoppingPresetChipActive : undefined]}
+          >
+            <Text style={[styles.shoppingPresetText, isActive ? styles.shoppingPresetTextActive : undefined]}>
+              {preset.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function ShoppingList({
+  items,
+  emptyText,
+}: {
+  items: AnalyticsShoppingListItem[];
+  emptyText: string;
+}) {
+  if (items.length === 0) {
+    return <Text style={styles.emptyText}>{emptyText}</Text>;
+  }
+
+  return (
+    <View style={styles.listStack}>
+      {items.map((item) => (
+        <View key={`${item.itemId}-${item.horizonDays}`} style={styles.shoppingRow}>
+          <ProductAvatar itemName={item.itemName} tone="warning" />
+          <View style={styles.shoppingMain}>
+            <Text style={styles.rowTitle}>{item.itemName}</Text>
+            <Text style={styles.shoppingQuantity}>{`Buy ${item.recommendedBuyQuantity} ${item.unit}`}</Text>
+            <Text style={styles.rowSubtitle}>{item.reason}</Text>
+          </View>
         </View>
       ))}
     </View>
@@ -1029,6 +1116,45 @@ const styles = StyleSheet.create({
   predictionMain: {
     flex: 1,
     gap: 4,
+  },
+  shoppingPresetRail: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  shoppingPresetChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  shoppingPresetChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.card,
+  },
+  shoppingPresetText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  shoppingPresetTextActive: {
+    color: colors.primaryDeep,
+  },
+  shoppingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  shoppingMain: {
+    flex: 1,
+    gap: 4,
+  },
+  shoppingQuantity: {
+    color: colors.primaryDeep,
+    fontSize: 13,
+    fontWeight: '800',
   },
   restockButton: {
     borderRadius: 12,

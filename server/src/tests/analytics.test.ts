@@ -67,6 +67,16 @@ describe('GET /api/v1/analytics/summary', () => {
       predictions: {
         forecast: [],
         restockSoon: [],
+        shoppingPresets: [
+          { key: '7d', label: '7 days', days: 7 },
+          { key: '14d', label: '14 days', days: 14 },
+          { key: '30d', label: '1 month', days: 30 },
+        ],
+        shoppingListByPreset: {
+          '7d': [],
+          '14d': [],
+          '30d': [],
+        },
         recommendations: [],
         emptyState: null,
         modelStatus: 'deterministic_fallback',

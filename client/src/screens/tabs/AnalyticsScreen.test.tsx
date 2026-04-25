@@ -193,6 +193,40 @@ function buildRemoteSummary(): RemoteAnalyticsSummary {
     predictions: {
       forecast: [],
       restockSoon: [],
+      shoppingPresets: [
+        { key: '7d', label: '7 days', days: 7 },
+        { key: '14d', label: '14 days', days: 14 },
+        { key: '30d', label: '1 month', days: 30 },
+      ],
+      shoppingListByPreset: {
+        '7d': [
+          {
+            itemId: 'item-remote-1',
+            itemName: 'Remote Sardines',
+            unit: 'cans',
+            currentStock: 3,
+            averageDailyUnits: 1.7,
+            horizonDays: 7,
+            projectedUnitsNeeded: 12,
+            recommendedBuyQuantity: 9,
+            reason: '3 cans on hand · need about 12 cans for the next 7 days',
+          },
+        ],
+        '14d': [
+          {
+            itemId: 'item-remote-1',
+            itemName: 'Remote Sardines',
+            unit: 'cans',
+            currentStock: 3,
+            averageDailyUnits: 1.7,
+            horizonDays: 14,
+            projectedUnitsNeeded: 24,
+            recommendedBuyQuantity: 21,
+            reason: '3 cans on hand · need about 24 cans for the next 14 days',
+          },
+        ],
+        '30d': [],
+      },
       recommendations: [
         {
           title: 'AI Summary',
@@ -276,9 +310,18 @@ describe('AnalyticsScreen', () => {
       findPressable(tree, 'Predictions & AI').props.onPress();
     });
 
+    expect(findTextNodes(tree, 'Next Grocery Trip')).not.toHaveLength(0);
+    expect(findTextNodes(tree, '7 days')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Buy 1 pcs')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Stock Prediction')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'AI Performance Summary')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Suggest Restock')).not.toHaveLength(0);
+
+    await act(async () => {
+      findPressable(tree, '14 days').props.onPress();
+    });
+
+    expect(findTextNodes(tree, 'Buy 6 pcs')).not.toHaveLength(0);
   });
 
   it('renders preview analytics when local rows are empty and no remote session is used', async () => {
@@ -318,6 +361,7 @@ describe('AnalyticsScreen', () => {
 
     expect(findTextNodes(tree, 'AI-enriched forecast')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Remote AI says Coke may run out within 3 days.')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Buy 9 cans')).not.toHaveLength(0);
   });
 
   it('keeps Overview and Insights local when pending transactions exist but still uses backend Predictions', async () => {

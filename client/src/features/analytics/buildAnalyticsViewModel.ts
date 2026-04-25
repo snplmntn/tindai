@@ -30,6 +30,26 @@ export type AnalyticsChartPoint = {
   displayValue: string;
 };
 
+export type AnalyticsShoppingPresetKey = '7d' | '14d' | '30d';
+
+export type AnalyticsShoppingPreset = {
+  key: AnalyticsShoppingPresetKey;
+  label: string;
+  days: number;
+};
+
+export type AnalyticsShoppingListItem = {
+  itemId: string;
+  itemName: string;
+  unit: string;
+  currentStock: number;
+  averageDailyUnits: number;
+  horizonDays: number;
+  projectedUnitsNeeded: number;
+  recommendedBuyQuantity: number;
+  reason: string;
+};
+
 type AnalyticsRecommendation = {
   title: string;
   body: string;
@@ -54,6 +74,8 @@ export type AnalyticsViewModel = {
   predictions: {
     forecast: AnalyticsListItem[];
     restockSoon: AnalyticsListItem[];
+    shoppingPresets: AnalyticsShoppingPreset[];
+    shoppingListByPreset: Record<AnalyticsShoppingPresetKey, AnalyticsShoppingListItem[]>;
     recommendations: AnalyticsRecommendation[];
     emptyState: string | null;
     modelStatus?: 'deterministic_fallback' | 'gemini_enriched';
@@ -103,6 +125,11 @@ type ForecastAggregate = {
 };
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
+const SHOPPING_PRESETS: AnalyticsShoppingPreset[] = [
+  { key: '7d', label: '7 days', days: 7 },
+  { key: '14d', label: '14 days', days: 14 },
+  { key: '30d', label: '1 month', days: 30 },
+];
 
 export function buildAnalyticsViewModel({
   currencyCode,
@@ -230,6 +257,16 @@ export function buildAnalyticsViewModel({
       detail: `${formatCount(item.averageDailyUnits)}/${item.unit} daily · ${Math.ceil(item.daysUntilStockout)} days left`,
       tone: 'warning' as const,
     }));
+  const shoppingListByPreset = Object.fromEntries(
+    SHOPPING_PRESETS.map((preset) => [
+      preset.key,
+      buildShoppingList({
+        forecasts,
+        horizonDays: preset.days,
+        inventoryItems,
+      }),
+    ]),
+  ) as Record<AnalyticsShoppingPresetKey, AnalyticsShoppingListItem[]>;
   const recommendations = buildRecommendations({
     forecasts,
     restockSoon,
@@ -244,6 +281,8 @@ export function buildAnalyticsViewModel({
       detail: `${formatCount(item.recentUnits)} ${item.unit} sold in 7 days · ${Math.ceil(item.daysUntilStockout)} days of stock`,
     })),
     restockSoon,
+    shoppingPresets: SHOPPING_PRESETS,
+    shoppingListByPreset,
     recommendations,
     emptyState:
       forecasts.length === 0 ? 'Forecasts will appear after a few days of local sales.' : null,
@@ -461,6 +500,61 @@ function buildForecasts(
     .sort((left, right) => left.daysUntilStockout - right.daysUntilStockout);
 }
 
+function buildShoppingList({
+  forecasts,
+  horizonDays,
+  inventoryItems,
+}: {
+  forecasts: ForecastAggregate[];
+  horizonDays: number;
+  inventoryItems: LocalInventoryItem[];
+}): AnalyticsShoppingListItem[] {
+  const inventoryById = new Map(inventoryItems.map((item) => [item.id, item]));
+
+  return forecasts
+    .map((forecast) => {
+      const inventoryItem = inventoryById.get(forecast.itemId);
+      if (!inventoryItem) {
+        return null;
+      }
+
+      const projectedUnitsNeeded = roundToTenths(forecast.averageDailyUnits * horizonDays);
+      const recommendedBuyQuantity = Math.max(0, Math.ceil(projectedUnitsNeeded - inventoryItem.currentStock));
+
+      if (recommendedBuyQuantity <= 0) {
+        return null;
+      }
+
+      return {
+        itemId: forecast.itemId,
+        itemName: forecast.itemName,
+        unit: forecast.unit,
+        currentStock: inventoryItem.currentStock,
+        averageDailyUnits: roundToTenths(forecast.averageDailyUnits),
+        horizonDays,
+        projectedUnitsNeeded,
+        recommendedBuyQuantity,
+        reason: `${formatCount(inventoryItem.currentStock)} ${forecast.unit} on hand · need about ${formatCount(projectedUnitsNeeded)} ${forecast.unit} for the next ${horizonDays} days`,
+        daysUntilStockout: forecast.daysUntilStockout,
+      };
+    })
+    .filter(
+      (
+        item,
+      ): item is AnalyticsShoppingListItem & {
+        daysUntilStockout: number;
+      } => item !== null,
+    )
+    .sort((left, right) => {
+      if (left.daysUntilStockout !== right.daysUntilStockout) {
+        return left.daysUntilStockout - right.daysUntilStockout;
+      }
+
+      return right.recommendedBuyQuantity - left.recommendedBuyQuantity;
+    })
+    .map(({ daysUntilStockout: _daysUntilStockout, ...item }) => item);
+}
+
 function buildRecommendations({
   forecasts,
   restockSoon,
@@ -540,6 +634,10 @@ function formatCount(value: number) {
   const rounded = Math.round(value * 10) / 10;
 
   return rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1);
+}
+
+function roundToTenths(value: number) {
+  return Math.round(value * 10) / 10;
 }
 
 function shortenLabel(value: string) {
