@@ -383,9 +383,9 @@ describe('AnalyticsScreen', () => {
       findPressable(tree, 'Predictions & AI').props.onPress();
     });
 
-    expect(findTextNodes(tree, 'AI-enriched forecast')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Forecast na may tulong ng AI')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Remote AI says Coke may run out within 3 days.')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Buy 9 cans')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Bumili ng 9 cans')).not.toHaveLength(0);
   });
 
   it('keeps Overview and Insights local when pending transactions exist but still uses backend Predictions', async () => {
@@ -424,7 +424,7 @@ describe('AnalyticsScreen', () => {
 
     const tree = await renderAnalyticsScreen();
 
-    expect(findTextNodes(tree, 'Loading analytics...')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Kinukuha ang datos...')).not.toHaveLength(0);
   });
 
   it('supports pull-to-refresh to rerun analytics loading', async () => {
