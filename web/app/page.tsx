@@ -57,35 +57,39 @@ export default function Home() {
           <div className="relative mx-auto flex w-full max-w-md items-center justify-center md:justify-end">
             <div className="h-[660px] w-[300px] rotate-[-5deg] rounded-[48px] border-[7px] border-slate-700 bg-white p-4 shadow-2xl">
               <div className="relative h-full rounded-[34px] bg-white p-4">
-                <p className="text-center text-[10px] font-semibold uppercase tracking-wider text-slate-300">Today&apos;s Sales</p>
+                <p className="text-center text-[10px] font-semibold uppercase tracking-wider text-slate-300">Benta Ngayon</p>
                 <p className="mt-1 text-center text-[33px] font-bold text-emerald-900">P14,250.00</p>
 
                 <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-                  <p className="text-[11px] font-medium text-slate-400">Stocks Low</p>
-                  <div className="mt-1 flex items-center justify-between">
-                    <p className="text-[29px] font-bold text-emerald-700">12</p>
-                    <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-500">Left</span>
+                  <p className="text-[12px] font-medium leading-none text-slate-400">Mababa ang Stock</p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="flex items-baseline gap-3">
+                      <p className="text-[34px] font-bold leading-none text-emerald-700">12</p>
+                      <p className="text-[24px] font-medium leading-none text-slate-800">De-lata</p>
+                    </div>
+                    <span className="rounded-full bg-rose-50 px-3 py-1 text-[12px] font-bold leading-none text-rose-500">
+                      Natitira
+                    </span>
                   </div>
-                  <p className="-mt-1 text-lg font-medium text-slate-800">Canned Goods</p>
                 </div>
 
                 <div className="mt-4 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-                  <p className="text-[11px] font-medium text-slate-400">Recent Sale</p>
+                  <p className="text-[11px] font-medium text-slate-400">Huling Benta</p>
                   <div className="mt-2 flex items-center justify-between">
                     <div>
-                      <p className="text-xl font-semibold text-slate-900">Rice - 5kg</p>
-                      <p className="text-[10px] text-slate-400">2 mins ago</p>
+                      <p className="text-xl font-semibold text-slate-900">Bigas - 5kg</p>
+                      <p className="text-[10px] text-slate-400">2 minuto nakalipas</p>
                     </div>
                     <p className="text-2xl font-bold text-emerald-800">P275</p>
                   </div>
                 </div>
 
                 <div className="mt-7">
-                  <p className="text-2xl text-slate-500">Inventory Health</p>
+                  <p className="text-2xl text-slate-500">Mga Dapat I-restock</p>
                   <div className="mt-3 h-[7px] rounded-full bg-slate-100">
                     <div className="h-[7px] w-[78%] rounded-full bg-emerald-700" />
                   </div>
-                  <p className="mt-1 text-right text-[10px] text-slate-400">78% Optimized</p>
+                  <p className="mt-1 text-right text-[10px] text-slate-400">3 items</p>
                 </div>
 
                 <div className="absolute bottom-6 left-1/2 flex min-w-[210px] -translate-x-1/2 items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-5 py-3 text-center text-lg font-semibold leading-none whitespace-nowrap text-white shadow">
@@ -106,7 +110,7 @@ export default function Home() {
             </div>
 
             <div className="absolute left-[18px] top-[72px] rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-lg">
-              <p className="text-[11px] text-slate-400">Profit Growth</p>
+              <p className="text-[11px] text-slate-400">Taas Kita</p>
               <p className="text-[34px] font-bold text-slate-900">
                 +2<span className="text-xl">.5%</span>
               </p>
