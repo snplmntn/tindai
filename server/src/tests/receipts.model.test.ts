@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   assessReceiptOcrQuality,
+  isValidMatchReceiptInput,
   isValidParseReceiptInput,
   isValidReceiptOcrInput,
+  matchReceiptItemsAgainstCatalog,
   normalizeOcrText,
   normalizeReceiptText,
   parseReceiptText,
@@ -68,6 +70,25 @@ describe('receipts.model', () => {
     ).toBe(false);
   });
 
+  it('validates the receipt match payload shape', () => {
+    expect(
+      isValidMatchReceiptInput({
+        items: [
+          {
+            receiptItemId: 'receipt-1-item-1',
+            rawName: 'COKE 1.5L',
+          },
+        ],
+      }),
+    ).toBe(true);
+
+    expect(
+      isValidMatchReceiptInput({
+        items: [],
+      }),
+    ).toBe(false);
+  });
+
   it('parses merchant, date, summary amounts, and candidate items deterministically', () => {
     const result = parseReceiptText(
       'receipt-123',
@@ -127,6 +148,67 @@ describe('receipts.model', () => {
       quantity: 1,
       unitPrice: 18,
       lineTotal: 18,
+    });
+  });
+
+  it('matches parsed items against product names, skus, and aliases with fuse thresholds', () => {
+    const result = matchReceiptItemsAgainstCatalog(
+      'receipt-789',
+      [
+        {
+          receiptItemId: 'receipt-789-item-1',
+          rawName: 'COKE 1.5L',
+          normalizedName: 'coke 1.5l',
+          quantity: 2,
+          unitPrice: 65,
+          lineTotal: 130,
+          parserConfidence: 0.88,
+        },
+        {
+          receiptItemId: 'receipt-789-item-2',
+          rawName: 'SPRYT MISMO',
+          normalizedName: 'spryt mismo',
+          quantity: 1,
+          unitPrice: 21,
+          lineTotal: 21,
+          parserConfidence: 0.7,
+        },
+        {
+          receiptItemId: 'receipt-789-item-3',
+          rawName: 'UNKNOWN SOAP',
+          normalizedName: 'unknown soap',
+        },
+      ],
+      [
+        {
+          id: 'item-1',
+          name: 'Coca-Cola 1.5 Liter',
+          sku: 'COKE15',
+          aliases: ['coke 1.5l', 'coke litro', 'coke 1 5l'],
+        },
+        {
+          id: 'item-2',
+          name: 'Sprite Mismo',
+          sku: 'SPRITE-MIS',
+          aliases: ['sprite mismo', 'sprt mismo'],
+        },
+      ],
+    );
+
+    expect(result.status).toBe('MATCHED');
+    expect(result.items[0]).toMatchObject({
+      matchStatus: 'HIGH_CONFIDENCE',
+      suggestedProductId: 'item-1',
+      suggestedProductName: 'Coca-Cola 1.5 Liter',
+    });
+    expect(result.items[1]).toMatchObject({
+      matchStatus: 'NEEDS_REVIEW',
+      suggestedProductId: 'item-2',
+    });
+    expect(result.items[2]).toMatchObject({
+      matchStatus: 'UNMATCHED',
+      suggestedProductId: null,
+      suggestedProductName: null,
     });
   });
 });

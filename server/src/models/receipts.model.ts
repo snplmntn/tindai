@@ -1,3 +1,8 @@
+import Fuse from 'fuse.js';
+
+import { getSupabaseAdminClient } from '../config/supabase';
+import { getStoreByOwnerId } from './store.model';
+
 export type ReceiptOcrBlockInput = {
   text: string;
 };
@@ -52,9 +57,50 @@ export type ParseReceiptResult = {
   items: ParsedReceiptItem[];
 };
 
+export type MatchReceiptInputItem = {
+  receiptItemId: string;
+  rawName: string;
+  normalizedName?: string;
+  quantity?: number;
+  unitPrice?: number | null;
+  lineTotal?: number | null;
+  parserConfidence?: number;
+  status?: 'PARSED';
+};
+
+export type MatchReceiptInput = {
+  items: MatchReceiptInputItem[];
+};
+
+export type MatchStatus = 'HIGH_CONFIDENCE' | 'NEEDS_REVIEW' | 'UNMATCHED';
+
+export type MatchReceiptResultItem = {
+  receiptItemId: string;
+  rawName: string;
+  normalizedName: string;
+  quantity: number | null;
+  unitPrice: number | null;
+  lineTotal: number | null;
+  parserConfidence: number | null;
+  matchStatus: MatchStatus;
+  matchScore: number | null;
+  suggestedProductId: string | null;
+  suggestedProductName: string | null;
+  suggestedProductSku: string | null;
+  matchedAlias: string | null;
+};
+
+export type MatchReceiptResult = {
+  receiptId: string;
+  status: 'MATCHED';
+  items: MatchReceiptResultItem[];
+};
+
 const MIN_USABLE_CHARACTER_COUNT = 12;
 const MIN_WORD_COUNT = 3;
 const MAX_RAW_TEXT_LENGTH = 20000;
+const HIGH_CONFIDENCE_THRESHOLD = 0.25;
+const NEEDS_REVIEW_THRESHOLD = 0.45;
 const RECEIPT_NOISE_WORDS = [
   'subtotal',
   'total',
@@ -83,6 +129,23 @@ export function normalizeReceiptText(input: string) {
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+type InventoryMatchRecord = {
+  id: string;
+  name: string;
+  sku: string | null;
+  aliases: string[] | null;
+};
+
+type ReceiptMatchCandidate = {
+  productId: string;
+  productName: string;
+  productSku: string | null;
+  aliases: string[];
+  searchName: string;
+  searchSku: string;
+  searchAliases: string[];
+};
 
 export function isValidReceiptOcrInput(value: unknown): value is ProcessReceiptOcrInput {
   if (!value || typeof value !== 'object') {
@@ -125,6 +188,26 @@ export function isValidParseReceiptInput(value: unknown): value is ParseReceiptI
 
   const payload = value as Partial<ParseReceiptInput>;
   return typeof payload.rawText === 'string' && payload.rawText.trim().length > 0 && payload.rawText.length <= MAX_RAW_TEXT_LENGTH;
+}
+
+export function isValidMatchReceiptInput(value: unknown): value is MatchReceiptInput {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const payload = value as Partial<MatchReceiptInput>;
+  if (!Array.isArray(payload.items) || payload.items.length === 0) {
+    return false;
+  }
+
+  return payload.items.every((item) => {
+    if (!item || typeof item !== 'object') {
+      return false;
+    }
+
+    const candidate = item as Partial<MatchReceiptInputItem>;
+    return typeof candidate.receiptItemId === 'string' && candidate.receiptItemId.trim().length > 0 && typeof candidate.rawName === 'string' && candidate.rawName.trim().length > 0;
+  });
 }
 
 export function assessReceiptOcrQuality(rawText: string): ProcessReceiptOcrResult['ocrQuality'] {
@@ -285,6 +368,90 @@ function createParsedItem(receiptId: string, index: number, rawName: string, qua
   };
 }
 
+function buildReceiptMatchCandidates(items: InventoryMatchRecord[]): ReceiptMatchCandidate[] {
+  return items.map((item) => ({
+    productId: item.id,
+    productName: item.name,
+    productSku: item.sku,
+    aliases: item.aliases ?? [],
+    searchName: normalizeReceiptText(item.name),
+    searchSku: normalizeReceiptText(item.sku ?? ''),
+    searchAliases: (item.aliases ?? []).map((alias) => normalizeReceiptText(alias)).filter(Boolean),
+  }));
+}
+
+function createReceiptFuseIndex(candidates: ReceiptMatchCandidate[]) {
+  return new Fuse(candidates, {
+    includeScore: true,
+    threshold: NEEDS_REVIEW_THRESHOLD,
+    ignoreLocation: true,
+    minMatchCharLength: 2,
+    keys: [
+      { name: 'searchName', weight: 0.5 },
+      { name: 'searchSku', weight: 0.2 },
+      { name: 'searchAliases', weight: 0.3 },
+    ],
+  });
+}
+
+function inferMatchedAlias(candidate: ReceiptMatchCandidate, normalizedName: string) {
+  if (candidate.searchName === normalizedName) {
+    return candidate.productName;
+  }
+
+  const aliasIndex = candidate.searchAliases.findIndex((alias) => alias === normalizedName);
+  return aliasIndex >= 0 ? candidate.aliases[aliasIndex] ?? null : null;
+}
+
+function getMatchStatus(score: number | null): MatchStatus {
+  if (score === null || score > NEEDS_REVIEW_THRESHOLD) {
+    return 'UNMATCHED';
+  }
+
+  if (score <= HIGH_CONFIDENCE_THRESHOLD) {
+    return 'HIGH_CONFIDENCE';
+  }
+
+  return 'NEEDS_REVIEW';
+}
+
+export function matchReceiptItemsAgainstCatalog(
+  receiptId: string,
+  items: MatchReceiptInputItem[],
+  inventoryItems: InventoryMatchRecord[],
+): MatchReceiptResult {
+  const candidates = buildReceiptMatchCandidates(inventoryItems);
+  const fuse = createReceiptFuseIndex(candidates);
+
+  return {
+    receiptId,
+    status: 'MATCHED',
+    items: items.map((item) => {
+      const normalizedName = normalizeReceiptText(item.normalizedName?.trim() || item.rawName);
+      const result = normalizedName ? fuse.search(normalizedName, { limit: 1 })[0] : undefined;
+      const score = typeof result?.score === 'number' ? Number(result.score.toFixed(5)) : null;
+      const matchStatus = getMatchStatus(score);
+      const candidate = matchStatus === 'UNMATCHED' ? null : result?.item ?? null;
+
+      return {
+        receiptItemId: item.receiptItemId,
+        rawName: item.rawName,
+        normalizedName,
+        quantity: typeof item.quantity === 'number' ? item.quantity : null,
+        unitPrice: typeof item.unitPrice === 'number' ? item.unitPrice : null,
+        lineTotal: typeof item.lineTotal === 'number' ? item.lineTotal : null,
+        parserConfidence: typeof item.parserConfidence === 'number' ? item.parserConfidence : null,
+        matchStatus,
+        matchScore: score,
+        suggestedProductId: candidate?.productId ?? null,
+        suggestedProductName: candidate?.productName ?? null,
+        suggestedProductSku: candidate?.productSku ?? null,
+        matchedAlias: candidate ? inferMatchedAlias(candidate, normalizedName) : null,
+      };
+    }),
+  };
+}
+
 function parseCandidateLineItem(line: string, receiptId: string, index: number): ParsedReceiptItem | null {
   if (!/[a-z]/i.test(line) || isNoiseLine(line)) {
     return null;
@@ -350,4 +517,30 @@ export async function parseReceiptForOwner(
   input: ParseReceiptInput,
 ): Promise<ParseReceiptResult> {
   return parseReceiptText(receiptId, input.rawText);
+}
+
+export async function matchReceiptForOwner(
+  ownerId: string,
+  receiptId: string,
+  input: MatchReceiptInput,
+): Promise<MatchReceiptResult> {
+  const store = await getStoreByOwnerId(ownerId);
+  if (!store) {
+    throw new Error('Store not found.');
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('inventory_items')
+    .select('id, name, sku, aliases')
+    .eq('store_id', store.id)
+    .eq('is_active', true)
+    .is('archived_at', null)
+    .returns<InventoryMatchRecord[]>();
+
+  if (error) {
+    throw new Error('Unable to load store inventory for receipt matching.');
+  }
+
+  return matchReceiptItemsAgainstCatalog(receiptId, input.items, data ?? []);
 }

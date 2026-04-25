@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { app } from '../app';
 import { getSupabaseAdminClient } from '../config/supabase';
+import { matchReceiptForOwner } from '../models/receipts.model';
 import { parseReceiptForOwner } from '../models/receipts.model';
 import { processReceiptOcrForOwner } from '../models/receipts.model';
 
@@ -14,12 +15,14 @@ vi.mock('../models/receipts.model', async () => {
   const actual = await vi.importActual<typeof import('../models/receipts.model')>('../models/receipts.model');
   return {
     ...actual,
+    matchReceiptForOwner: vi.fn(),
     parseReceiptForOwner: vi.fn(),
     processReceiptOcrForOwner: vi.fn(),
   };
 });
 
 const mockedGetSupabaseAdminClient = vi.mocked(getSupabaseAdminClient);
+const mockedMatchReceiptForOwner = vi.mocked(matchReceiptForOwner);
 const mockedParseReceiptForOwner = vi.mocked(parseReceiptForOwner);
 const mockedProcessReceiptOcrForOwner = vi.mocked(processReceiptOcrForOwner);
 
@@ -171,6 +174,78 @@ describe('POST /api/v1/receipts/:receiptId/parse', () => {
 
     expect(response.body).toEqual({
       message: 'Invalid receipt parse payload.',
+    });
+  });
+});
+
+describe('POST /api/v1/receipts/:receiptId/match', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('matches parsed items for authenticated users', async () => {
+    mockAuthenticatedUser();
+    mockedMatchReceiptForOwner.mockResolvedValue({
+      receiptId: 'receipt-123',
+      status: 'MATCHED',
+      items: [
+        {
+          receiptItemId: 'receipt-123-item-1',
+          rawName: 'COKE 1.5L',
+          normalizedName: 'coke 1.5l',
+          quantity: 2,
+          unitPrice: 65,
+          lineTotal: 130,
+          parserConfidence: 0.88,
+          matchStatus: 'HIGH_CONFIDENCE',
+          matchScore: 0.12,
+          suggestedProductId: 'item-1',
+          suggestedProductName: 'Coca-Cola 1.5 Liter',
+          suggestedProductSku: 'COKE15',
+          matchedAlias: 'coke 1.5l',
+        },
+      ],
+    });
+
+    const response = await request(app)
+      .post('/api/v1/receipts/receipt-123/match')
+      .set('Authorization', 'Bearer valid-token')
+      .send({
+        items: [
+          {
+            receiptItemId: 'receipt-123-item-1',
+            rawName: 'COKE 1.5L',
+            normalizedName: 'coke 1.5l',
+          },
+        ],
+      })
+      .expect(200);
+
+    expect(mockedMatchReceiptForOwner).toHaveBeenCalledWith('user-123', 'receipt-123', {
+      items: [
+        {
+          receiptItemId: 'receipt-123-item-1',
+          rawName: 'COKE 1.5L',
+          normalizedName: 'coke 1.5l',
+        },
+      ],
+    });
+    expect(response.body.status).toBe('MATCHED');
+  });
+
+  it('returns 400 for invalid match payloads', async () => {
+    mockAuthenticatedUser();
+
+    const response = await request(app)
+      .post('/api/v1/receipts/receipt-123/match')
+      .set('Authorization', 'Bearer valid-token')
+      .send({
+        items: [],
+      })
+      .expect(400);
+
+    expect(response.body).toEqual({
+      message: 'Invalid receipt match payload.',
     });
   });
 });
