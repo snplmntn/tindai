@@ -23,7 +23,7 @@ function getDisplayEmail(profile: RemoteProfile | null) {
 }
 
 function getDisplayStore(storeName: string | undefined) {
-  return storeName?.trim() || 'My Store';
+  return storeName?.trim() || 'Aking Tindahan';
 }
 
 function getAvatarUrl(profile: RemoteProfile | null) {
@@ -82,6 +82,7 @@ export function ProfileScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
+  const [isSwitchingDemoMode, setIsSwitchingDemoMode] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -144,9 +145,10 @@ export function ProfileScreen() {
   const displayStore = getDisplayStore(store?.name);
   const avatarUrl = getAvatarUrl(profile);
   const avatarInitials = getInitials(displayName);
+  const isOfflineDemoMode = !isAuthenticated;
   const helperBody = isAuthenticated
-    ? 'Handa ang detalye ng tindahan mo sa phone na ito.'
-    : 'Mag-sign in para ma-backup ang tindahan mo online. Hindi mawawala ang data mo kahit offline.';
+    ? 'Naka-save sa phone na ito ang detalye ng tindahan mo.'
+    : 'Mag-sign in para may online backup ang tala ng tindahan mo. Mananatili pa rin ito sa phone mo kahit walang internet.';
 
   const handleStartEdit = () => {
     setFullNameInput(profile?.fullName?.trim() || '');
@@ -179,7 +181,7 @@ export function ProfileScreen() {
       accessToken = data.session?.access_token ?? null;
 
       if (!accessToken) {
-        throw new Error('Please log in again to continue.');
+        throw new Error('Mag-sign in ulit para magpatuloy.');
       }
 
       const nextProfile = await updateMyProfile(accessToken, {
@@ -193,7 +195,7 @@ export function ProfileScreen() {
       await refresh();
       setIsEditing(false);
     } catch (caughtError) {
-      setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Unable to save profile right now.');
+      setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Hindi ma-save ang profile ngayon. Subukan ulit.');
 
       if (didUpdateProfile) {
         try {
@@ -223,16 +225,36 @@ export function ProfileScreen() {
       const accessToken = data.session?.access_token;
 
       if (!accessToken) {
-        throw new Error('Please log in again to continue.');
+        throw new Error('Mag-sign in ulit para magpatuloy.');
       }
 
       const nextProfile = await clearMyProfileAvatar(accessToken);
       setProfile(nextProfile);
       setAvatarUrlInput('');
     } catch (caughtError) {
-      setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Unable to remove avatar right now.');
+      setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Hindi maalis ang larawan ngayon. Subukan ulit.');
     } finally {
       setIsRemovingAvatar(false);
+    }
+  };
+
+  const handleToggleDemoMode = async () => {
+    if (isSwitchingDemoMode) {
+      return;
+    }
+
+    setIsSwitchingDemoMode(true);
+    setErrorMessage(null);
+    try {
+      if (isOfflineDemoMode) {
+        await showLogin();
+      } else {
+        await signOut();
+      }
+    } catch (caughtError) {
+      setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Hindi mabago ang mode ngayon. Subukan ulit.');
+    } finally {
+      setIsSwitchingDemoMode(false);
     }
   };
 
@@ -268,10 +290,32 @@ export function ProfileScreen() {
           <View style={styles.infoCard}>
             <View style={styles.infoChip}>
               <Text style={styles.infoChipIcon}>•</Text>
-              <Text style={styles.infoChipLabel}>Lokal ang data mo</Text>
+              <Text style={styles.infoChipLabel}>Nasa phone ang tala mo</Text>
             </View>
 
             <Text style={styles.infoBody}>{helperBody}</Text>
+          </View>
+
+          <View style={styles.demoModeCard}>
+            <Text style={styles.demoModeTitle}>Offline Mode / Online Mode</Text>
+            <Text style={styles.demoModeBody}>
+              {isOfflineDemoMode
+                ? 'Bukas ito: phone lang muna ang gamit ng tindahan mo.'
+                : 'Patayin ito kung gusto mong phone lang muna habang demo.'}
+            </Text>
+            <Pressable
+              style={styles.demoModeButton}
+              onPress={() => void handleToggleDemoMode()}
+              disabled={isSwitchingDemoMode}
+            >
+              <Text style={styles.demoModeButtonLabel}>
+                {isSwitchingDemoMode
+                  ? 'Ina-update...'
+                  : isOfflineDemoMode
+                    ? 'Online Mode'
+                    : 'Offline Mode'}
+              </Text>
+            </Pressable>
           </View>
 
           <View style={styles.detailsCard}>
@@ -282,7 +326,7 @@ export function ProfileScreen() {
                   <TextInput
                     value={fullNameInput}
                     onChangeText={setFullNameInput}
-                    placeholder="May-ari ng Tindahan"
+                    placeholder="May-ari ng tindahan"
                     style={styles.fieldInput}
                     placeholderTextColor={colors.muted}
                   />
@@ -303,7 +347,7 @@ export function ProfileScreen() {
                   <TextInput
                     value={storeNameInput}
                     onChangeText={setStoreNameInput}
-                    placeholder="My Store"
+                    placeholder="Aking Tindahan"
                     style={styles.fieldInput}
                     placeholderTextColor={colors.muted}
                   />
@@ -313,10 +357,10 @@ export function ProfileScreen() {
 
                 <View style={styles.detailsCardActions}>
                   <Pressable style={styles.secondaryButton} onPress={handleCancelEdit}>
-                    <Text style={styles.secondaryButtonLabel}>Cancel</Text>
+                    <Text style={styles.secondaryButtonLabel}>Kanselahin</Text>
                   </Pressable>
                   <Pressable style={styles.primaryButton} onPress={() => void handleSaveProfile()} disabled={isSaving}>
-                    <Text style={styles.primaryButtonLabel}>{isSaving ? 'Saving...' : 'Save'}</Text>
+                    <Text style={styles.primaryButtonLabel}>{isSaving ? 'Sine-save...' : 'I-save'}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -339,16 +383,16 @@ export function ProfileScreen() {
                     disabled={isRemovingAvatar}
                   >
                     <Text style={styles.secondaryButtonLabel}>
-                      {isRemovingAvatar ? 'Removing...' : 'Remove avatar'}
+                      {isRemovingAvatar ? 'Inaalis...' : 'Alisin ang larawan'}
                     </Text>
                   </Pressable>
                 ) : (
                   <>
                     <Pressable style={styles.primaryButton} onPress={handleStartEdit}>
-                      <Text style={styles.primaryButtonLabel}>Edit profile</Text>
+                      <Text style={styles.primaryButtonLabel}>Ayusin ang profile</Text>
                     </Pressable>
                     <Pressable style={styles.secondaryButton} onPress={() => void signOut()}>
-                      <Text style={styles.secondaryButtonLabel}>Sign out</Text>
+                      <Text style={styles.secondaryButtonLabel}>Mag-sign out</Text>
                     </Pressable>
                   </>
                 )}
@@ -521,6 +565,39 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     lineHeight: 21,
+  },
+  demoModeCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(20, 87, 70, 0.08)',
+    backgroundColor: colors.surface,
+    padding: 16,
+    gap: 12,
+  },
+  demoModeTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  demoModeBody: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  demoModeButton: {
+    minHeight: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(102, 112, 107, 0.24)',
+    backgroundColor: '#E8F2F0',
+    paddingHorizontal: 16,
+  },
+  demoModeButtonLabel: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '700',
   },
   detailsCard: {
     borderRadius: 24,

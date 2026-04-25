@@ -56,7 +56,7 @@ export function AuthLayout({
         ) : (
           <View style={styles.backButton} />
         )}
-        <Text style={styles.topBarTitle}>Setup Progress</Text>
+        <Text style={styles.topBarTitle}>Pagsisimula</Text>
         <View style={styles.backButton} />
       </View>
 

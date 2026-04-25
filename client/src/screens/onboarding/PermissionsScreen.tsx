@@ -96,7 +96,7 @@ export function PermissionsScreen() {
     <SafeAreaView style={styles.screen}>
       <View style={styles.topBar}>
         <View style={styles.topBarSpacer} />
-        <Text style={styles.topBarTitle}>Setup Progress</Text>
+        <Text style={styles.topBarTitle}>Pagsisimula</Text>
         <View style={styles.topBarSpacer} />
       </View>
 
@@ -112,9 +112,9 @@ export function PermissionsScreen() {
         </View>
 
         <View style={styles.copyBlock}>
-          <Text style={styles.title}>Kailangan namin ng kaunting pahintulot.</Text>
+          <Text style={styles.title}>Kailangan namin ng ilang pahintulot.</Text>
           <Text style={styles.subtitle}>
-            Upang magamit ang voice inventory nang maayos, kailangan ng app ng access sa iyong mikropono at device storage.
+            Para gumana nang maayos ang voice input, kailangan ng app ng access sa mikropono at storage ng phone mo.
           </Text>
         </View>
 
@@ -131,7 +131,7 @@ export function PermissionsScreen() {
             icon="folder-outline"
             title="Storage"
             badge="Opsyonal"
-            body="Para ma-save ang mga backup ng iyong inventory offline sa device."
+            body="Para makapag-save ng backup ng tala mo sa mismong device."
             status={storagePermission}
           />
         </View>
@@ -139,7 +139,7 @@ export function PermissionsScreen() {
         <View style={styles.privacyNote}>
           <Ionicons name="lock-closed-outline" size={19} color={colors.muted} />
           <Text style={styles.privacyText}>
-            Ginagamit lang ang pahintulot na ito para mapagana ang app at panatilihing ligtas ang tindahan mo.
+            Gagamitin lang ang mga pahintulot na ito para gumana nang maayos ang app at manatiling ligtas ang tala ng tindahan mo.
           </Text>
         </View>
 
@@ -148,7 +148,7 @@ export function PermissionsScreen() {
           disabled={isSubmitting}
           style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]}
         >
-          <Text style={styles.primaryButtonText}>{isSubmitting ? 'Sandali lang...' : 'Payagan at Magpatuloy'}</Text>
+          <Text style={styles.primaryButtonText}>{isSubmitting ? 'Sandali lang...' : 'Payagan at magpatuloy'}</Text>
           {isSubmitting ? <ActivityIndicator color={colors.surface} size="small" /> : <Ionicons name="arrow-forward" size={18} color={colors.surface} />}
         </Pressable>
 

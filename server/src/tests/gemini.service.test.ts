@@ -42,6 +42,33 @@ describe('validateGeminiTransactionResponse', () => {
     );
   });
 
+  it('parses json wrapped in markdown fences', () => {
+    const result = validateGeminiTransactionResponse(`\`\`\`json
+    {
+      "intent": "utang",
+      "confidence": 0.82,
+      "items": [
+        {
+          "spoken_name": "coke",
+          "matched_item_name": "Coke Mismo",
+          "quantity_delta": -1
+        }
+      ],
+      "credit": {
+        "is_utang": true,
+        "customer_name": "Mang Juan"
+      },
+      "notes": []
+    }
+    \`\`\``);
+
+    expect(result.intent).toBe('utang');
+    expect(result.credit).toEqual({
+      is_utang: true,
+      customer_name: 'Mang Juan',
+    });
+  });
+
   it('rejects invalid confidence values', () => {
     expect(() =>
       validateGeminiTransactionResponse(`{

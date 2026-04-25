@@ -12,17 +12,26 @@
       "checkAutomatically": "NEVER",
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": ["src/assets/*"],
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "Allow Tindai to use speech recognition for voice commands.",
-        "NSMicrophoneUsageDescription": "Allow Tindai to use the microphone for voice commands."
+        "NSMicrophoneUsageDescription": "Allow Tindai to use the microphone for voice commands.",
+        "NSCameraUsageDescription": "Allow Tindai to take photos of supplier receipts.",
+        "NSPhotoLibraryUsageDescription": "Allow Tindai to choose receipt photos from your library."
       }
     },
     "android": {
       "package": "com.example.tindai",
-      "permissions": ["android.permission.RECORD_AUDIO"]
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/tindai-logo.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "bundler": "metro"
@@ -31,14 +40,21 @@
       "expo-dev-client",
       "expo-asset",
       "expo-sqlite",
-      "@react-native-google-signin/google-signin",
       [
         "expo-speech-recognition",
         {
           "microphonePermission": "Allow Tindai to use the microphone for voice commands.",
           "speechRecognitionPermission": "Allow Tindai to use speech recognition for voice commands."
         }
-      ]
+      ],
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "Allow Tindai to take photos of supplier receipts.",
+          "enableMicrophonePermission": false
+        }
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "extra": {
       "eas": {

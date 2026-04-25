@@ -343,34 +343,34 @@ describe('AnalyticsScreen', () => {
   it('defaults to overview and switches tabs without extra action buttons', async () => {
     const tree = await renderAnalyticsScreen();
 
-    expect(findTextNodes(tree, 'Business Insights')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Overview')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Sales Trend')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Top Selling Items')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Low Stock Alerts')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Items Sold Today')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Open Utang')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Galaw ng Tindahan')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Buod')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Takbo ng benta')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Pinakamabentang item')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Paubos na')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Bilang ng naibenta')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'May utang pa')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Predictions & AI')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Stock Prediction')).toHaveLength(0);
+    expect(findTextNodes(tree, 'Taya sa stock')).toHaveLength(0);
     expect(findPressables(tree)).toHaveLength(3);
 
     await act(async () => {
       findPressable(tree, 'Insights').props.onPress();
     });
 
-    expect(findTextNodes(tree, 'Analytics Insights')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Fast & Slow Moving Items')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Trend Detection')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Mga Insight')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Mabilis at mabagal gumalaw')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Pagbabago ng galaw')).not.toHaveLength(0);
 
     await act(async () => {
       findPressable(tree, 'Predictions & AI').props.onPress();
     });
 
-    expect(findTextNodes(tree, 'Next Grocery Trip')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Susunod na bili')).not.toHaveLength(0);
     expect(findTextNodes(tree, '7 days')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Stock Prediction')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'AI Performance Summary')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'No stock predictions yet.')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Taya sa stock')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Buod ng mungkahi')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Wala pang taya para sa stock.')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Suggest Restock')).toHaveLength(0);
 
     await act(async () => {
@@ -384,7 +384,7 @@ describe('AnalyticsScreen', () => {
     const tree = await renderAnalyticsScreen();
 
     expect(findTextNodes(tree, 'Wala pang mababasang galaw')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Add your first item')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Magdagdag ng unang item')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'P60')).toHaveLength(0);
     expect(findTextNodes(tree, 'Coke Mismo')).toHaveLength(0);
     expect(mockedFetchAnalyticsSummary).not.toHaveBeenCalled();
@@ -396,7 +396,7 @@ describe('AnalyticsScreen', () => {
     const tree = await renderAnalyticsScreen();
 
     await act(async () => {
-      findPressable(tree, 'Add your first item').props.onPress();
+      findPressable(tree, 'Magdagdag ng unang item').props.onPress();
     });
 
     expect(mockedNavigate).toHaveBeenCalledWith('Inventory', {
@@ -453,7 +453,7 @@ describe('AnalyticsScreen', () => {
     });
 
     expect(findTextNodes(tree, 'Remote AI says Coke may run out within 3 days.')).toHaveLength(0);
-    expect(findTextNodes(tree, 'Local forecast')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Lokal na forecast')).not.toHaveLength(0);
   });
 
   it('shows skeleton while analytics are still loading', async () => {
@@ -462,8 +462,11 @@ describe('AnalyticsScreen', () => {
     );
 
     const tree = await renderAnalyticsScreen();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    });
 
-    expect(findTextNodes(tree, 'Loading analytics...')).not.toHaveLength(0);
+    expect(findTextNodes(tree, 'Kinukuha ang datos...')).not.toHaveLength(0);
   });
 
   it('supports pull-to-refresh to rerun analytics loading', async () => {

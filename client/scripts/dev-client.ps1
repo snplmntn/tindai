@@ -32,6 +32,44 @@ function Get-OnlineDeviceCount {
   return @($deviceLines).Count
 }
 
+function Get-ExistingExpoProcess {
+  $escapedClientDir = [Regex]::Escape($clientDir)
+  $nodeProcesses = Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue
+
+  return @($nodeProcesses | Where-Object {
+      $_.CommandLine -and
+      $_.CommandLine -match $escapedClientDir -and
+      $_.CommandLine -match "expo\\bin\\cli" -and
+      $_.CommandLine -match "\sstart(\s|$)"
+    })
+}
+
+function Get-ExpoProcessPort([string]$commandLine) {
+  if ($commandLine -match "--port\s+(\d+)") {
+    return [int]$matches[1]
+  }
+
+  return 8081
+}
+
+function Get-PreferredMetroPort {
+  $defaultPort = 8081
+  $parsedPort = 0
+  if ($env:EXPO_DEV_CLIENT_PORT -and [int]::TryParse($env:EXPO_DEV_CLIENT_PORT, [ref]$parsedPort)) {
+    $defaultPort = $parsedPort
+  }
+
+  $port = $defaultPort
+  while ($true) {
+    $listener = Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue
+    if (-not $listener) {
+      return $port
+    }
+
+    $port++
+  }
+}
+
 if (-not $StartOnly) {
   if (Test-AdbAvailable) {
     $deviceCount = Get-OnlineDeviceCount
@@ -53,12 +91,21 @@ if (-not $StartOnly) {
 }
 
 if (-not $InstallOnly) {
-  $expoArgs = @("expo", "start", "--dev-client")
+  $existingExpoProcess = Get-ExistingExpoProcess | Select-Object -First 1
+  if ($existingExpoProcess) {
+    $existingPort = Get-ExpoProcessPort -commandLine $existingExpoProcess.CommandLine
+    Write-Host "Expo dev server already running for this project on port $existingPort (PID $($existingExpoProcess.ProcessId))."
+    Write-Host "Using the existing dev server instead of starting a duplicate."
+    return
+  }
+
+  $metroPort = Get-PreferredMetroPort
+  $expoArgs = @("expo", "start", "--dev-client", "--port", "$metroPort")
   if (-not $NoClear) {
     $expoArgs += "--clear"
   }
 
-  Write-Host "Starting Metro for dev client..."
+  Write-Host "Starting Metro for dev client on port $metroPort..."
 
   Push-Location $clientDir
   try {
