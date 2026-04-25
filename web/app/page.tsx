@@ -1,24 +1,15 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-white text-slate-900">
       <div className="mx-auto max-w-7xl px-5 lg:px-12">
-        <header className="py-4">
-          <div className="flex items-center gap-2 text-base font-bold text-emerald-900">
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-xs">✦</span>
+        <header className="flex items-center justify-between py-4">
+          <Link href="/" className="flex items-center gap-2 text-base font-bold text-emerald-900">
+            <Image src="/logo.png" alt="Tindai" width={28} height={28} className="h-7 w-auto object-contain" priority />
             Tindai
-          </div>
-          <nav className="hidden items-center gap-8 text-sm text-slate-600 md:flex">
-            <a className="font-semibold text-emerald-700 underline underline-offset-8" href="#">
-              Home
-            </a>
-            <a href="#">Features</a>
-            <Link href="/paano-gamitin" className="transition hover:text-emerald-800">
-              Paano Gamitin
-            </Link>
-            <a href="#">Pricing</a>
-          </nav>
+          </Link>
           <button className="rounded-lg bg-emerald-700 px-4 py-2 text-xs font-semibold text-white">Get App</button>
         </header>
 

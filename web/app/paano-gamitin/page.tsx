@@ -157,7 +157,7 @@ export default function PaanoGamitinPage() {
         </section>
 
         <footer className="mt-14 border-t border-emerald-100 pt-10 text-center text-xs text-emerald-900/70">
-          <p>© 2025 Tindai</p>
+          <p>© 2025 Tindai. Ang iyong Katuwang sa maayos na tindahan</p>
         </footer>
       </div>
     </main>
