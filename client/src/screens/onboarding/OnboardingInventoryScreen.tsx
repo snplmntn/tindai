@@ -9,7 +9,7 @@ export function OnboardingInventoryScreen() {
       step={1}
       eyebrow="Get Started"
       title="Bring your inventory into one place."
-      description="Start the client experience with a cleaner view of products, stock movement, and the items that need attention first."
+      description="Start with a clear view of products, stock movement, and items that need attention first."
       panelTitle="Inventory visibility from day one"
       panelBody="Organize your product list around one reliable workspace instead of chasing updates across disconnected notes or spreadsheets."
       points={['Track stock counts with fewer blind spots', 'Spot low-stock items early', 'Keep daily item updates in one view']}

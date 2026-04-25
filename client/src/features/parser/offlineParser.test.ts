@@ -112,6 +112,23 @@ describe('parseOfflineCommand', () => {
     expect(result.notes).toContain('online_required');
   });
 
+  it('avoids substring alias false positives from unrelated words', () => {
+    const result = parseOfflineCommand('Tatlong megga sardinas nabenta.', inventory);
+
+    expect(result.intent).toBe('unknown');
+    expect(result.status).toBe('unparsed');
+    expect(result.items).toEqual([]);
+  });
+
+  it('requires confirmation for utang when customer name is missing', () => {
+    const result = parseOfflineCommand('Kumuha ng dalawang Coke, ilista mo muna.', inventory);
+
+    expect(result.intent).toBe('utang');
+    expect(result.status).toBe('needs_confirmation');
+    expect(result.credit).toEqual({ is_utang: true });
+    expect(result.notes).toContain('missing_customer_name');
+  });
+
   it('returns unparsed when no dynamic local inventory item matches', () => {
     const result = parseOfflineCommand('Nakabenta ako ng dalawang Sprite.', inventory);
 

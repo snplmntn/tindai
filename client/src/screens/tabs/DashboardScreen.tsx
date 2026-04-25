@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,17 +9,37 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from 'expo-speech-recognition';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import type { CommandSource } from '@/features/commands/localCommandService';
 import { useLocalData } from '@/features/local-data/LocalDataContext';
+import type { ParserResult } from '@/features/parser/offlineParser';
 
 export function DashboardScreen() {
-  const { store, inventoryItems, isLoading, error, refresh, submitLocalCommand } = useLocalData();
+  const {
+    appState,
+    store,
+    inventoryItems,
+    recentTransactions,
+    isLoading,
+    error,
+    refresh,
+    submitLocalCommand,
+    confirmLocalCommand,
+    applyManualAdjustment,
+  } = useLocalData();
   const [commandText, setCommandText] = useState('');
   const [commandMessage, setCommandMessage] = useState<string | null>(null);
   const [isSubmittingCommand, setIsSubmittingCommand] = useState(false);
-  const pulseScale = useRef(new Animated.Value(0.95)).current;
-  const pulseOpacity = useRef(new Animated.Value(0.35)).current;
+  const [isListening, setIsListening] = useState(false);
+  const [pendingParserResult, setPendingParserResult] = useState<ParserResult | null>(null);
+  const [pendingCustomerName, setPendingCustomerName] = useState('');
+  const [pendingAction, setPendingAction] = useState(false);
+  const [manualAdjustingItemId, setManualAdjustingItemId] = useState<string | null>(null);
 
   const lowStockItems = useMemo(
     () => inventoryItems.filter((item) => item.currentStock <= item.lowStockThreshold),
@@ -31,69 +50,182 @@ export function DashboardScreen() {
     [inventoryItems],
   );
 
-  useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(pulseScale, {
-            toValue: 1.3,
-            duration: 1600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseOpacity, {
-            toValue: 0,
-            duration: 1600,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(pulseScale, {
-            toValue: 0.95,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseOpacity, {
-            toValue: 0.35,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]),
-    );
+  const buildConfirmationText = useCallback((parserResult: ParserResult) => {
+    const itemSummary = parserResult.items
+      .map((item) => `${Math.abs(item.quantity_delta)} ${item.item_name}`)
+      .join(' + ');
 
-    pulse.start();
-    return () => pulse.stop();
-  }, [pulseOpacity, pulseScale]);
+    if (parserResult.intent === 'restock') {
+      return `Dagdag ${itemSummary}?`;
+    }
 
-  const handleSubmitCommand = async () => {
-    setIsSubmittingCommand(true);
+    if (parserResult.intent === 'utang') {
+      const customerName = parserResult.credit.customer_name ?? pendingCustomerName.trim();
+      return customerName ? `Utang ni ${customerName}: ${itemSummary}?` : `Utang: ${itemSummary}?`;
+    }
+
+    return `Bawas ${itemSummary}?`;
+  }, [pendingCustomerName]);
+
+  const processCommand = useCallback(
+    async (rawText: string, source: CommandSource) => {
+      setIsSubmittingCommand(true);
+      setCommandMessage(null);
+
+      try {
+        const result = await submitLocalCommand(rawText, source);
+
+        if (result.status === 'applied') {
+          setCommandText('');
+          setPendingParserResult(null);
+          setPendingCustomerName('');
+          setCommandMessage('Naitala na. Hihintayin lang ang internet para maipadala.');
+          return;
+        }
+
+        if (result.status === 'online_required') {
+          setPendingParserResult(null);
+          setPendingCustomerName('');
+          setCommandMessage('Kailangan ng internet para masagot ito.');
+          return;
+        }
+
+        if (result.status === 'needs_confirmation') {
+          setPendingParserResult(result.parserResult);
+          setPendingCustomerName(result.parserResult.credit.customer_name ?? '');
+          setCommandMessage('Pakikumpirma muna bago itala.');
+          return;
+        }
+
+        setPendingParserResult(null);
+        setPendingCustomerName('');
+        setCommandMessage('Hindi malinaw ang utos. Pakiulit o ayusin ang sulat.');
+      } catch (caughtError) {
+        setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Hindi naitala. Subukan ulit.');
+      } finally {
+        setIsSubmittingCommand(false);
+      }
+    },
+    [submitLocalCommand],
+  );
+
+  const handleConfirmPending = useCallback(async () => {
+    if (!pendingParserResult) {
+      return;
+    }
+
+    setPendingAction(true);
     setCommandMessage(null);
 
     try {
-      const result = await submitLocalCommand(commandText);
-
-      if (result.status === 'applied') {
-        setCommandText('');
-        setCommandMessage('Applied locally. Sync is still pending.');
-        return;
-      }
-
-      if (result.status === 'online_required') {
-        setCommandMessage('Question detected. Online assistant is required in a later milestone.');
-        return;
-      }
-
-      if (result.status === 'needs_confirmation') {
-        setCommandMessage('Parser needs confirmation before changing inventory.');
-        return;
-      }
-
-      setCommandMessage('Command was not parsed. Try the demo command format.');
+      await confirmLocalCommand(pendingParserResult, pendingCustomerName);
+      setPendingParserResult(null);
+      setPendingCustomerName('');
+      setCommandText('');
+      setCommandMessage('Naitala na. Hihintayin lang ang internet para maipadala.');
     } catch (caughtError) {
-      setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Unable to apply command.');
+      setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Hindi naituloy. Subukan ulit.');
     } finally {
-      setIsSubmittingCommand(false);
+      setPendingAction(false);
     }
+  }, [confirmLocalCommand, pendingCustomerName, pendingParserResult]);
+
+  const handleManualAdjust = useCallback(
+    async (itemId: string, direction: -1 | 1) => {
+      setManualAdjustingItemId(itemId);
+      setCommandMessage(null);
+
+      try {
+        await applyManualAdjustment(itemId, direction);
+        setCommandMessage('Nabago na ang bilang. Hihintayin lang ang internet para maipadala.');
+      } catch (caughtError) {
+        setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Hindi nabago ang bilang. Subukan ulit.');
+      } finally {
+        setManualAdjustingItemId(null);
+      }
+    },
+    [applyManualAdjustment],
+  );
+
+  const startListening = useCallback(async () => {
+    if (isListening) {
+      ExpoSpeechRecognitionModule.stop();
+      return;
+    }
+
+    try {
+      if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) {
+        setCommandMessage('Hindi available ang voice input sa phone na ito.');
+        return;
+      }
+
+      const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!permission.granted) {
+        setCommandMessage('Payagan ang mic para makapagsalita ka ng utos.');
+        return;
+      }
+
+      ExpoSpeechRecognitionModule.start({
+        lang: 'fil-PH',
+        interimResults: true,
+        maxAlternatives: 1,
+        continuous: false,
+      });
+    } catch (caughtError) {
+      setCommandMessage(caughtError instanceof Error ? caughtError.message : 'Hindi nagsimula ang voice input.');
+      setIsListening(false);
+    }
+  }, [isListening]);
+
+  useSpeechRecognitionEvent('start', () => {
+    setIsListening(true);
+  });
+
+  useSpeechRecognitionEvent('end', () => {
+    setIsListening(false);
+  });
+
+  useSpeechRecognitionEvent('error', (event) => {
+    setIsListening(false);
+    setCommandMessage(event.message || 'Hindi nakuha nang maayos ang boses.');
+  });
+
+  useSpeechRecognitionEvent('result', (event) => {
+    if (!event.isFinal || event.results.length === 0) {
+      return;
+    }
+
+    const transcript = event.results[0]?.transcript?.trim();
+
+    if (!transcript) {
+      return;
+    }
+
+    setCommandText(transcript);
+    void processCommand(transcript, 'voice');
+  });
+
+  const pendingNeedsCustomer =
+    pendingParserResult?.intent === 'utang' &&
+    pendingParserResult?.notes.includes('missing_customer_name') &&
+    !pendingCustomerName.trim();
+
+  const formatTransactionLine = (createdAt: string, source: string, syncStatus: string, intent: string | null) => {
+    const time = new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const kind = intent === 'restock' ? 'dagdag' : intent === 'utang' ? 'utang' : 'bawas';
+    const pinagmulan = source === 'voice' ? 'boses' : source === 'manual' ? 'pindot' : 'sulat';
+    const estado = syncStatus === 'pending' ? 'hindi pa naipapadala' : 'naipadala';
+
+    return `${time} - ${kind} - ${pinagmulan} - ${estado}`;
+  };
+
+  const formatDelta = (name: string | null, delta: number | null) => {
+    if (!name || typeof delta !== 'number') {
+      return null;
+    }
+
+    const sign = delta > 0 ? '+' : '';
+    return `${name} ${sign}${delta}`;
   };
 
   return (
@@ -112,27 +244,16 @@ export function DashboardScreen() {
           </Text>
         </View>
         <View style={styles.statusPill}>
-          <Text style={styles.statusText}>{store ? 'Local Ready' : 'No Store'}</Text>
+          <Text style={styles.statusText}>{appState?.mode === 'authenticated' ? 'Cloud Linked' : 'Guest Mode'}</Text>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.voiceSection}>
-          <View style={styles.voiceButtonWrap}>
-            <Animated.View
-              style={[
-                styles.voicePulse,
-                {
-                  opacity: pulseOpacity,
-                  transform: [{ scale: pulseScale }],
-                },
-              ]}
-            />
-            <TouchableOpacity activeOpacity={0.85} style={styles.voiceButton}>
-              <Ionicons color="#ffffff" name="mic-outline" size={56} />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.voiceLabel}>TINDAY IS LISTENING</Text>
+          <TouchableOpacity activeOpacity={0.85} onPress={() => void startListening()} style={styles.voiceButton}>
+            <Ionicons color="#ffffff" name={isListening ? 'stop-outline' : 'mic-outline'} size={56} />
+          </TouchableOpacity>
+          <Text style={styles.voiceLabel}>{isListening ? 'LISTENING...' : 'VOICE COMMAND'}</Text>
           <Text style={styles.voiceTitle}>Tap to Speak Sales Command</Text>
         </View>
 
@@ -149,7 +270,7 @@ export function DashboardScreen() {
           <TouchableOpacity
             activeOpacity={0.85}
             disabled={isSubmittingCommand}
-            onPress={() => void handleSubmitCommand()}
+            onPress={() => void processCommand(commandText, 'typed')}
             style={[styles.commandButton, isSubmittingCommand && styles.commandButtonDisabled]}
           >
             {isSubmittingCommand ? (
@@ -159,6 +280,44 @@ export function DashboardScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        {pendingParserResult ? (
+          <View style={styles.confirmCard}>
+            <Text style={styles.confirmText}>{buildConfirmationText(pendingParserResult)}</Text>
+            {pendingParserResult.intent === 'utang' && pendingParserResult.notes.includes('missing_customer_name') ? (
+              <TextInput
+                autoCapitalize="words"
+                editable={!pendingAction}
+                onChangeText={setPendingCustomerName}
+                placeholder="Customer name"
+                placeholderTextColor="#7a847e"
+                style={styles.customerInput}
+                value={pendingCustomerName}
+              />
+            ) : null}
+            <View style={styles.confirmActions}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                disabled={pendingAction || pendingNeedsCustomer}
+                onPress={() => void handleConfirmPending()}
+                style={[styles.confirmButton, (pendingAction || pendingNeedsCustomer) && styles.commandButtonDisabled]}
+              >
+                <Text style={styles.confirmButtonText}>{pendingAction ? 'Applying...' : 'Confirm'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => {
+                  setPendingParserResult(null);
+                  setPendingCustomerName('');
+                }}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
+
         {commandMessage ? <Text style={styles.commandMessage}>{commandMessage}</Text> : null}
 
         {error ? (
@@ -192,54 +351,64 @@ export function DashboardScreen() {
             </Text>
           </View>
         ) : (
-          <>
-            <View style={styles.card}>
-              <View style={styles.lowStockTopRow}>
-                <Ionicons color={lowStockItems.length > 0 ? '#ba1a1a' : '#1f7a63'} name="warning-outline" size={20} />
-                <View style={styles.lowStockChip}>
-                  <Text style={styles.lowStockChipText}>
-                    {lowStockItems.length > 0 ? 'Low Stock' : 'Stock Healthy'}
+          <View style={styles.activityCard}>
+            {inventoryItems.slice(0, 8).map((item, index) => (
+              <View
+                key={item.id}
+                style={[styles.activityItem, index < Math.min(inventoryItems.length, 8) - 1 ? styles.activityDivider : undefined]}
+              >
+                <View style={styles.activityBody}>
+                  <Text style={styles.activityLabel}>{item.name}</Text>
+                  <Text style={styles.activityTime}>
+                    {item.currentStock} {item.unit} {item.currentStock <= item.lowStockThreshold ? '• Low stock' : ''}
                   </Text>
                 </View>
-              </View>
-              <Text style={styles.lowStockItem}>{lowStockItems[0]?.name ?? 'No low-stock items'}</Text>
-              <View style={styles.lowStockBottomRow}>
-                <Text style={styles.lowStockCount}>
-                  {lowStockItems[0]?.currentStock ?? 0}{' '}
-                  <Text style={styles.lowStockCountMuted}>{lowStockItems[0]?.unit ?? 'items'}</Text>
-                </Text>
-                <Text style={styles.orderMore}>Offline alert</Text>
-              </View>
-            </View>
-
-            <View style={styles.recentHeader}>
-              <Text style={styles.recentTitle}>Inventory</Text>
-              <Text style={styles.viewAll}>{inventoryItems.length} synced</Text>
-            </View>
-
-            <View style={styles.activityCard}>
-              {inventoryItems.slice(0, 6).map((item, index) => (
-                <View
-                  key={item.id}
-                  style={[styles.activityItem, index < Math.min(inventoryItems.length, 6) - 1 ? styles.activityDivider : undefined]}
-                >
-                  <View style={styles.activityIconWrap}>
-                    <Ionicons color="#1f7a63" name="cube-outline" size={20} />
-                  </View>
-                  <View style={styles.activityBody}>
-                    <Text style={styles.activityLabel}>{item.name}</Text>
-                    <Text style={styles.activityTime}>
-                      {item.aliases.length > 0 ? item.aliases.join(', ') : 'No aliases yet'}
-                    </Text>
-                  </View>
-                  <Text style={styles.activityAmount}>
-                    {item.currentStock} {item.unit}
-                  </Text>
+                <View style={styles.adjustWrap}>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => void handleManualAdjust(item.id, -1)}
+                    style={styles.adjustButton}
+                  >
+                    <Ionicons color="#ffffff" name="remove" size={16} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => void handleManualAdjust(item.id, 1)}
+                    style={styles.adjustButton}
+                  >
+                    {manualAdjustingItemId === item.id ? (
+                      <ActivityIndicator color="#ffffff" size="small" />
+                    ) : (
+                      <Ionicons color="#ffffff" name="add" size={16} />
+                    )}
+                  </TouchableOpacity>
                 </View>
-              ))}
-            </View>
-          </>
+              </View>
+            ))}
+          </View>
         )}
+
+        <View style={styles.card}>
+          <Text style={styles.recentTitle}>Recent Transactions</Text>
+          {recentTransactions.length === 0 ? (
+            <Text style={styles.activityTime}>No local transactions yet.</Text>
+          ) : (
+            recentTransactions.slice(0, 6).map((transaction, index) => (
+              <View
+                key={transaction.id}
+                style={[styles.activityItem, index < Math.min(recentTransactions.length, 6) - 1 ? styles.activityDivider : undefined]}
+              >
+                <View style={styles.activityBody}>
+                  <Text style={styles.activityLabel}>{transaction.rawText}</Text>
+                  <Text style={styles.activityTime}>{formatTransactionLine(transaction.createdAt, transaction.source, transaction.syncStatus, transaction.intent)}</Text>
+                  {formatDelta(transaction.primaryItemName, transaction.primaryQuantityDelta) ? (
+                    <Text style={styles.activityTime}>{formatDelta(transaction.primaryItemName, transaction.primaryQuantityDelta)}</Text>
+                  ) : null}
+                </View>
+              </View>
+            ))
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -294,52 +463,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 24,
     paddingBottom: 120,
-    gap: 18,
+    gap: 14,
   },
   voiceSection: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 10,
     gap: 8,
   },
-  voiceButtonWrap: {
-    width: 172,
-    height: 172,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  voicePulse: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: '#1f7a63',
-  },
   voiceButton: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: 128,
+    height: 128,
+    borderRadius: 64,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#00604c',
-    shadowColor: '#00604c',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
   },
   voiceLabel: {
     color: '#00604c',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 1.5,
   },
   voiceTitle: {
-    fontSize: 27,
+    fontSize: 24,
     fontWeight: '800',
     color: '#181d1b',
     textAlign: 'center',
-    lineHeight: 34,
+    lineHeight: 30,
     paddingHorizontal: 20,
   },
   commandCard: {
@@ -376,6 +525,56 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 18,
+  },
+  confirmCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#e7e5e4',
+    padding: 12,
+    gap: 10,
+  },
+  confirmText: {
+    color: '#181d1b',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  customerInput: {
+    minHeight: 42,
+    borderWidth: 1,
+    borderColor: '#dfe2e0',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    color: '#181d1b',
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  confirmButton: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: 10,
+    backgroundColor: '#00604c',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmButtonText: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#d8dbd9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButtonText: {
+    color: '#3e4945',
+    fontWeight: '700',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -438,64 +637,13 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#f5f5f4',
-    gap: 10,
-  },
-  lowStockTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  lowStockChip: {
-    backgroundColor: '#ffdad6',
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  lowStockChipText: {
-    color: '#93000a',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  lowStockItem: {
-    color: '#181d1b',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  lowStockBottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  lowStockCount: {
-    color: '#00604c',
-    fontSize: 32,
-    fontWeight: '800',
-    lineHeight: 34,
-  },
-  lowStockCountMuted: {
-    color: '#3e4945',
-    fontSize: 14,
-    fontWeight: '400',
-  },
-  orderMore: {
-    color: '#00604c',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  recentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 6,
   },
   recentTitle: {
     color: '#181d1b',
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
-  },
-  viewAll: {
-    color: '#00604c',
-    fontSize: 14,
-    fontWeight: '700',
+    marginBottom: 6,
   },
   activityCard: {
     backgroundColor: '#ffffff',
@@ -505,7 +653,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   activityItem: {
-    padding: 16,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -514,21 +662,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f4',
   },
-  activityIconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#e3f8f0',
-  },
   activityBody: {
     flex: 1,
     gap: 2,
   },
   activityLabel: {
     color: '#181d1b',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
   activityTime: {
@@ -536,9 +676,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  activityAmount: {
-    color: '#00604c',
-    fontSize: 15,
-    fontWeight: '700',
+  adjustWrap: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  adjustButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: '#00604c',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

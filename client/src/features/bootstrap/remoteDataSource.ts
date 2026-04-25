@@ -21,20 +21,32 @@ type InventoryRecord = {
 export class RemoteDataSource {
   constructor(private readonly accessToken: string) {}
 
-  async getCurrentStore(): Promise<LocalStore> {
+  private async requestStore(path: '/api/v1/store/me' | '/api/v1/store/bootstrap', method: 'GET' | 'POST') {
     const env = getClientEnv();
-    const response = await fetch(`${env.EXPO_PUBLIC_API_BASE_URL}/api/v1/store/me`, {
+    return fetch(`${env.EXPO_PUBLIC_API_BASE_URL}${path}`, {
+      method,
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
       },
     });
+  }
 
-    if (!response.ok) {
-      throw new Error('Unable to load authenticated store.');
+  async getCurrentStore(): Promise<LocalStore> {
+    const response = await this.requestStore('/api/v1/store/me', 'GET');
+    if (response.ok) {
+      const payload = (await response.json()) as StoreResponse;
+      return payload.store;
     }
 
-    const payload = (await response.json()) as StoreResponse;
-    return payload.store;
+    if (response.status === 404) {
+      const bootstrapResponse = await this.requestStore('/api/v1/store/bootstrap', 'POST');
+      if (bootstrapResponse.ok) {
+        const payload = (await bootstrapResponse.json()) as StoreResponse;
+        return payload.store;
+      }
+    }
+
+    throw new Error('Unable to load authenticated store.');
   }
 
   async getInventoryItems(storeId: string): Promise<LocalInventoryItem[]> {

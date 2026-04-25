@@ -43,6 +43,11 @@ vi.mock('@/screens/tabs/ProfileScreen', () => ({
 import { HomeTabs } from '@/screens/HomeTabs';
 
 describe('HomeTabs', () => {
+  it('opens dashboard as initial tab', () => {
+    const element = HomeTabs();
+    expect(element.props.initialRouteName).toBe('Dashboard');
+  });
+
   it('disables the top app bar for tab screens', () => {
     const element = HomeTabs();
     const options = element.props.screenOptions({

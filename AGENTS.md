@@ -27,6 +27,7 @@ Prioritize the core loop: voice or typed command -> offline parser -> local inve
 - Inventory and utang balances must be ledger-driven. Do not bypass `inventory_movements` or `utang_entries` when changing balances.
 - Mobile clients must never receive Supabase service role keys or write cloud ledger rows directly.
 - `/api/assistant/query` is read-only for MVP. It must not mutate inventory, transactions, customers, movements, or utang records.
+- User-facing mobile copy must avoid internal engineering terms (for example: MVP, parser, ledger, RLS, service role, sync queue). Use plain store-owner language.
 
 ## Instruction Hygiene
 
@@ -75,6 +76,7 @@ When a mobile package exists, run its local checks before committing mobile chan
 - Lint.
 - Unit tests for parser, local storage, sync queue, and UI state reducers.
 - Android smoke run for the main dashboard and offline transaction flow.
+- Sweep changed UI copy for internal terms using `rg -n -i "mvp|parser|ledger|rls|service role|sync queue" client/src/screens client/src/components` and rewrite matches to user-facing language.
 
 When a backend package exists, run its local checks before committing backend changes:
 

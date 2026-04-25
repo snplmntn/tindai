@@ -13,6 +13,7 @@ const Tab = createBottomTabNavigator();
 export function HomeTabs() {
   return (
     <Tab.Navigator
+      initialRouteName="Dashboard"
       screenOptions={({ route }) => ({
         headerShown: false,
         sceneStyle: {

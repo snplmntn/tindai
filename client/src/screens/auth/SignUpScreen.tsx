@@ -14,6 +14,7 @@ const MIN_PASSWORD_LENGTH = 8;
 export function SignUpScreen() {
   const {
     showLogin,
+    closeAuth,
     signInWithGoogle,
     signUpWithEmail,
     authError,
@@ -21,6 +22,7 @@ export function SignUpScreen() {
     googleSignInHint,
   } = useAuth();
   const [fullName, setFullName] = useState('');
+  const [storeName, setStoreName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -31,18 +33,19 @@ export function SignUpScreen() {
   const fieldErrors = useMemo(
     () => ({
       fullName: attemptedSubmit && !fullName.trim(),
+      storeName: attemptedSubmit && !storeName.trim(),
       email: attemptedSubmit && !email.trim(),
       password: attemptedSubmit && password.length < MIN_PASSWORD_LENGTH,
       confirmPassword: attemptedSubmit && confirmPassword !== password,
     }),
-    [attemptedSubmit, confirmPassword, email, fullName, password],
+    [attemptedSubmit, confirmPassword, email, fullName, password, storeName],
   );
 
   const handleEmailSignUp = async () => {
     setAttemptedSubmit(true);
     setLocalError(null);
 
-    if (!fullName.trim() || !email.trim() || password.length < MIN_PASSWORD_LENGTH || confirmPassword !== password) {
+    if (!fullName.trim() || !storeName.trim() || !email.trim() || password.length < MIN_PASSWORD_LENGTH || confirmPassword !== password) {
       if (password.length < MIN_PASSWORD_LENGTH) {
         setLocalError('Password must be at least 8 characters.');
       } else if (confirmPassword !== password) {
@@ -53,6 +56,7 @@ export function SignUpScreen() {
 
     await signUpWithEmail({
       fullName,
+      storeName,
       email,
       password,
     });
@@ -71,12 +75,14 @@ export function SignUpScreen() {
   return (
     <AuthLayout
       badge="Create Account"
-      title="Set up your client access"
-      subtitle="Create an account with your name, email, and password, or continue with Google."
+      title="Set up your account"
+      subtitle="Create an account with your name, store name, email, and password, or continue with Google."
       submitLabel="Create account"
       alternateLabel="Already have an account? Sign in"
       onSubmit={handleEmailSignUp}
       onAlternatePress={showLogin}
+      dismissLabel="Back to app"
+      onDismiss={closeAuth}
     >
       <View style={styles.formBlock}>
         <AuthField
@@ -92,6 +98,18 @@ export function SignUpScreen() {
           autoComplete="name"
           textContentType="name"
           hasError={fieldErrors.fullName}
+        />
+        <AuthField
+          label="Store name"
+          placeholder="Nena Sari-Sari Store"
+          value={storeName}
+          onChangeText={(value) => {
+            setStoreName(value);
+            setLocalError(null);
+            clearAuthError();
+          }}
+          autoCapitalize="words"
+          hasError={fieldErrors.storeName}
         />
         <AuthField
           label="Email"

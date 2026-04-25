@@ -66,7 +66,7 @@ describe('LocalLedgerService', () => {
       createClientMutationId: () => 'client-mutation-1',
     });
 
-    const result = await service.applyReadyParserResult('store-1', readySale);
+    const result = await service.applyReadyParserResult('store-1', readySale, { source: 'voice' });
 
     expect(result).toEqual({
       transactionId: 'transaction-id',
@@ -82,8 +82,10 @@ describe('LocalLedgerService', () => {
     );
     expect(database.runAsync).toHaveBeenCalledWith(
       expect.stringContaining('insert into transactions'),
-      expect.arrayContaining(['transaction-id', 'store-1', 'client-mutation-1', readySale.raw_text]),
+      expect.arrayContaining(['transaction-id', 'store-1', 'client-mutation-1', readySale.raw_text, 'voice']),
     );
+    expect(database.runAsync).toHaveBeenCalledWith('begin immediate', []);
+    expect(database.runAsync).toHaveBeenCalledWith('commit', []);
     expect(database.runAsync).toHaveBeenCalledWith(
       expect.stringContaining('update inventory_items'),
       expect.arrayContaining([10, '2026-04-25T10:00:00.000Z', 'item-coke', 'store-1']),
@@ -117,6 +119,32 @@ describe('LocalLedgerService', () => {
     );
   });
 
+  it('blocks manual sale decrements that would drop stock below zero', async () => {
+    const { database } = createDatabase();
+    const service = new LocalLedgerService(database, {
+      now: () => '2026-04-25T10:00:00.000Z',
+      createId: (prefix) => `${prefix}-id`,
+      createClientMutationId: () => 'client-mutation-1',
+    });
+    const manualOversell: ParserResult = {
+      ...readySale,
+      raw_text: 'manual_adjust:-20 Coke Mismo',
+      normalized_text: 'manual adjust -20 coke mismo',
+      intent: 'sale',
+      items: [
+        {
+          ...readySale.items[0],
+          quantity: 20,
+          quantity_delta: -20,
+        },
+      ],
+    };
+
+    await expect(service.applyReadyParserResult('store-1', manualOversell, { source: 'manual' })).rejects.toThrow(
+      'Insufficient stock for manual adjustment.',
+    );
+  });
+
   it('rejects question and confirmation results because they must not mutate inventory', async () => {
     const { database } = createDatabase();
     const service = new LocalLedgerService(database);
@@ -130,5 +158,25 @@ describe('LocalLedgerService', () => {
       }),
     ).rejects.toThrow('Only ready inventory-changing parser results can be applied locally.');
     expect(database.runAsync).not.toHaveBeenCalled();
+  });
+
+  it('rolls back the local transaction when a ledger write fails', async () => {
+    const { database } = createDatabase();
+    database.runAsync = vi.fn((sql: string) => {
+      if (sql.includes('insert into inventory_movements')) {
+        return Promise.reject(new Error('write failed'));
+      }
+
+      return Promise.resolve();
+    });
+    const service = new LocalLedgerService(database, {
+      now: () => '2026-04-25T10:00:00.000Z',
+      createId: (prefix) => `${prefix}-id`,
+      createClientMutationId: () => 'client-mutation-1',
+    });
+
+    await expect(service.applyReadyParserResult('store-1', readySale)).rejects.toThrow('write failed');
+    expect(database.runAsync).toHaveBeenCalledWith('begin immediate', []);
+    expect(database.runAsync).toHaveBeenCalledWith('rollback', []);
   });
 });

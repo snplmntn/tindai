@@ -5,6 +5,7 @@ export type AppFlowState = {
   hasCompletedOnboarding: boolean;
   onboardingStep: OnboardingStep;
   authScreen: AuthScreen;
+  isAuthScreenVisible: boolean;
   isAuthenticated: boolean;
 };
 
@@ -13,6 +14,7 @@ export type AppFlowAction =
   | { type: 'skipOnboarding' }
   | { type: 'showLogin' }
   | { type: 'showSignUp' }
+  | { type: 'closeAuth' }
   | { type: 'signIn' }
   | { type: 'signOut' };
 
@@ -25,6 +27,7 @@ export const initialAppFlowState: AppFlowState = {
   hasCompletedOnboarding: false,
   onboardingStep: 1,
   authScreen: 'login',
+  isAuthScreenVisible: false,
   isAuthenticated: false,
 };
 
@@ -39,7 +42,6 @@ export function appFlowReducer(state: AppFlowState, action: AppFlowAction): AppF
         return {
           ...state,
           hasCompletedOnboarding: true,
-          authScreen: 'login',
         };
       }
 
@@ -51,29 +53,35 @@ export function appFlowReducer(state: AppFlowState, action: AppFlowAction): AppF
       return {
         ...state,
         hasCompletedOnboarding: true,
-        authScreen: 'login',
       };
     case 'showLogin':
       return {
         ...state,
         authScreen: 'login',
+        isAuthScreenVisible: true,
       };
     case 'showSignUp':
       return {
         ...state,
         authScreen: 'signUp',
+        isAuthScreenVisible: true,
+      };
+    case 'closeAuth':
+      return {
+        ...state,
+        isAuthScreenVisible: false,
       };
     case 'signIn':
       return {
         ...state,
         hasCompletedOnboarding: true,
-        authScreen: 'login',
+        isAuthScreenVisible: false,
         isAuthenticated: true,
       };
     case 'signOut':
       return {
         ...state,
-        authScreen: 'login',
+        isAuthScreenVisible: false,
         isAuthenticated: false,
       };
     default:
@@ -82,14 +90,7 @@ export function appFlowReducer(state: AppFlowState, action: AppFlowAction): AppF
 }
 
 export function getActiveRoute(state: AppFlowState): ActiveRoute {
-  if (!state.hasCompletedOnboarding) {
-    return {
-      kind: 'onboarding',
-      step: state.onboardingStep,
-    };
-  }
-
-  if (!state.isAuthenticated) {
+  if (state.isAuthScreenVisible) {
     return {
       kind: 'auth',
       screen: state.authScreen,

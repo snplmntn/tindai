@@ -7,6 +7,21 @@ export type LocalStore = {
   updatedAt: string;
 };
 
+export type AppMode = 'guest' | 'authenticated';
+export type MigrationStatus = 'not_started' | 'in_progress' | 'completed' | 'failed' | 'needs_review';
+
+export type LocalAppState = {
+  mode: AppMode;
+  guestDeviceId: string;
+  activeStoreId: string | null;
+  migrationStatus: MigrationStatus;
+  migrationOwnerUserId: string | null;
+  pendingClaimOwnerUserId: string | null;
+  lastMigrationError: string | null;
+  lastBootstrapAt: string | null;
+  updatedAt: string;
+};
+
 export type LocalInventoryItem = {
   id: string;
   storeId: string;
@@ -17,4 +32,20 @@ export type LocalInventoryItem = {
   currentStock: number;
   lowStockThreshold: number;
   updatedAt: string;
+};
+
+export type LocalTransactionSource = 'voice' | 'typed' | 'manual';
+
+export type LocalTransactionSummary = {
+  id: string;
+  storeId: string;
+  rawText: string;
+  source: LocalTransactionSource;
+  syncStatus: string;
+  parserSource: string;
+  intent: string | null;
+  primaryItemName: string | null;
+  primaryQuantityDelta: number | null;
+  isUtang: boolean;
+  createdAt: string;
 };

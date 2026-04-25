@@ -11,7 +11,7 @@ export function OnboardingAnalyticsScreen() {
       title="Turn activity into useful decisions."
       description="Finish onboarding by pointing users toward analytics, where they can watch trends, movement, and performance shifts."
       panelTitle="Insights that feel connected to the workflow"
-      panelBody="The app should not stop at reporting what happened. It should help clients recognize patterns and act while they still matter."
+      panelBody="The app should not stop at reporting what happened. It should help you spot patterns and act while they still matter."
       points={['Review movement and demand trends', 'Compare what is rising and slowing down', 'Continue into login when you are ready']}
       nextLabel="Continue to Login"
       onNext={nextOnboardingStep}

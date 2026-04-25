@@ -56,7 +56,7 @@ const NUMBER_WORDS: Record<string, number> = {
 const SALE_TERMS = ['nakabenta', 'nabenta', 'bawas', 'sold', 'sell'];
 const RESTOCK_TERMS = ['dagdag', 'nadagdagan', 'restock', 'refill', 'add'];
 const UTANG_TERMS = ['utang', 'giutang', 'lista', 'ilista', 'kumuha'];
-const QUESTION_TERMS = ['ano', '?', 'sino', 'ilan', 'magkano', 'low stock'];
+const QUESTION_TERMS = ['ano', 'sino', 'ilan', 'magkano', 'low stock'];
 
 export function parseOfflineCommand(rawText: string, inventoryItems: LocalInventoryItem[]): ParserResult {
   const normalizedText = normalizeText(rawText);
@@ -69,7 +69,7 @@ export function parseOfflineCommand(rawText: string, inventoryItems: LocalInvent
     ]);
   }
 
-  const isUtang = containsAny(normalizedText, UTANG_TERMS);
+  const isUtang = containsAnyTerm(normalizedText, UTANG_TERMS);
   const intent = inferMutationIntent(normalizedText, isUtang);
   const matchedItems = matchInventoryItems(normalizedText, inventoryItems, intent);
 
@@ -79,18 +79,27 @@ export function parseOfflineCommand(rawText: string, inventoryItems: LocalInvent
     ]);
   }
 
-  const confidence = Math.min(
+  const notes: string[] = [];
+  const customerName = isUtang ? extractCustomerName(rawText) : undefined;
+  let confidence = Math.min(
     0.99,
     0.55 + (intent === 'utang' ? 0.15 : 0.2) + Math.max(...matchedItems.map((item) => item.confidence)) * 0.25,
   );
   const credit = isUtang
-    ? {
-        is_utang: true,
-        customer_name: extractCustomerName(rawText),
-      }
+    ? customerName
+      ? {
+          is_utang: true,
+          customer_name: customerName,
+        }
+      : { is_utang: true }
     : { is_utang: false };
 
-  return buildResult(rawText, normalizedText, intent, confidence, matchedItems, credit, []);
+  if (isUtang && !customerName) {
+    confidence = Math.min(confidence, 0.84);
+    notes.push('missing_customer_name');
+  }
+
+  return buildResult(rawText, normalizedText, intent, confidence, matchedItems, credit, notes);
 }
 
 function buildResult(
@@ -145,11 +154,11 @@ function inferMutationIntent(normalizedText: string, isUtang: boolean): ParserIn
     return 'utang';
   }
 
-  if (containsAny(normalizedText, RESTOCK_TERMS)) {
+  if (containsAnyTerm(normalizedText, RESTOCK_TERMS)) {
     return 'restock';
   }
 
-  if (containsAny(normalizedText, SALE_TERMS)) {
+  if (containsAnyTerm(normalizedText, SALE_TERMS)) {
     return 'sale';
   }
 
@@ -157,7 +166,7 @@ function inferMutationIntent(normalizedText: string, isUtang: boolean): ParserIn
 }
 
 function hasInventoryMutationTerm(normalizedText: string) {
-  return containsAny(normalizedText, [...SALE_TERMS, ...RESTOCK_TERMS, ...UTANG_TERMS]);
+  return containsAnyTerm(normalizedText, [...SALE_TERMS, ...RESTOCK_TERMS, ...UTANG_TERMS]);
 }
 
 function getQuestionConfidence(normalizedText: string) {
@@ -165,7 +174,7 @@ function getQuestionConfidence(normalizedText: string) {
     return 0.8;
   }
 
-  return containsAny(normalizedText, QUESTION_TERMS) ? 0.65 : 0;
+  return containsAnyTerm(normalizedText, QUESTION_TERMS) ? 0.65 : 0;
 }
 
 function matchInventoryItems(
@@ -178,7 +187,7 @@ function matchInventoryItems(
   return inventoryItems
     .map((item) => {
       const aliases = [item.name, ...item.aliases].map(normalizeText).sort((a, b) => b.length - a.length);
-      const matchedAlias = aliases.find((alias) => normalizedText.includes(alias));
+      const matchedAlias = aliases.find((alias) => containsTerm(normalizedText, alias));
 
       if (!matchedAlias) {
         return null;
@@ -227,8 +236,16 @@ function cleanupName(name: string) {
     .trim();
 }
 
-function containsAny(text: string, terms: string[]) {
-  return terms.some((term) => text.includes(term));
+function containsAnyTerm(text: string, terms: string[]) {
+  return terms.some((term) => containsTerm(text, term));
+}
+
+function containsTerm(text: string, term: string) {
+  const normalizedTerm = normalizeText(term);
+  const normalizedText = normalizeText(text);
+  const pattern = new RegExp(`(^|\\s)${escapeRegExp(normalizedTerm)}(?=\\s|$)`);
+
+  return pattern.test(normalizedText);
 }
 
 function escapeRegExp(value: string) {

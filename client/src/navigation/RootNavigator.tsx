@@ -5,12 +5,10 @@ import { colors } from '@/navigation/colors';
 import { HomeTabs } from '@/screens/HomeTabs';
 import { LoginScreen } from '@/screens/auth/LoginScreen';
 import { SignUpScreen } from '@/screens/auth/SignUpScreen';
-import { OnboardingAnalyticsScreen } from '@/screens/onboarding/OnboardingAnalyticsScreen';
-import { OnboardingDashboardScreen } from '@/screens/onboarding/OnboardingDashboardScreen';
-import { OnboardingInventoryScreen } from '@/screens/onboarding/OnboardingInventoryScreen';
+import { OnboardingOverlay } from '@/screens/onboarding/OnboardingOverlay';
 
 export function RootNavigator() {
-  const { activeRoute, isAuthLoading } = useAuth();
+  const { activeRoute, hasCompletedOnboarding, onboardingStep, isAuthLoading, nextOnboardingStep, skipOnboarding } = useAuth();
 
   if (isAuthLoading) {
     return (
@@ -20,23 +18,18 @@ export function RootNavigator() {
     );
   }
 
-  if (activeRoute.kind === 'onboarding') {
-    if (activeRoute.step === 1) {
-      return <OnboardingInventoryScreen />;
-    }
-
-    if (activeRoute.step === 2) {
-      return <OnboardingDashboardScreen />;
-    }
-
-    return <OnboardingAnalyticsScreen />;
-  }
-
   if (activeRoute.kind === 'auth') {
     return activeRoute.screen === 'login' ? <LoginScreen /> : <SignUpScreen />;
   }
 
-  return <HomeTabs />;
+  return (
+    <View style={styles.tabsRoot}>
+      <HomeTabs />
+      {!hasCompletedOnboarding ? (
+        <OnboardingOverlay step={onboardingStep} onNext={nextOnboardingStep} onSkip={skipOnboarding} />
+      ) : null}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -45,6 +38,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
+  },
+  tabsRoot: {
+    flex: 1,
   },
 });
 

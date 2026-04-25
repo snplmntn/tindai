@@ -20,12 +20,14 @@ type SignInWithEmailInput = {
 
 type SignUpWithEmailInput = {
   fullName: string;
+  storeName: string;
   email: string;
   password: string;
 };
 
 type AuthContextValue = {
   activeRoute: ActiveRoute;
+  hasCompletedOnboarding: boolean;
   onboardingStep: OnboardingStep;
   isAuthenticated: boolean;
   isAuthLoading: boolean;
@@ -37,6 +39,7 @@ type AuthContextValue = {
   skipOnboarding: () => void;
   showLogin: () => void;
   showSignUp: () => void;
+  closeAuth: () => void;
   clearAuthError: () => void;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (input: SignInWithEmailInput) => Promise<void>;
@@ -191,6 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       activeRoute: getActiveRoute(state),
+      hasCompletedOnboarding: state.hasCompletedOnboarding,
       onboardingStep: state.onboardingStep,
       isAuthenticated: state.isAuthenticated,
       isAuthLoading,
@@ -207,6 +211,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       showSignUp: () => {
         setAuthError(null);
         dispatch({ type: 'showSignUp' });
+      },
+      closeAuth: () => {
+        setAuthError(null);
+        dispatch({ type: 'closeAuth' });
       },
       clearAuthError: () => setAuthError(null),
       signInWithGoogle: async () => {
@@ -302,12 +310,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsAuthLoading(false);
         }
       },
-      signUpWithEmail: async ({ fullName, email, password }) => {
+      signUpWithEmail: async ({ fullName, storeName, email, password }) => {
         setAuthError(null);
         setIsAuthLoading(true);
 
         try {
           const normalizedFullName = fullName.trim();
+          const normalizedStoreName = storeName.trim();
           const normalizedEmail = email.trim();
           const { data, error } = await supabase.auth.signUp({
             email: normalizedEmail,
@@ -316,6 +325,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               data: {
                 full_name: normalizedFullName,
                 name: normalizedFullName,
+                store_name: normalizedStoreName,
               },
             },
           });

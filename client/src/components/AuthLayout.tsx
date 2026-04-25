@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { type ReactNode, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '@/components/PrimaryButton';
@@ -14,6 +14,8 @@ type AuthLayoutProps = {
   alternateLabel?: string;
   onSubmit?: () => Promise<void> | void;
   onAlternatePress?: () => void;
+  dismissLabel?: string;
+  onDismiss?: () => void;
   children: ReactNode;
 };
 
@@ -25,6 +27,8 @@ export function AuthLayout({
   alternateLabel,
   onSubmit,
   onAlternatePress,
+  dismissLabel,
+  onDismiss,
   children,
 }: AuthLayoutProps) {
   const [loading, setLoading] = useState(false);
@@ -49,29 +53,48 @@ export function AuthLayout({
       <View style={styles.glowBottom} />
 
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.card}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{badge}</Text>
-          </View>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 16 : 0}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.card}>
+              <View style={styles.cardTopRow}>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{badge}</Text>
+                </View>
+                {dismissLabel && onDismiss ? (
+                  <Pressable onPress={onDismiss} style={styles.dismissButton}>
+                    <Text style={styles.dismissText}>{dismissLabel}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
 
-          <View style={styles.copyBlock}>
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.subtitle}>{subtitle}</Text>
-          </View>
+              <View style={styles.copyBlock}>
+                <Text style={styles.title}>{title}</Text>
+                <Text style={styles.subtitle}>{subtitle}</Text>
+              </View>
 
-          <View style={styles.form}>{children}</View>
+              <View style={styles.form}>{children}</View>
 
-          <View style={styles.actions}>
-            {submitLabel && onSubmit ? (
-              <PrimaryButton label={loading ? 'Please wait...' : submitLabel} onPress={handleSubmit} />
-            ) : null}
-            {alternateLabel && onAlternatePress ? (
-              <Pressable onPress={onAlternatePress} style={styles.linkButton}>
-                <Text style={styles.linkText}>{alternateLabel}</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        </View>
+              <View style={styles.actions}>
+                {submitLabel && onSubmit ? (
+                  <PrimaryButton label={loading ? 'Please wait...' : submitLabel} onPress={handleSubmit} />
+                ) : null}
+                {alternateLabel && onAlternatePress ? (
+                  <Pressable onPress={onAlternatePress} style={styles.linkButton}>
+                    <Text style={styles.linkText}>{alternateLabel}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -83,8 +106,15 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    justifyContent: 'center',
     paddingHorizontal: 24,
+  },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: 18,
   },
   glowTop: {
     position: 'absolute',
@@ -112,12 +142,29 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 253, 245, 0.92)',
     padding: 26,
   },
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
   badge: {
     alignSelf: 'flex-start',
     borderRadius: 999,
     backgroundColor: colors.card,
     paddingHorizontal: 15,
     paddingVertical: 9,
+  },
+  dismissButton: {
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  dismissText: {
+    color: colors.primaryDeep,
+    fontSize: 13,
+    fontWeight: '700',
   },
   badgeText: {
     color: colors.primaryDeep,

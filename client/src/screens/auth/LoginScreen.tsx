@@ -13,6 +13,7 @@ const authErrorColor = '#BA1A1A';
 export function LoginScreen() {
   const {
     showSignUp,
+    closeAuth,
     signInWithGoogle,
     signInWithEmail,
     authError,
@@ -55,13 +56,15 @@ export function LoginScreen() {
 
   return (
     <AuthLayout
-      badge="Client Access"
+      badge="Store Access"
       title="Welcome back"
       subtitle="Sign in with email and password or continue with Google."
       submitLabel="Sign in"
       alternateLabel="Need an account? Create one"
       onSubmit={handleEmailSignIn}
       onAlternatePress={showSignUp}
+      dismissLabel="Back to app"
+      onDismiss={closeAuth}
     >
       <View style={styles.formBlock}>
         <AuthField

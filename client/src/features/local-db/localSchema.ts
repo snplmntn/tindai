@@ -1,4 +1,5 @@
 export const LOCAL_SCHEMA_TABLES = [
+  'app_state',
   'stores',
   'inventory_items',
   'customers',
@@ -12,6 +13,18 @@ export const LOCAL_SCHEMA_TABLES = [
 
 export function getCreateTableStatements() {
   return [
+    `create table if not exists app_state (
+      id integer primary key check (id = 1),
+      mode text not null default 'guest',
+      guest_device_id text not null,
+      active_store_id text,
+      migration_status text not null default 'not_started',
+      migration_owner_user_id text,
+      pending_claim_owner_user_id text,
+      last_migration_error text,
+      last_bootstrap_at text,
+      updated_at text not null default (datetime('now'))
+    )`,
     `create table if not exists stores (
       id text primary key,
       owner_user_id text not null,

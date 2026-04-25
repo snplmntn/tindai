@@ -1,5 +1,7 @@
 import type { ParserResult } from '@/features/parser/offlineParser';
 
+export type LedgerMutationSource = 'typed' | 'voice' | 'manual';
+
 type LedgerDatabase = {
   runAsync: (source: string, params?: unknown[]) => Promise<unknown>;
   getFirstAsync: (source: string, params?: unknown[]) => Promise<unknown | null>;
@@ -40,7 +42,11 @@ export class LocalLedgerService {
     };
   }
 
-  async applyReadyParserResult(storeId: string, parserResult: ParserResult) {
+  async applyReadyParserResult(
+    storeId: string,
+    parserResult: ParserResult,
+    options?: { source?: LedgerMutationSource },
+  ) {
     if (
       parserResult.status !== 'ready_to_apply' ||
       parserResult.items.length === 0 ||
@@ -52,140 +58,161 @@ export class LocalLedgerService {
     const now = this.clock.now();
     const transactionId = this.clock.createId('transaction');
     const clientMutationId = this.clock.createClientMutationId();
-    const customer = parserResult.credit.is_utang
-      ? await this.getOrCreateCustomer(storeId, parserResult.credit.customer_name ?? 'Unknown Customer', now)
-      : null;
+    const source = options?.source ?? 'typed';
 
-    await this.database.runAsync(
-      `insert into transactions (
-        id,
-        store_id,
-        client_mutation_id,
-        raw_text,
-        source,
-        sync_status,
-        parser_source,
-        local_parse_json,
-        is_utang,
-        customer_id,
-        created_at
-      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        transactionId,
-        storeId,
-        clientMutationId,
-        parserResult.raw_text,
-        'typed',
-        'pending',
-        'offline_rule_parser',
-        JSON.stringify(parserResult),
-        parserResult.credit.is_utang ? 1 : 0,
-        customer?.id ?? null,
-        now,
-      ],
-    );
-
-    let creditAmount = 0;
-
-    for (const parserItem of parserResult.items) {
-      const item = await this.getInventoryItem(storeId, parserItem.item_id);
-      const unitPrice = item.price;
-      const lineTotal = Math.abs(parserItem.quantity_delta) * unitPrice;
-      const transactionItemId = this.clock.createId('transaction-item');
-      const movementId = this.clock.createId('inventory-movement');
-
-      creditAmount += parserResult.credit.is_utang ? lineTotal : 0;
-
-      await this.database.runAsync(
-        `insert into transaction_items (
-          id,
-          transaction_id,
-          store_id,
-          item_id,
-          quantity_delta,
-          unit_price,
-          line_total,
-          local_parse_json,
-          created_at
-        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          transactionItemId,
-          transactionId,
-          storeId,
-          parserItem.item_id,
-          parserItem.quantity_delta,
-          unitPrice,
-          lineTotal,
-          JSON.stringify(parserItem),
-          now,
-        ],
-      );
-
-      await this.database.runAsync(
-        `insert into inventory_movements (
-          id,
-          store_id,
-          item_id,
-          transaction_id,
-          movement_type,
-          quantity_delta,
-          client_mutation_id,
-          note,
-          created_at
-        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          movementId,
-          storeId,
-          parserItem.item_id,
-          transactionId,
-          parserResult.intent === 'restock' ? 'restock' : 'sale',
-          parserItem.quantity_delta,
-          clientMutationId,
-          parserResult.raw_text,
-          now,
-        ],
-      );
-
-      await this.database.runAsync(
-        `update inventory_items
-         set current_stock = ?, updated_at = ?
-         where id = ? and store_id = ?`,
-        [item.current_stock + parserItem.quantity_delta, now, parserItem.item_id, storeId],
-      );
+    if (parserResult.credit.is_utang && !parserResult.credit.customer_name) {
+      throw new Error('Utang entries require a customer name before applying locally.');
     }
 
-    if (parserResult.credit.is_utang && customer) {
+    await this.database.runAsync('begin immediate', []);
+
+    try {
+      const customer = parserResult.credit.is_utang
+        ? await this.getOrCreateCustomer(storeId, parserResult.credit.customer_name!, now)
+        : null;
+
       await this.database.runAsync(
-        `insert into utang_entries (
+        `insert into transactions (
           id,
           store_id,
-          customer_id,
-          transaction_id,
-          entry_type,
-          amount,
-          note,
           client_mutation_id,
+          raw_text,
+          source,
+          sync_status,
+          parser_source,
+          local_parse_json,
+          is_utang,
+          customer_id,
           created_at
-        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          this.clock.createId('utang-entry'),
-          storeId,
-          customer.id,
           transactionId,
-          'credit',
-          creditAmount,
-          parserResult.raw_text,
+          storeId,
           clientMutationId,
+          parserResult.raw_text,
+          source,
+          'pending',
+          'offline_rule_parser',
+          JSON.stringify(parserResult),
+          parserResult.credit.is_utang ? 1 : 0,
+          customer?.id ?? null,
           now,
         ],
       );
 
-      await this.database.runAsync(
-        `update customers
-         set utang_balance = ?, updated_at = ?
-         where id = ? and store_id = ?`,
-        [customer.utang_balance + creditAmount, now, customer.id, storeId],
-      );
+      let creditAmount = 0;
+
+      for (const parserItem of parserResult.items) {
+        const item = await this.getInventoryItem(storeId, parserItem.item_id);
+        const nextStock = item.current_stock + parserItem.quantity_delta;
+
+        if (source === 'manual' && nextStock < 0) {
+          throw new Error('Insufficient stock for manual adjustment.');
+        }
+
+        const unitPrice = item.price;
+        const lineTotal = Math.abs(parserItem.quantity_delta) * unitPrice;
+        const transactionItemId = this.clock.createId('transaction-item');
+        const movementId = this.clock.createId('inventory-movement');
+
+        creditAmount += parserResult.credit.is_utang ? lineTotal : 0;
+
+        await this.database.runAsync(
+          `insert into transaction_items (
+            id,
+            transaction_id,
+            store_id,
+            item_id,
+            quantity_delta,
+            unit_price,
+            line_total,
+            local_parse_json,
+            created_at
+          ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            transactionItemId,
+            transactionId,
+            storeId,
+            parserItem.item_id,
+            parserItem.quantity_delta,
+            unitPrice,
+            lineTotal,
+            JSON.stringify(parserItem),
+            now,
+          ],
+        );
+
+        await this.database.runAsync(
+          `insert into inventory_movements (
+            id,
+            store_id,
+            item_id,
+            transaction_id,
+            movement_type,
+            quantity_delta,
+            client_mutation_id,
+            note,
+            created_at
+          ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            movementId,
+            storeId,
+            parserItem.item_id,
+            transactionId,
+            parserResult.intent === 'restock' ? 'restock' : 'sale',
+            parserItem.quantity_delta,
+            clientMutationId,
+            parserResult.raw_text,
+            now,
+          ],
+        );
+
+        await this.database.runAsync(
+          `update inventory_items
+           set current_stock = ?, updated_at = ?
+           where id = ? and store_id = ?`,
+          [nextStock, now, parserItem.item_id, storeId],
+        );
+      }
+
+      if (parserResult.credit.is_utang && customer) {
+        await this.database.runAsync(
+          `insert into utang_entries (
+            id,
+            store_id,
+            customer_id,
+            transaction_id,
+            entry_type,
+            amount,
+            note,
+            client_mutation_id,
+            created_at
+          ) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            this.clock.createId('utang-entry'),
+            storeId,
+            customer.id,
+            transactionId,
+            'credit',
+            creditAmount,
+            parserResult.raw_text,
+            clientMutationId,
+            now,
+          ],
+        );
+
+        await this.database.runAsync(
+          `update customers
+           set utang_balance = ?, updated_at = ?
+           where id = ? and store_id = ?`,
+          [customer.utang_balance + creditAmount, now, customer.id, storeId],
+        );
+      }
+
+      await this.database.runAsync('commit', []);
+    } catch (caughtError) {
+      await this.database.runAsync('rollback', []);
+      throw caughtError;
     }
 
     return {

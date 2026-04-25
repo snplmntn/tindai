@@ -21,7 +21,11 @@ export function ClientTabLayout({
 }: ClientTabLayoutProps) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <ScrollView contentContainerStyle={styles.contentContainer} style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={styles.contentContainer}
+        style={styles.screen}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.heroCard}>
           <Text style={styles.label}>{label}</Text>
           <Text style={styles.title}>{title}</Text>
