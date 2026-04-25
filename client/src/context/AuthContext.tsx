@@ -1,9 +1,17 @@
-import Constants from 'expo-constants';
-import { createContext, useContext, useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
-import { Linking, NativeModules, Platform } from 'react-native';
+import Constants from "expo-constants";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useState,
+  type ReactNode,
+} from "react";
+import { Linking, NativeModules, Platform } from "react-native";
 
-import { getClientEnv } from '@/config/env';
-import { supabase } from '@/config/supabase';
+import { getClientEnv } from "@/config/env";
+import { supabase } from "@/config/supabase";
 import {
   appFlowReducer,
   getActiveRoute,
@@ -11,11 +19,14 @@ import {
   type ActiveRoute,
   type AppFlowState,
   type AuthScreen,
-} from '@/context/appFlow';
-import { getLocalDatabase } from '@/features/local-db/database';
-import { runLocalMigrations } from '@/features/local-db/migrations';
-import { AppStateRepository } from '@/features/local-db/repositories';
-import type { LocalAuthMode, PermissionStatus } from '@/features/local-db/types';
+} from "@/context/appFlow";
+import { getLocalDatabase } from "@/features/local-db/database";
+import { runLocalMigrations } from "@/features/local-db/migrations";
+import { AppStateRepository } from "@/features/local-db/repositories";
+import type {
+  LocalAuthMode,
+  PermissionStatus,
+} from "@/features/local-db/types";
 
 type SignInWithEmailInput = {
   email: string;
@@ -65,11 +76,18 @@ type GoogleExchangeSuccess = {
   };
 };
 
-type GoogleSigninModule = typeof import('@react-native-google-signin/google-signin');
+type GoogleSigninModule =
+  typeof import("@react-native-google-signin/google-signin");
 type SpeechRecognitionModuleRuntime = {
   ExpoSpeechRecognitionModule: {
-    requestPermissionsAsync?: () => Promise<{ granted: boolean; canAskAgain?: boolean }>;
-    getPermissionsAsync?: () => Promise<{ granted: boolean; canAskAgain?: boolean }>;
+    requestPermissionsAsync?: () => Promise<{
+      granted: boolean;
+      canAskAgain?: boolean;
+    }>;
+    getPermissionsAsync?: () => Promise<{
+      granted: boolean;
+      canAskAgain?: boolean;
+    }>;
   };
 };
 
@@ -79,7 +97,11 @@ const AUTH_LOADING_WATCHDOG_MS = 12000;
 const env = getClientEnv();
 let cachedGoogleSigninModule: GoogleSigninModule | null = null;
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string,
+): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   try {
@@ -106,21 +128,21 @@ function getGoogleSignInAvailability() {
   if (!NativeModules.RNGoogleSignin) {
     return {
       enabled: false,
-      hint: 'Google sign-in needs a development build. Expo Go does not include this native module.',
+      hint: "Google sign-in needs a development build. Expo Go does not include this native module.",
     };
   }
 
-  if (Constants.appOwnership === 'expo') {
+  if (Constants.appOwnership === "expo") {
     return {
       enabled: false,
-      hint: 'Google sign-in requires an Android development build. Expo Go is not supported for this flow.',
+      hint: "Google sign-in requires an Android development build. Expo Go is not supported for this flow.",
     };
   }
 
   if (!env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID) {
     return {
       enabled: false,
-      hint: 'Google sign-in is disabled until EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID is set.',
+      hint: "Google sign-in is disabled until EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID is set.",
     };
   }
 
@@ -128,7 +150,7 @@ function getGoogleSignInAvailability() {
     enabled: true,
     hint: env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
       ? null
-      : 'Google sign-in works best with EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID for ID token exchange.',
+      : "Google sign-in works best with EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID for ID token exchange.",
   };
 }
 
@@ -138,7 +160,8 @@ function loadGoogleSigninModule() {
   }
 
   try {
-    cachedGoogleSigninModule = require('@react-native-google-signin/google-signin') as GoogleSigninModule;
+    cachedGoogleSigninModule =
+      require("@react-native-google-signin/google-signin") as GoogleSigninModule;
     return cachedGoogleSigninModule;
   } catch {
     return null;
@@ -147,7 +170,8 @@ function loadGoogleSigninModule() {
 
 function loadSpeechRecognitionRuntime(): SpeechRecognitionModuleRuntime | null {
   try {
-    const runtime = require('expo-speech-recognition') as SpeechRecognitionModuleRuntime;
+    const runtime =
+      require("expo-speech-recognition") as SpeechRecognitionModuleRuntime;
 
     if (!runtime?.ExpoSpeechRecognitionModule?.requestPermissionsAsync) {
       return null;
@@ -160,7 +184,7 @@ function loadSpeechRecognitionRuntime(): SpeechRecognitionModuleRuntime | null {
 }
 
 function mapGrantedToPermissionStatus(granted: boolean): PermissionStatus {
-  return granted ? 'granted' : 'denied';
+  return granted ? "granted" : "denied";
 }
 
 function buildHydratedState(params: {
@@ -201,7 +225,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     googleModule.GoogleSignin.configure({
-      webClientId: env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? undefined,
+      webClientId:
+        env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ??
+        env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ??
+        undefined,
       iosClientId: env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? undefined,
     });
   }, [googleAvailability.enabled]);
@@ -227,7 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const sessionResult = await withTimeout(
           supabase.auth.getSession(),
           AUTH_INIT_TIMEOUT_MS,
-          'Authentication startup timed out. Check internet and Supabase settings.',
+          "Authentication startup timed out. Check internet and Supabase settings.",
         );
 
         if (!mounted) {
@@ -239,7 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         dispatch({
-          type: 'hydrate',
+          type: "hydrate",
           state: buildHydratedState({
             onboardingCompleted: persisted.onboardingCompleted,
             authMode: persisted.authMode,
@@ -254,7 +281,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        setAuthError(error instanceof Error ? error.message : 'Failed to initialize authentication session.');
+        setAuthError(
+          error instanceof Error
+            ? error.message
+            : "Failed to initialize authentication session.",
+        );
       } finally {
         if (mounted) {
           setIsAuthLoading(false);
@@ -264,9 +295,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     void initializeSession();
 
-    const { data: authSubscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      dispatch({ type: session ? 'signIn' : 'signOut' });
-    });
+    const { data: authSubscription } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        dispatch({ type: session ? "signIn" : "signOut" });
+      },
+    );
 
     return () => {
       mounted = false;
@@ -280,21 +313,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const watchdog = setTimeout(() => {
-      setAuthError((current) => current ?? 'Startup took too long. Continuing in offline mode.');
+      setAuthError(
+        (current) =>
+          current ?? "Startup took too long. Continuing in offline mode.",
+      );
       setIsAuthLoading(false);
     }, AUTH_LOADING_WATCHDOG_MS);
 
     return () => clearTimeout(watchdog);
   }, [isAuthLoading]);
 
-  const value = useMemo<AuthContextValue>(
-    () => {
-      const permissions = {
-        ...initialAppFlowState.permissions,
-        ...(state.permissions ?? {}),
-      };
+  const value = useMemo<AuthContextValue>(() => {
+    const permissions = {
+      ...initialAppFlowState.permissions,
+      ...(state.permissions ?? {}),
+    };
 
-      return {
+    return {
       activeRoute: getActiveRoute(state),
       isAuthenticated: state.isAuthenticated,
       isAuthLoading,
@@ -309,36 +344,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       googleSignInHint: googleAvailability.hint,
       chooseGuestMode: async () => {
         setAuthError(null);
-        dispatch({ type: 'chooseGuestMode' });
+        dispatch({ type: "chooseGuestMode" });
         await persistState({
-          authMode: 'guest',
+          authMode: "guest",
         });
       },
       completeOnboarding: async () => {
-        dispatch({ type: 'completeOnboarding' });
+        dispatch({ type: "completeOnboarding" });
         await persistState({
           onboardingCompleted: true,
         });
       },
       showLogin: async () => {
         setAuthError(null);
-        dispatch({ type: 'showLogin' });
+        dispatch({ type: "showLogin" });
         await persistState({
-          authMode: 'account',
+          authMode: "account",
         });
       },
       showSignUp: async () => {
         setAuthError(null);
-        dispatch({ type: 'showSignUp' });
+        dispatch({ type: "showSignUp" });
         await persistState({
-          authMode: 'account',
+          authMode: "account",
         });
       },
       closeAuth: async () => {
         setAuthError(null);
-        dispatch({ type: 'closeAuth' });
+        dispatch({ type: "closeAuth" });
         await persistState({
-          authMode: state.isAuthenticated ? 'account' : null,
+          authMode: state.isAuthenticated ? "account" : null,
         });
       },
       clearAuthError: () => setAuthError(null),
@@ -348,37 +383,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         try {
           if (!googleAvailability.enabled) {
-            setAuthError(googleAvailability.hint ?? 'Google sign-in is unavailable.');
+            setAuthError(
+              googleAvailability.hint ?? "Google sign-in is unavailable.",
+            );
             return;
           }
 
           const googleModule = loadGoogleSigninModule();
           if (!googleModule) {
-            setAuthError('Google sign-in module is unavailable in this build.');
+            setAuthError("Google sign-in module is unavailable in this build.");
             return;
           }
 
-          await googleModule.GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+          await googleModule.GoogleSignin.hasPlayServices({
+            showPlayServicesUpdateDialog: true,
+          });
 
           const signInResult = await googleModule.GoogleSignin.signIn();
           if (googleModule.isCancelledResponse(signInResult)) {
-            setAuthError('Google sign-in was cancelled.');
+            setAuthError("Google sign-in was cancelled.");
             return;
           }
 
           const idToken = signInResult.data.idToken;
           if (!idToken) {
-            setAuthError('Google did not return an ID token.');
+            setAuthError("Google did not return an ID token.");
             return;
           }
 
-          const exchangeResponse = await fetch(`${env.EXPO_PUBLIC_API_BASE_URL}/api/v1/auth/google/exchange`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
+          const exchangeResponse = await fetch(
+            `${env.EXPO_PUBLIC_API_BASE_URL}/api/v1/auth/google/exchange`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ idToken }),
             },
-            body: JSON.stringify({ idToken }),
-          });
+          );
 
           const exchangePayload = (await exchangeResponse.json()) as
             | GoogleExchangeSuccess
@@ -386,9 +428,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 message?: string;
               };
 
-          if (!exchangeResponse.ok || !('session' in exchangePayload)) {
-            const errorMessage = 'message' in exchangePayload ? exchangePayload.message : undefined;
-            setAuthError(errorMessage ?? 'Google token exchange failed.');
+          if (!exchangeResponse.ok || !("session" in exchangePayload)) {
+            const errorMessage =
+              "message" in exchangePayload
+                ? exchangePayload.message
+                : undefined;
+            setAuthError(errorMessage ?? "Google token exchange failed.");
             return;
           }
 
@@ -403,22 +448,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           await persistState({
-            authMode: 'account',
+            authMode: "account",
           });
         } catch (error) {
           const googleModule = loadGoogleSigninModule();
           if (googleModule?.isErrorWithCode(error)) {
-            if (error.code === googleModule.statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-              setAuthError('Google Play Services is not available on this device.');
+            if (
+              error.code ===
+              googleModule.statusCodes.PLAY_SERVICES_NOT_AVAILABLE
+            ) {
+              setAuthError(
+                "Google Play Services is not available on this device.",
+              );
               return;
             }
             if (error.code === googleModule.statusCodes.IN_PROGRESS) {
-              setAuthError('Google sign-in is already in progress.');
+              setAuthError("Google sign-in is already in progress.");
               return;
             }
           }
 
-          setAuthError(error instanceof Error ? error.message : 'Google sign-in failed.');
+          setAuthError(
+            error instanceof Error ? error.message : "Google sign-in failed.",
+          );
         } finally {
           setIsAuthLoading(false);
         }
@@ -438,11 +490,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          dispatch({ type: 'startNewAccountOnboarding' });
           await persistState({
-            authMode: 'account',
-            onboardingCompleted: false,
-            tutorialShown: false,
+            authMode: "account",
           });
         } finally {
           setIsAuthLoading(false);
@@ -474,16 +523,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           if (!data.session) {
-            const { error: signInError } = await supabase.auth.signInWithPassword({
-              email: normalizedEmail,
-              password,
-            });
+            const { error: signInError } =
+              await supabase.auth.signInWithPassword({
+                email: normalizedEmail,
+                password,
+              });
 
             if (signInError) {
               const lowerMessage = signInError.message.toLowerCase();
-              if (lowerMessage.includes('email not confirmed') || lowerMessage.includes('email not verified')) {
+              if (
+                lowerMessage.includes("email not confirmed") ||
+                lowerMessage.includes("email not verified")
+              ) {
                 setAuthError(
-                  'Account created. Email confirmation is enabled in Supabase Auth, so no session was issued. Verify the email or disable email confirmation for hackathon mode.',
+                  "Account created. Email confirmation is enabled in Supabase Auth, so no session was issued. Verify the email or disable email confirmation for hackathon mode.",
                 );
                 return;
               }
@@ -494,7 +547,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           await persistState({
-            authMode: 'account',
+            authMode: "account",
           });
         } finally {
           setIsAuthLoading(false);
@@ -516,7 +569,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         await persistState({
-          authMode: 'guest',
+          authMode: "guest",
         });
       },
       requestMicrophonePermission: async () => {
@@ -524,11 +577,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const speechModule = speechRuntime?.ExpoSpeechRecognitionModule;
 
         if (!speechModule?.requestPermissionsAsync) {
-          dispatch({ type: 'setMicrophonePermission', status: 'denied' });
+          dispatch({ type: "setMicrophonePermission", status: "denied" });
           await persistState({
-            microphonePermission: 'denied',
+            microphonePermission: "denied",
           });
-          return 'denied';
+          return "denied";
         }
 
         const response = speechModule.getPermissionsAsync
@@ -537,24 +590,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const nextStatus =
           response.granted || response.canAskAgain === false
             ? mapGrantedToPermissionStatus(response.granted)
-            : mapGrantedToPermissionStatus((await speechModule.requestPermissionsAsync()).granted);
+            : mapGrantedToPermissionStatus(
+                (await speechModule.requestPermissionsAsync()).granted,
+              );
 
-        dispatch({ type: 'setMicrophonePermission', status: nextStatus });
+        dispatch({ type: "setMicrophonePermission", status: nextStatus });
         await persistState({
           microphonePermission: nextStatus,
         });
         return nextStatus;
       },
       requestStoragePermission: async () => {
-        const nextStatus: PermissionStatus = Platform.OS === 'android' ? 'granted' : 'granted';
-        dispatch({ type: 'setStoragePermission', status: nextStatus });
+        const nextStatus: PermissionStatus =
+          Platform.OS === "android" ? "granted" : "granted";
+        dispatch({ type: "setStoragePermission", status: nextStatus });
         await persistState({
           storagePermission: nextStatus,
         });
         return nextStatus;
       },
       markTutorialShown: async () => {
-        dispatch({ type: 'markTutorialShown' });
+        dispatch({ type: "markTutorialShown" });
         await persistState({
           tutorialShown: true,
         });
@@ -563,9 +619,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await Linking.openSettings();
       },
     };
-    },
-    [authError, googleAvailability, isAuthLoading, state],
-  );
+  }, [authError, googleAvailability, isAuthLoading, state]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -574,7 +628,7 @@ export function useAuth() {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
 
   return context;

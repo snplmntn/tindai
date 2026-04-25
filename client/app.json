@@ -1,26 +1,18 @@
 {
   "expo": {
-    "name": "Tindai",
+    "name": "tindai",
     "slug": "tindai",
     "scheme": "tindai",
     "version": "1.0.0",
-    "icon": "./src/assets/tindai-logo.png",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "jsEngine": "hermes",
-    "splash": {
-      "image": "./src/assets/tindai-logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "updates": {
       "enabled": false,
       "checkAutomatically": "NEVER",
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -30,17 +22,10 @@
     },
     "android": {
       "package": "com.example.tindai",
-      "adaptiveIcon": {
-        "foregroundImage": "./src/assets/tindai-logo.png",
-        "backgroundColor": "#ffffff"
-      },
-      "permissions": [
-        "android.permission.RECORD_AUDIO"
-      ]
+      "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "web": {
-      "bundler": "metro",
-      "favicon": "./src/assets/tindai-logo.png"
+      "bundler": "metro"
     },
     "plugins": [
       "expo-dev-client",
