@@ -7,8 +7,20 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 const originalConsoleError = console.error;
 let App: typeof import('./App').default;
+let mockFontsLoaded = false;
+let mockFontError: Error | null = null;
 
 vi.mock('react-native-gesture-handler', () => ({}));
+
+vi.mock('@expo/vector-icons', () => ({
+  Feather: { font: { Feather: 'feather-font.ttf' } },
+  FontAwesome: { font: { FontAwesome: 'fontawesome-font.ttf' } },
+  Ionicons: { font: { Ionicons: 'ionicons-font.ttf' } },
+}));
+
+vi.mock('expo-font', () => ({
+  useFonts: () => [mockFontsLoaded, mockFontError],
+}));
 
 vi.mock('expo-status-bar', () => ({
   StatusBar: () => null,
@@ -39,6 +51,8 @@ vi.mock('@react-navigation/native', () => ({
 describe('App', () => {
   beforeEach(async () => {
     App = (await import('./App')).default;
+    mockFontsLoaded = false;
+    mockFontError = null;
   });
 
   beforeEach(() => {
@@ -55,7 +69,19 @@ describe('App', () => {
     consoleErrorSpy?.mockRestore();
   });
 
-  it('wraps the navigation tree in a navigation container', () => {
+  it('waits for icon fonts before rendering the navigation tree', () => {
+    let tree!: TestRenderer.ReactTestRenderer;
+
+    act(() => {
+      tree = TestRenderer.create(<App />);
+    });
+
+    expect(tree.toJSON()).toBeNull();
+  });
+
+  it('wraps the navigation tree in a navigation container after fonts load', () => {
+    mockFontsLoaded = true;
+
     let tree!: TestRenderer.ReactTestRenderer;
 
     act(() => {

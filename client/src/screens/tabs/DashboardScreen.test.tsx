@@ -4,6 +4,10 @@ import TestRenderer from 'react-test-renderer';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+const receiptCaptureModuleMocks = vi.hoisted(() => ({
+  cleanupReceiptImageDraft: vi.fn(async () => undefined),
+}));
+
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 const originalConsoleError = console.error;
 
@@ -138,7 +142,7 @@ vi.mock('@/features/receipt-scan/ReceiptCaptureFlow', () => ({
 }));
 
 vi.mock('@/features/receipt-scan/receiptCapture', () => ({
-  cleanupReceiptImageDraft: vi.fn(async () => undefined),
+  cleanupReceiptImageDraft: receiptCaptureModuleMocks.cleanupReceiptImageDraft,
 }));
 
 import { DashboardScreen } from './DashboardScreen';
@@ -211,6 +215,7 @@ describe('DashboardScreen', () => {
     mockedCreateLocalInventoryItem.mockClear();
     mockedSubmitAssistantQuestion.mockReset();
     mockedReceiptCaptureFlow.mockClear();
+    receiptCaptureModuleMocks.cleanupReceiptImageDraft.mockClear();
   });
 
   afterEach(() => {
@@ -245,6 +250,25 @@ describe('DashboardScreen', () => {
     expect(findTextNodes(tree, 'Malapit maubos')).not.toHaveLength(0);
     expect(findIconNodes(tree, 'remove')).not.toHaveLength(0);
     expect(findIconNodes(tree, 'add')).not.toHaveLength(0);
+  });
+
+  it('shows stock change success as an icon above the mic', async () => {
+    const tree = await renderDashboardScreen();
+    const inventoryRemoveButton = tree.root.findAll(
+      (node) =>
+        String(node.type) === 'mock-touchable-opacity' &&
+        node.findAll(
+          (child) =>
+            String(child.type) === 'mock-icon' && child.props.name === 'remove',
+        ).length > 0,
+    )[0];
+
+    await act(async () => {
+      inventoryRemoveButton.props.onPress();
+    });
+
+    expect(findByTestId(tree, 'dashboard-stock-change-success')).not.toBeUndefined();
+    expect(findTextNodes(tree, 'Nabago na ang bilang. Hihintayin lang ang internet para maipadala.')).toHaveLength(0);
   });
 
   it('renders the quick-entry sheet edge to edge above the tab bar', async () => {
@@ -298,5 +322,31 @@ describe('DashboardScreen', () => {
     expect(
       tree.root.findAll((node) => String(node.type) === 'mock-receipt-capture-flow'),
     ).toHaveLength(1);
+  });
+
+  it('keeps the saved receipt draft intact for the next step', async () => {
+    const tree = await renderDashboardScreen();
+
+    const receiptDraft = {
+      id: 'receipt-1',
+      source: 'gallery',
+      originalUri: 'file:///receipt-original.jpg',
+      compressedUri: 'file:///receipt.jpg',
+      tempPath: '/tmp/receipt.jpg',
+      fileName: 'receipt.jpg',
+      mimeType: 'image/jpeg',
+      width: 1200,
+      height: 1800,
+      fileSize: 120000,
+      createdAt: '2026-04-26T00:00:00.000Z',
+      qualityIssues: [],
+    };
+
+    await act(async () => {
+      await mockedReceiptCaptureFlow.mock.lastCall?.[0].onSaveDraft(receiptDraft);
+    });
+
+    expect(receiptCaptureModuleMocks.cleanupReceiptImageDraft).not.toHaveBeenCalled();
+    expect(findTextNodes(tree, 'Nakuha na ang larawan ng resibo.')).not.toHaveLength(0);
   });
 });

@@ -19,10 +19,7 @@ import type { CommandSource } from "@/features/commands/localCommandService";
 import { useAuth } from "@/context/AuthContext";
 import { useLocalData } from "@/features/local-data/LocalDataContext";
 import type { ParserResult } from "@/features/parser/offlineParser";
-import {
-  cleanupReceiptImageDraft,
-  type ReceiptImageDraft,
-} from "@/features/receipt-scan/receiptCapture";
+import type { ReceiptImageDraft } from "@/features/receipt-scan/receiptCapture";
 import { ReceiptCaptureFlow } from "@/features/receipt-scan/ReceiptCaptureFlow";
 import {
   getLanguageCode,
@@ -79,6 +76,9 @@ const ExpoSpeechRecognitionModule =
 const useSpeechRecognitionEvent =
   speechRecognitionRuntime?.useSpeechRecognitionEvent ??
   ((_eventName: string, _listener: (event: any) => void) => undefined);
+
+const STOCK_CHANGE_SUCCESS_MESSAGE =
+  "Nabago na ang bilang. Hihintayin lang ang internet para maipadala.";
 
 function getStoreInitial(storeName: string | undefined) {
   const trimmedName = storeName?.trim() ?? "";
@@ -430,19 +430,10 @@ export function DashboardScreen() {
   }, [createLocalInventoryItem, itemCost, itemName, itemPrice, itemQuantity]);
 
   const handleReceiptDraftSaved = useCallback(
-    async (draft: ReceiptImageDraft) => {
-      try {
-        await cleanupReceiptImageDraft(draft);
-        setCommandMessage(
-          "Nakuha na ang larawan ng resibo. Ihahanda ang susunod na hakbang.",
-        );
-      } catch (caughtError) {
-        setCommandMessage(
-          caughtError instanceof Error
-            ? caughtError.message
-            : "Nakuha ang larawan pero may kailangang ayusin sa file.",
-        );
-      }
+    async (_draft: ReceiptImageDraft) => {
+      setCommandMessage(
+        "Nakuha na ang larawan ng resibo. Ihahanda ang susunod na hakbang.",
+      );
     },
     [],
   );
@@ -606,6 +597,8 @@ export function DashboardScreen() {
     appState?.mode === "authenticated" && pendingTransactions.length > 0;
   const showGuestBanner = isGuestMode && !guestBannerDismissed;
   const showMicBanner = isMicDisabled && !micBannerDismissed;
+  const showStockChangeSuccessIcon =
+    commandMessage === STOCK_CHANGE_SUCCESS_MESSAGE;
 
   return (
     <SafeAreaView edges={["top"]} style={styles.screen}>
@@ -674,6 +667,11 @@ export function DashboardScreen() {
         ) : null}
 
         <View style={styles.voiceSection}>
+          {showStockChangeSuccessIcon ? (
+            <View style={styles.voiceStatusBadge} testID="dashboard-stock-change-success">
+              <Ionicons color="#ffffff" name="checkmark-circle" size={18} />
+            </View>
+          ) : null}
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => void startListening()}
@@ -831,7 +829,7 @@ export function DashboardScreen() {
           </View>
         ) : null}
 
-        {commandMessage ? (
+        {commandMessage && !showStockChangeSuccessIcon ? (
           <Text style={styles.commandMessage}>{commandMessage}</Text>
         ) : null}
 
@@ -1296,6 +1294,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 10,
     gap: 8,
+  },
+  voiceStatusBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#00604c",
+    alignItems: "center",
+    justifyContent: "center",
   },
   quickActionRow: {
     flexDirection: "row",

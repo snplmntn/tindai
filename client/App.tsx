@@ -17,8 +17,9 @@ export default function App() {
     ...FontAwesome.font,
   });
 
-  void fontsLoaded;
-  void fontError;
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
 
   return (
     <SafeAreaProvider>
