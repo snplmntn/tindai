@@ -96,9 +96,9 @@ export default function Home() {
                   <p className="mt-1 text-right text-[10px] text-slate-400">3 items</p>
                 </div>
 
-                <div className="absolute bottom-6 left-1/2 flex min-w-[210px] -translate-x-1/2 items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-5 py-3 text-center text-lg font-semibold leading-none whitespace-nowrap text-white shadow">
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/20">
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-white">
+                <div className="absolute bottom-6 left-1/2 flex min-w-[186px] -translate-x-1/2 items-center justify-center gap-1.5 rounded-2xl bg-emerald-700 px-4 py-2 text-center text-[14px] font-semibold leading-none whitespace-nowrap text-white shadow">
+                  <span className="inline-flex h-5.5 w-5.5 items-center justify-center rounded-full bg-white/20">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-white">
                     <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3zm5-3a1 1 0 1 0-2 0 3 3 0 1 1-6 0 1 1 0 1 0-2 0 5.002 5.002 0 0 0 4 4.9V18H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.1A5.002 5.002 0 0 0 17 11z" />
                     </svg>
                   </span>
