@@ -3,11 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AuthField } from '@/components/AuthField';
 import { AuthLayout } from '@/components/AuthLayout';
-import { GoogleSignInMark } from '@/components/GoogleSignInMark';
-import { PrimaryButton } from '@/components/PrimaryButton';
 import { mobileCopy } from '@/copy/mobileCopy';
 import { useAuth } from '@/context/AuthContext';
-import { colors } from '@/navigation/colors';
 
 const authErrorColor = '#BA1A1A';
 
@@ -15,16 +12,13 @@ export function LoginScreen() {
   const {
     showSignUp,
     closeAuth,
-    signInWithGoogle,
     signInWithEmail,
     authError,
     clearAuthError,
-    googleSignInHint,
   } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
-  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
   const fieldErrors = useMemo(
     () => ({
@@ -44,15 +38,6 @@ export function LoginScreen() {
       email,
       password,
     });
-  };
-
-  const handleGoogleSignIn = async () => {
-    setIsGoogleSubmitting(true);
-    try {
-      await signInWithGoogle();
-    } finally {
-      setIsGoogleSubmitting(false);
-    }
   };
 
   return (
@@ -99,22 +84,6 @@ export function LoginScreen() {
         />
       </View>
 
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or</Text>
-        <View style={styles.dividerLine} />
-      </View>
-
-      <PrimaryButton
-        label={isGoogleSubmitting ? 'Nag-sign in gamit ang Google...' : 'Mag-sign in gamit ang Google'}
-        onPress={handleGoogleSignIn}
-        variant="ghost"
-        buttonStyle={styles.authButton}
-        leadingIcon={<GoogleSignInMark />}
-      />
-
-      {googleSignInHint ? <Text style={styles.infoText}>{googleSignInHint}</Text> : null}
-
       {authError ? <Text style={styles.errorText}>{authError}</Text> : null}
     </AuthLayout>
   );
@@ -127,28 +96,6 @@ const styles = StyleSheet.create({
   authButton: {
     borderRadius: 12,
     minHeight: 52,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  dividerText: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  infoText: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 20,
   },
   errorText: {
     color: authErrorColor,

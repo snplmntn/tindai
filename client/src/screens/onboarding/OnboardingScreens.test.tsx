@@ -9,7 +9,6 @@ const mockedShowLogin = vi.fn(async () => undefined);
 const mockedShowSignUp = vi.fn(async () => undefined);
 const mockedCloseAuth = vi.fn(async () => undefined);
 const mockedSignInWithEmail = vi.fn(async () => undefined);
-const mockedSignInWithGoogle = vi.fn(async () => undefined);
 const mockedSignUpWithEmail = vi.fn(async () => undefined);
 const mockedClearAuthError = vi.fn();
 const mockedRequestMicrophonePermission = vi.fn(async () => 'granted');
@@ -60,12 +59,10 @@ vi.mock('@/context/AuthContext', () => ({
     showLogin: mockedShowLogin,
     showSignUp: mockedShowSignUp,
     closeAuth: mockedCloseAuth,
-    signInWithGoogle: mockedSignInWithGoogle,
     signInWithEmail: mockedSignInWithEmail,
     signUpWithEmail: mockedSignUpWithEmail,
     authError: null,
     clearAuthError: mockedClearAuthError,
-    googleSignInHint: null,
     microphonePermission: mockedMicrophonePermission,
     storagePermission: mockedStoragePermission,
     requestMicrophonePermission: mockedRequestMicrophonePermission,
@@ -127,7 +124,6 @@ describe('onboarding screens', () => {
     mockedShowSignUp.mockClear();
     mockedCloseAuth.mockClear();
     mockedSignInWithEmail.mockClear();
-    mockedSignInWithGoogle.mockClear();
     mockedSignUpWithEmail.mockClear();
     mockedClearAuthError.mockClear();
     mockedRequestMicrophonePermission.mockClear();
@@ -165,8 +161,6 @@ describe('onboarding screens', () => {
     expect(findTextNodes(tree, 'Madaling Simula')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Back to Dashboard')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Ikonekta ang account mo.')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'G')).not.toHaveLength(0);
-    expect(findTextNodes(tree, 'Mag-sign in gamit ang Google')).not.toHaveLength(0);
     expect(findTextNodes(tree, 'Magpatuloy')).not.toHaveLength(0);
     expect(tree.root.findAll((node) => String(node.type) === 'mock-icon' && node.props.name === 'eye')).not.toHaveLength(0);
   });

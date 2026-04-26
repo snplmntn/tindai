@@ -3,11 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AuthField } from '@/components/AuthField';
 import { AuthLayout } from '@/components/AuthLayout';
-import { GoogleSignInMark } from '@/components/GoogleSignInMark';
-import { PrimaryButton } from '@/components/PrimaryButton';
 import { mobileCopy } from '@/copy/mobileCopy';
 import { useAuth } from '@/context/AuthContext';
-import { colors } from '@/navigation/colors';
 
 const authErrorColor = '#BA1A1A';
 const MIN_PASSWORD_LENGTH = 8;
@@ -16,11 +13,9 @@ export function SignUpScreen() {
   const {
     showLogin,
     closeAuth,
-    signInWithGoogle,
     signUpWithEmail,
     authError,
     clearAuthError,
-    googleSignInHint,
   } = useAuth();
   const [fullName, setFullName] = useState('');
   const [storeName, setStoreName] = useState('');
@@ -28,7 +23,6 @@ export function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
-  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const fieldErrors = useMemo(
@@ -61,16 +55,6 @@ export function SignUpScreen() {
       email,
       password,
     });
-  };
-
-  const handleGoogleSignIn = async () => {
-    setLocalError(null);
-    setIsGoogleSubmitting(true);
-    try {
-      await signInWithGoogle();
-    } finally {
-      setIsGoogleSubmitting(false);
-    }
   };
 
   return (
@@ -159,22 +143,6 @@ export function SignUpScreen() {
         />
       </View>
 
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or</Text>
-        <View style={styles.dividerLine} />
-      </View>
-
-      <PrimaryButton
-        label={isGoogleSubmitting ? 'Nag-sign in gamit ang Google...' : 'Mag-sign in gamit ang Google'}
-        onPress={handleGoogleSignIn}
-        variant="ghost"
-        buttonStyle={styles.authButton}
-        leadingIcon={<GoogleSignInMark />}
-      />
-
-      {googleSignInHint ? <Text style={styles.infoText}>{googleSignInHint}</Text> : null}
-
       {localError ? <Text style={styles.errorText}>{localError}</Text> : null}
       {authError ? <Text style={styles.errorText}>{authError}</Text> : null}
     </AuthLayout>
@@ -188,28 +156,6 @@ const styles = StyleSheet.create({
   authButton: {
     borderRadius: 12,
     minHeight: 52,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  dividerText: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  infoText: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 20,
   },
   errorText: {
     color: authErrorColor,

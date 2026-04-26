@@ -1,4 +1,3 @@
-import Constants from "expo-constants";
 import {
   createContext,
   useContext,
@@ -8,9 +7,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Linking, NativeModules, Platform } from "react-native";
+import { Linking, Platform } from "react-native";
 
-import { getClientEnv } from "@/config/env";
 import { supabase } from "@/config/supabase";
 import {
   appFlowReducer,
@@ -51,15 +49,12 @@ type AuthContextValue = {
   storagePermission: PermissionStatus;
   onboardingCompleted: boolean;
   tutorialShown: boolean;
-  isGoogleSignInEnabled: boolean;
-  googleSignInHint: string | null;
   chooseGuestMode: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
   showLogin: () => Promise<void>;
   showSignUp: () => Promise<void>;
   closeAuth: () => Promise<void>;
   clearAuthError: () => void;
-  signInWithGoogle: () => Promise<void>;
   signInWithEmail: (input: SignInWithEmailInput) => Promise<void>;
   signUpWithEmail: (input: SignUpWithEmailInput) => Promise<void>;
   signOut: () => Promise<void>;
@@ -69,15 +64,6 @@ type AuthContextValue = {
   openDeviceSettings: () => Promise<void>;
 };
 
-type GoogleExchangeSuccess = {
-  session: {
-    accessToken: string;
-    refreshToken: string;
-  };
-};
-
-type GoogleSigninModule =
-  typeof import("@react-native-google-signin/google-signin");
 type SpeechRecognitionModuleRuntime = {
   ExpoSpeechRecognitionModule: {
     requestPermissionsAsync?: () => Promise<{
@@ -94,8 +80,6 @@ type SpeechRecognitionModuleRuntime = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const AUTH_INIT_TIMEOUT_MS = 8000;
 const AUTH_LOADING_WATCHDOG_MS = 12000;
-const env = getClientEnv();
-let cachedGoogleSigninModule: GoogleSigninModule | null = null;
 
 async function withTimeout<T>(
   promise: Promise<T>,
@@ -122,50 +106,6 @@ async function createAppStateRepository() {
   const database = await getLocalDatabase();
   await runLocalMigrations(database);
   return new AppStateRepository(database);
-}
-
-function getGoogleSignInAvailability() {
-  if (!NativeModules.RNGoogleSignin) {
-    return {
-      enabled: false,
-      hint: "Google sign-in needs a development build. Expo Go does not include this native module.",
-    };
-  }
-
-  if (Constants.appOwnership === "expo") {
-    return {
-      enabled: false,
-      hint: "Google sign-in requires an Android development build. Expo Go is not supported for this flow.",
-    };
-  }
-
-  if (!env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID) {
-    return {
-      enabled: false,
-      hint: "Google sign-in is disabled until EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID is set.",
-    };
-  }
-
-  return {
-    enabled: true,
-    hint: env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
-      ? null
-      : "Google sign-in works best with EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID for ID token exchange.",
-  };
-}
-
-function loadGoogleSigninModule() {
-  if (cachedGoogleSigninModule) {
-    return cachedGoogleSigninModule;
-  }
-
-  try {
-    cachedGoogleSigninModule =
-      require("@react-native-google-signin/google-signin") as GoogleSigninModule;
-    return cachedGoogleSigninModule;
-  } catch {
-    return null;
-  }
 }
 
 function loadSpeechRecognitionRuntime(): SpeechRecognitionModuleRuntime | null {
@@ -212,26 +152,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appFlowReducer, initialAppFlowState);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
-  const googleAvailability = useMemo(getGoogleSignInAvailability, []);
-
-  useEffect(() => {
-    if (!googleAvailability.enabled) {
-      return;
-    }
-
-    const googleModule = loadGoogleSigninModule();
-    if (!googleModule) {
-      return;
-    }
-
-    googleModule.GoogleSignin.configure({
-      webClientId:
-        env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ??
-        env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ??
-        undefined,
-      iosClientId: env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? undefined,
-    });
-  }, [googleAvailability.enabled]);
 
   const persistState = async (patch: {
     onboardingCompleted?: boolean;
@@ -340,8 +260,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       storagePermission: permissions.storage,
       onboardingCompleted: state.onboardingCompleted,
       tutorialShown: state.tutorialShown,
-      isGoogleSignInEnabled: googleAvailability.enabled,
-      googleSignInHint: googleAvailability.hint,
       chooseGuestMode: async () => {
         setAuthError(null);
         dispatch({ type: "chooseGuestMode" });
@@ -377,104 +295,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       },
       clearAuthError: () => setAuthError(null),
-      signInWithGoogle: async () => {
-        setAuthError(null);
-        setIsAuthLoading(true);
-
-        try {
-          if (!googleAvailability.enabled) {
-            setAuthError(
-              googleAvailability.hint ?? "Google sign-in is unavailable.",
-            );
-            return;
-          }
-
-          const googleModule = loadGoogleSigninModule();
-          if (!googleModule) {
-            setAuthError("Google sign-in module is unavailable in this build.");
-            return;
-          }
-
-          await googleModule.GoogleSignin.hasPlayServices({
-            showPlayServicesUpdateDialog: true,
-          });
-
-          const signInResult = await googleModule.GoogleSignin.signIn();
-          if (googleModule.isCancelledResponse(signInResult)) {
-            setAuthError("Google sign-in was cancelled.");
-            return;
-          }
-
-          const idToken = signInResult.data.idToken;
-          if (!idToken) {
-            setAuthError("Google did not return an ID token.");
-            return;
-          }
-
-          const exchangeResponse = await fetch(
-            `${env.EXPO_PUBLIC_API_BASE_URL}/api/v1/auth/google/exchange`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ idToken }),
-            },
-          );
-
-          const exchangePayload = (await exchangeResponse.json()) as
-            | GoogleExchangeSuccess
-            | {
-                message?: string;
-              };
-
-          if (!exchangeResponse.ok || !("session" in exchangePayload)) {
-            const errorMessage =
-              "message" in exchangePayload
-                ? exchangePayload.message
-                : undefined;
-            setAuthError(errorMessage ?? "Google token exchange failed.");
-            return;
-          }
-
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: exchangePayload.session.accessToken,
-            refresh_token: exchangePayload.session.refreshToken,
-          });
-
-          if (sessionError) {
-            setAuthError(sessionError.message);
-            return;
-          }
-
-          await persistState({
-            authMode: "account",
-          });
-        } catch (error) {
-          const googleModule = loadGoogleSigninModule();
-          if (googleModule?.isErrorWithCode(error)) {
-            if (
-              error.code ===
-              googleModule.statusCodes.PLAY_SERVICES_NOT_AVAILABLE
-            ) {
-              setAuthError(
-                "Google Play Services is not available on this device.",
-              );
-              return;
-            }
-            if (error.code === googleModule.statusCodes.IN_PROGRESS) {
-              setAuthError("Google sign-in is already in progress.");
-              return;
-            }
-          }
-
-          setAuthError(
-            error instanceof Error ? error.message : "Google sign-in failed.",
-          );
-        } finally {
-          setIsAuthLoading(false);
-        }
-      },
       signInWithEmail: async ({ email, password }) => {
         setAuthError(null);
         setIsAuthLoading(true);
@@ -557,17 +377,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthError(null);
         await supabase.auth.signOut();
 
-        if (googleAvailability.enabled) {
-          try {
-            const googleModule = loadGoogleSigninModule();
-            if (googleModule) {
-              await googleModule.GoogleSignin.signOut();
-            }
-          } catch {
-            // Ignore Google cleanup errors during sign out.
-          }
-        }
-
         await persistState({
           authMode: "guest",
         });
@@ -619,7 +428,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await Linking.openSettings();
       },
     };
-  }, [authError, googleAvailability, isAuthLoading, state]);
+  }, [authError, isAuthLoading, state]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
