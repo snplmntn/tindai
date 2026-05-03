@@ -89,7 +89,7 @@ function StepCard({ step }: { step: Step }) {
 export default function PaanoGamitinPage() {
   return (
     <main className="min-h-screen bg-[#f4faf7] text-emerald-950">
-      <div className="mx-auto max-w-7xl px-5 pb-16 lg:px-12">
+      <div className="mx-auto max-w-6xl px-4 pb-16 pt-2 sm:px-5">
         <SiteHeader showTryAppCta />
 
         <section className="pt-6 text-center">
@@ -145,7 +145,7 @@ export default function PaanoGamitinPage() {
             </p>
 
             <a
-              href="https://drive.google.com/uc?export=download&id=1NyqQO5pxPXSfWyY8I6vltzGhsYBm0bv5"
+              href="#"
               className="mt-5 inline-flex min-h-[44px] min-w-[180px] items-center justify-center rounded-xl bg-white px-6 py-2.5 text-sm font-bold text-emerald-950 shadow-md transition hover:bg-emerald-50 hover:shadow-lg"
             >
               Simulan na ang Tindahan mo!
