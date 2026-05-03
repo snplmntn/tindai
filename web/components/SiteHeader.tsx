@@ -14,7 +14,7 @@ export function SiteHeader({ showTryAppCta = false }: SiteHeaderProps) {
       </Link>
       {showTryAppCta ? (
         <a
-          href="https://drive.google.com/uc?export=download&id=1NyqQO5pxPXSfWyY8I6vltzGhsYBm0bv5"
+          href="#"
           className="rounded-lg bg-emerald-800 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-900"
         >
           Subukan ang App

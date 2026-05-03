@@ -1,12 +1,17 @@
+import Image from 'next/image';
 import Link from 'next/link';
-
-import { SiteHeader } from '@/components/SiteHeader';
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-white text-slate-900">
       <div className="mx-auto max-w-7xl px-5 lg:px-12">
-        <SiteHeader showTryAppCta />
+        <header className="flex items-center justify-between py-4">
+          <Link href="/" className="flex items-center gap-2 text-base font-bold text-emerald-900">
+            <Image src="/logo.png" alt="Tindai" width={28} height={28} className="h-7 w-auto object-contain" priority />
+            Tindai
+          </Link>
+          <button className="rounded-lg bg-emerald-700 px-4 py-2 text-xs font-semibold text-white">Get App</button>
+        </header>
 
         <section className="grid min-h-[calc(100vh-72px)] items-center gap-10 py-6 md:grid-cols-2 md:py-10">
           <div className="mx-auto w-full max-w-none md:mx-0 md:max-w-3xl">
@@ -14,7 +19,8 @@ export default function Home() {
               Para sa sari-sari store
             </p>
             <h1 className="mt-4 hyphens-none text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-              Para sa tindahang kailangang kumilos agad: mabilis magtala, madaling makita ang kita.
+              Para sa busy na MSME na ayaw ng komplikado: simple, mabilis, at{' '}
+              <span className="whitespace-nowrap">pang-negosyo.</span>
             </h1>
             <p className="mt-4 text-base leading-7 text-slate-700">
               Bawas hula sa iyong negosyo, kita mo agad ang kulang at mabenta kahit walang internet.
@@ -22,7 +28,7 @@ export default function Home() {
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <a
-                href="https://drive.google.com/uc?export=download&id=1NyqQO5pxPXSfWyY8I6vltzGhsYBm0bv5"
+                href="#"
                 className="rounded-xl bg-emerald-700 px-5 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"
               >
                 Subukan nang Libre
@@ -91,9 +97,9 @@ export default function Home() {
                   <p className="mt-1 text-right text-[10px] text-slate-400">3 items</p>
                 </div>
 
-                <div className="absolute bottom-6 left-1/2 flex min-w-[186px] -translate-x-1/2 items-center justify-center gap-1.5 rounded-2xl bg-emerald-700 px-4 py-2 text-center text-[14px] font-semibold leading-none whitespace-nowrap text-white shadow">
-                  <span className="inline-flex h-5.5 w-5.5 items-center justify-center rounded-full bg-white/20">
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-white">
+                <div className="absolute bottom-6 left-1/2 flex min-w-[210px] -translate-x-1/2 items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-5 py-3 text-center text-lg font-semibold leading-none whitespace-nowrap text-white shadow">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/20">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-white">
                     <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v4a3 3 0 0 0 3 3zm5-3a1 1 0 1 0-2 0 3 3 0 1 1-6 0 1 1 0 1 0-2 0 5.002 5.002 0 0 0 4 4.9V18H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.1A5.002 5.002 0 0 0 17 11z" />
                     </svg>
                   </span>
